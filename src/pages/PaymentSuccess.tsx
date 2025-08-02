@@ -16,6 +16,18 @@ const PaymentSuccess = () => {
   useEffect(() => {
     const verifyPayment = async () => {
       const sessionId = searchParams.get('session_id');
+      const freeAccess = searchParams.get('free_access');
+      
+      // Handle free access case
+      if (freeAccess === 'true') {
+        setVerified(true);
+        toast({
+          title: "Free Access Granted!",
+          description: "Your access is now active.",
+        });
+        setVerifying(false);
+        return;
+      }
       
       if (sessionId) {
         try {

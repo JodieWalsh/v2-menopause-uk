@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const Payment = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [paymentData, setPaymentData] = useState({
     email: "",
     cardNumber: "",
@@ -117,18 +118,26 @@ const Payment = () => {
     setIsLoading(true);
 
     try {
-      // If the final price is 0, skip payment and grant free access
+      // If the final price is 0, grant free access by calling create-payment with amount 0
       if (finalPrice === 0) {
-        // Handle free access - you might want to create a separate endpoint for this
-        // For now, we'll still go through the payment system but with amount 0
+        const { data, error } = await supabase.functions.invoke('create-payment', {
+          body: {
+            amount: 0,
+            email: paymentData.email,
+            discountCode: paymentData.discountCode,
+          },
+        });
+
+        if (error) throw error;
+
         toast({
           title: "Free Access Granted!",
           description: "Redirecting you to your assessment...",
         });
         
-        // Redirect to welcome page or assessment
+        // Redirect to welcome page
         setTimeout(() => {
-          window.location.href = "/welcome";
+          navigate("/welcome");
         }, 1500);
         return;
       }
