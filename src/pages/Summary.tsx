@@ -57,18 +57,25 @@ export default function Summary() {
         "vaginal_dryness": "Over the past months have you felt that your vagina is more dry or irritated than previously?",
         "intercourse_comfort": "Over the past months have you found intercourse more uncomfortable than previously?",
         "urination_frequency": "Over the past months has there been an increase in the frequency of urination?",
-        "brain_fog": "Over the past months has there been an increase in brain fog?"
+        "brain_fog": "Over the past months has there been an increase in brain fog?",
+        "top_three_symptoms": "What are your top three symptoms that are bothering you the most?"
       }
     },
-    module_2: {
-      title: "Your Health History: Getting to know you",
+    module_2a: {
+      title: "Your Health History: Medical Background",
       questions: {
         "chronic_disease": "Have you ever been diagnosed with a chronic disease? For example, epilepsy, diabetes, asthma, kidney disease?",
-        "current_medications": "What medications are you currently taking.",
+        "current_medications": "What medications are you currently taking?",
         "supplements": "Are you taking any supplements?",
+        "medication_allergies": "Do you have any medication allergies or intolerances?"
+      }
+    },
+    module_2b: {
+      title: "Your Health History: Gynaecological History",
+      questions: {
         "last_menstrual_period": "Do you know the date of the start of your last menstrual period?",
         "period_changes": "If you are still having periods, have they changed? Are the periods heavier?",
-        "contraception": "What contraception are you currently using? How are you finding it.",
+        "contraception": "What contraception are you currently using? How are you finding it?",
         "last_cervical_screening": "What is the date of your last cervical screening?",
         "endometriosis": "Have you ever been diagnosed with endometriosis? If so, what treatment did you receive?",
         "pcos": "Have you ever been diagnosed with polycystic ovarian syndrome? If so, what treatment did you receive?",
@@ -76,14 +83,25 @@ export default function Summary() {
         "pregnancies": "How many pregnancies did you have?",
         "delivery_dates": "What are the dates of your deliveries?",
         "other_gynaecological": "Any other relevant gynaecological information?",
+        "menopause_family_history": "Do you know the age at which your mother or sisters started their menopause journey?"
+      }
+    },
+    module_2c: {
+      title: "Your Health History: Family History",
+      questions: {
         "last_mammogram": "What is the date of your last mammogram?",
-        "family_breast_cancer": "Do you have any family history of breast cancer, either in males or females",
+        "family_breast_cancer": "Do you have any family history of breast cancer, either in males or females?",
         "breast_cancer_ages": "How old was each of those relatives when they were diagnosed with breast cancer?",
         "family_bowel_cancer": "Has anyone in your family been diagnosed with bowel cancer?",
-        "bowel_cancer_ages": "How old was each of those relatives when they were diagnosed with breast cancer?",
+        "bowel_cancer_ages": "How old was each of those relatives when they were diagnosed with bowel cancer?",
         "blood_clot_history": "Have you ever had a blood clot? If so, please give details.",
         "cardiovascular_conditions": "Have you ever been diagnosed with high blood pressure, high cholesterol or had a stroke?",
-        "family_heart_disease": "Do you or any of your family have a history of heart disease? If so, please give details.",
+        "family_heart_disease": "Do you or any of your family have a history of heart disease? If so, please give details."
+      }
+    },
+    module_2d: {
+      title: "Your Health History: Bone Health & Mental Health",
+      questions: {
         "osteoporosis_diagnosis": "Have you been diagnosed with osteoporosis?",
         "bone_fractures": "Have you ever had a bone fracture which occurred without a serious accident or fall?",
         "bone_density_screening": "Have you ever had a bone density screening?",
