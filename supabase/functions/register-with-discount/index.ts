@@ -98,9 +98,30 @@ serve(async (req) => {
               });
 
             if (!subError) {
+              // Send welcome email for existing user with free access
+              try {
+                console.log(`Sending welcome email to existing user ${email}`);
+                const emailClient = createClient(
+                  Deno.env.get("SUPABASE_URL") ?? "",
+                  Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+                );
+                
+                await emailClient.functions.invoke('send-welcome-email', {
+                  body: {
+                    email: email,
+                    firstName: firstName,
+                    isPaid: false
+                  }
+                });
+                
+                console.log('Welcome email sent to existing user');
+              } catch (emailError) {
+                console.error('Error sending welcome email to existing user:', emailError);
+              }
+              
               return new Response(JSON.stringify({ 
                 success: true,
-                message: "Account updated with free access! Please sign in to continue.",
+                message: "Account updated with free access! Check your email for a welcome message. Please sign in to continue.",
                 userExists: true,
                 freeAccess: true
               }), {
@@ -155,12 +176,38 @@ serve(async (req) => {
       // Don't fail the registration, but log the error
     }
 
+    // Send welcome email
+    try {
+      console.log(`Sending welcome email to ${email}`);
+      const emailClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      );
+      
+      const { error: emailError } = await emailClient.functions.invoke('send-welcome-email', {
+        body: {
+          email: email,
+          firstName: firstName,
+          isPaid: finalAmount > 0
+        }
+      });
+      
+      if (emailError) {
+        console.error('Welcome email error:', emailError);
+      } else {
+        console.log('Welcome email sent successfully');
+      }
+    } catch (emailError) {
+      console.error('Error sending welcome email:', emailError);
+      // Don't fail registration if email fails
+    }
+
     // Return response based on whether it's free or paid
     if (finalAmount === 0) {
       // Free access - direct to welcome
       return new Response(JSON.stringify({ 
         success: true,
-        message: "Account created successfully with free access!",
+        message: "Account created successfully with free access! Check your email for a warm welcome message.",
         userId: newUser.id,
         redirectTo: "/welcome",
         freeAccess: true
@@ -172,7 +219,7 @@ serve(async (req) => {
       // Paid access - need to go to payment
       return new Response(JSON.stringify({ 
         success: true,
-        message: "Account created successfully!",
+        message: "Account created successfully! Check your email for a welcome message.",
         userId: newUser.id,
         redirectTo: "/payment",
         freeAccess: false,
