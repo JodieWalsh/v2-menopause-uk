@@ -59,12 +59,12 @@ serve(async (req) => {
       line_items: [
         {
           price_data: {
-            currency: "aud",
+            currency: "gbp",
             product_data: {
-              name: "Menopause Assessment Tool",
+              name: "Menopause Doctors Visit UK",
               description: "12 months access to guided assessment tool with personalized report"
             },
-            unit_amount: Math.round(amount * 100), // Convert to cents
+            unit_amount: Math.round(amount * 100), // Convert to pence
           },
           quantity: 1,
         },

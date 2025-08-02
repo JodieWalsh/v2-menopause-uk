@@ -140,20 +140,20 @@ const Payment = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Menopause Assessment Tool</span>
-                    <span className="font-medium">${basePrice} AUD</span>
+                    <span className="font-medium">£{basePrice} GBP</span>
                   </div>
                   
                   {discountApplied && (
                     <div className="flex justify-between items-center text-green-600">
                       <span>Discount Applied</span>
-                      <span>-${discountAmount} AUD</span>
+                      <span>-£{discountAmount} GBP</span>
                     </div>
                   )}
                   
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center text-lg font-semibold">
                       <span>Total</span>
-                      <span>${finalPrice} AUD</span>
+                      <span>£{finalPrice} GBP</span>
                     </div>
                   </div>
                 </div>
@@ -413,7 +413,7 @@ const Payment = () => {
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
                         Processing...
                       </>
-                    ) : finalPrice === 0 ? "Get Free Access" : `Complete Purchase - $${finalPrice} AUD`}
+                    ) : finalPrice === 0 ? "Get Free Access" : `Complete Purchase - £${finalPrice} GBP`}
                   </Button>
                   
                   {/* Security notice */}
