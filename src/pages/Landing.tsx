@@ -101,14 +101,14 @@ const Landing = () => {
               controls
               preload="metadata"
               playsInline
-              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK.mp4#t=0.5"
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK%20v2.mp4#t=0.5"
               onLoadedMetadata={(e) => {
                 const video = e.target as HTMLVideoElement;
                 video.currentTime = 0.5;
               }}
               onEnded={(e) => {
                 const video = e.target as HTMLVideoElement;
-                video.currentTime = 1;
+                video.currentTime = 0.5;
                 video.pause();
               }}
             >
