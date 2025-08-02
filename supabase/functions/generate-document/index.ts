@@ -15,6 +15,7 @@ serve(async (req) => {
   try {
     const { responses } = await req.json();
     console.log("Received responses:", JSON.stringify(responses, null, 2));
+    console.log("Number of responses:", Object.keys(responses).length);
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -136,7 +137,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     { id: 'joint_pains', label: 'Joint Pains' },
     { id: 'muscle_pains', label: 'Muscle Pains' },
     { id: 'facial_hair', label: 'New facial hair' },
-    { id: 'dry_skin', label: 'Dry skin' },
+    { id: 'skin_dryness', label: 'Dry skin' },
     { id: 'crawling_skin', label: 'Crawling feelings under skin' },
     { id: 'sex_drive', label: 'Less sexual feelings' },
     { id: 'vaginal_dryness', label: 'Dry vagina' },
@@ -149,6 +150,8 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
   const greeneScaleRows = greeneScaleQuestions.map(question => {
     const response = responses[question.id];
     let score = 0;
+    
+    console.log(`Greene Scale - Question: ${question.id}, Response: ${response}`);
     
     if (response) {
       // Map multiple choice answers to scores (0-3)
