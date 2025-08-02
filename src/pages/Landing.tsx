@@ -337,7 +337,7 @@ const Landing = () => {
                   <div className="bg-gradient-to-br from-primary-light to-secondary-light p-6 sm:p-8 lg:p-12 flex items-center justify-center min-h-48 lg:min-h-0">
                     <div className="relative w-48 h-48 sm:w-64 sm:h-64 lg:w-80 lg:h-80">
                       <OptimizedImage
-                        src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//Jodie%20Headshot%20(1).png"
+                        src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/photos//Jodie%20Headshot4.png"
                         alt="Dr Jodie - Women's Health Specialist"
                         className="w-full h-full rounded-full shadow-elegant border-4 border-white/20"
                         aspectRatio="1/1"
