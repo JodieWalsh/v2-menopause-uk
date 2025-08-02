@@ -96,30 +96,32 @@ const Landing = () => {
           </div>
           
           <div className="relative max-w-3xl mx-auto">
-            <video 
-              className="w-full aspect-video rounded-xl shadow-lg"
-              controls
-              preload="metadata"
-              playsInline
-              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK%20v2.mp4#t=0.5"
-              onLoadedMetadata={(e) => {
-                const video = e.target as HTMLVideoElement;
-                video.currentTime = 0.5;
-              }}
-              onEnded={(e) => {
-                const video = e.target as HTMLVideoElement;
-                video.currentTime = 0.5;
-                video.pause();
-              }}
-            >
-              <p className="text-center p-8 text-muted-foreground">
-                Your browser doesn't support HTML video. 
-                <a href="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK.mp4" 
-                   className="text-primary hover:underline ml-1">
-                  Download the video
-                </a>
-              </p>
-            </video>
+            <div className="aspect-video rounded-xl overflow-hidden shadow-lg">
+              <video 
+                className="w-full h-full object-cover"
+                controls
+                preload="metadata"
+                playsInline
+                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK%20v2.mp4#t=0.5"
+                onLoadedMetadata={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  video.currentTime = 0.5;
+                }}
+                onEnded={(e) => {
+                  const video = e.target as HTMLVideoElement;
+                  video.currentTime = 0.5;
+                  video.pause();
+                }}
+              >
+                <p className="text-center p-8 text-muted-foreground">
+                  Your browser doesn't support HTML video. 
+                  <a href="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK%20v2.mp4" 
+                     className="text-primary hover:underline ml-1">
+                    Download the video
+                  </a>
+                </p>
+              </video>
+            </div>
           </div>
         </div>
       </section>
