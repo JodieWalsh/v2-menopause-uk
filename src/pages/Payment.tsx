@@ -28,7 +28,7 @@ const Payment = () => {
   const [discountApplied, setDiscountApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const basePrice = 39;
+  const basePrice = 19;
   const finalPrice = discountApplied ? basePrice - discountAmount : basePrice;
 
   // Auto-fill email from authenticated user

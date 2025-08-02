@@ -263,7 +263,7 @@ const Landing = () => {
           <Card className="max-w-sm sm:max-w-md mx-auto card-gradient p-6 sm:p-8 text-center">
             <CardContent className="p-0">
               <div className="mb-6">
-                <div className="text-3xl sm:text-4xl font-bold text-foreground mb-2">£39</div>
+                <div className="text-3xl sm:text-4xl font-bold text-foreground mb-2">£19</div>
                 <div className="text-sm sm:text-base text-muted-foreground">GBP</div>
               </div>
               <ul className="space-y-3 mb-6 sm:mb-8 text-left">
