@@ -368,7 +368,7 @@ link[rel="preload"] {
 /* Video optimization */
 
 video::-webkit-media-controls {
-  background-color: rgba(0,0,0,0.8);
+  /* Removed dark background that was causing overlay issue */
 }
 
 /* Image loading optimization */
