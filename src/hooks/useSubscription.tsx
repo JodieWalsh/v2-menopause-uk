@@ -6,8 +6,13 @@ interface Subscription {
   subscription_type: string;
   status: string;
   expires_at: string | null;
-  discount_code: string | null;
   amount_paid: number | null;
+  user_id: string;
+  currency: string | null;
+  stripe_customer_id: string | null;
+  stripe_session_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export function useSubscription() {

@@ -63,17 +63,17 @@ const ConsultationComplete = () => {
 
 
   const fetchLatestAssessment = async () => {
-    if (!user?.email) return null;
+    if (!user?.id) return null;
     
+    // Get user responses from user_responses table
     const { data, error } = await supabase
-      .from('assessments')
+      .from('user_responses')
       .select('*')
-      .eq('user_email', user.email)
-      .order('completed_at', { ascending: false })
-      .limit(1);
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
       
     if (error) throw error;
-    return data?.[0] || null;
+    return { responses: data };
   };
 
   const handleDownload = async () => {
