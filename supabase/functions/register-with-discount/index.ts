@@ -178,13 +178,9 @@ serve(async (req) => {
 
     // Send welcome email
     try {
-      console.log(`Sending welcome email to ${email}`);
-      const emailClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-      );
+      console.log(`Attempting to send welcome email to ${email} with firstName: ${firstName}`);
       
-      const { error: emailError } = await emailClient.functions.invoke('send-welcome-email', {
+      const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email', {
         body: {
           email: email,
           firstName: firstName,
@@ -195,7 +191,7 @@ serve(async (req) => {
       if (emailError) {
         console.error('Welcome email error:', emailError);
       } else {
-        console.log('Welcome email sent successfully');
+        console.log('Welcome email sent successfully:', emailData);
       }
     } catch (emailError) {
       console.error('Error sending welcome email:', emailError);

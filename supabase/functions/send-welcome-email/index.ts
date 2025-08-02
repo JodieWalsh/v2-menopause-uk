@@ -34,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
             <!-- Header with Logo -->
             <div style="text-align: center; margin-bottom: 30px;">
               <img 
-                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
+                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/revised_logo.png" 
                 alt="The Empowered Patient Logo" 
                 style="height: 80px; width: auto; margin-bottom: 20px;"
               />

@@ -22,24 +22,6 @@ const PaymentSuccess = () => {
       if (freeAccess === 'true') {
         setVerified(true);
         
-        // Send welcome email for free access users
-        try {
-          // Get the current user's email
-          const { data: { user } } = await supabase.auth.getUser();
-          const userEmail = user?.email || 'guest@example.com';
-          const userFirstName = user?.user_metadata?.first_name || '';
-          
-          await supabase.functions.invoke('send-welcome-email', {
-            body: {
-              email: userEmail,
-              firstName: userFirstName,
-              isPaid: false
-            }
-          });
-        } catch (emailError) {
-          console.error('Failed to send welcome email:', emailError);
-        }
-        
         toast({
           title: "Free Access Granted!",
           description: "Redirecting to your assessment...",
