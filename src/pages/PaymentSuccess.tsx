@@ -23,9 +23,14 @@ const PaymentSuccess = () => {
         setVerified(true);
         toast({
           title: "Free Access Granted!",
-          description: "Your access is now active.",
+          description: "Redirecting to your assessment...",
         });
         setVerifying(false);
+        
+        // Auto-redirect to welcome page after 2 seconds
+        setTimeout(() => {
+          navigate('/welcome');
+        }, 2000);
         return;
       }
       
@@ -41,8 +46,13 @@ const PaymentSuccess = () => {
             setVerified(true);
             toast({
               title: "Payment Verified!",
-              description: "Your subscription is now active.",
+              description: "Redirecting to your assessment...",
             });
+            
+            // Auto-redirect to welcome page after 2 seconds
+            setTimeout(() => {
+              navigate('/welcome');
+            }, 2000);
           } else {
             toast({
               title: "Payment Verification Failed",
@@ -64,7 +74,7 @@ const PaymentSuccess = () => {
     };
 
     verifyPayment();
-  }, [searchParams, toast]);
+  }, [searchParams, toast, navigate]);
 
   if (verifying) {
     return (
