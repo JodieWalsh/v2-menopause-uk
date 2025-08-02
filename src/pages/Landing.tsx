@@ -97,23 +97,19 @@ const Landing = () => {
           
           <div className="relative max-w-3xl mx-auto">
             <video 
-              className="w-full aspect-video rounded-xl shadow-lg touch-friendly"
+              className="w-full aspect-video rounded-xl shadow-lg touch-friendly bg-background"
               controls
-              preload="none"
+              preload="metadata"
               playsInline
-              poster="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwMCIgaGVpZ2h0PSI2NzUiIHZpZXdCb3g9IjAgMCAxMjAwIDY3NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjc1IiBmaWxsPSJoc2woMCAwJSA5NiUpIi8+Cjx0ZXh0IHg9IjYwMCIgeT0iMzM3LjUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJoc2woMCAwJSA2MyUpIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7igJZDbGljayB0byBQbGF5IFZpZGVvPC90ZXh0Pgo8L3N2Zz4="
-              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK.mp4"
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK.mp4#t=0.5"
               onLoadedMetadata={(e) => {
                 const video = e.target as HTMLVideoElement;
-                video.currentTime = 1;
+                video.currentTime = 0.5;
               }}
               onEnded={(e) => {
                 const video = e.target as HTMLVideoElement;
                 video.currentTime = 1;
                 video.pause();
-              }}
-              onLoadStart={() => {
-                // Add loading state if needed
               }}
             >
               <p className="text-center p-8 text-muted-foreground">
