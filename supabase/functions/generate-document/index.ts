@@ -38,18 +38,8 @@ serve(async (req) => {
     const userName = user.user_metadata?.first_name || 'Patient';
     const htmlContent = generateBrandedHTMLDocument(responses, userName);
     
-    // Save assessment to database
-    const { error: assessmentError } = await supabaseClient
-      .from('assessments')
-      .insert({
-        user_email: user.email,
-        responses: responses,
-        completed_at: new Date().toISOString(),
-        pdf_generated: false, // HTML for now, PDF coming soon
-        email_sent: false
-      });
-
-    if (assessmentError) throw assessmentError;
+    // The responses are already saved individually in user_responses table during the assessment
+    // No need to save to a separate assessments table
 
     // Try to generate and send PDF document
     const { data: pdfData, error: pdfError } = await supabaseClient.functions.invoke('generate-pdf-document', {
@@ -90,7 +80,17 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Document generation error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    
+    // Provide more detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace available';
+    
+    console.error("Error details:", { message: errorMessage, stack: errorStack });
+    
+    return new Response(JSON.stringify({ 
+      error: errorMessage,
+      details: 'Document generation failed. Please try again or contact support.' 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
