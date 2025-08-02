@@ -102,6 +102,7 @@ const Auth = () => {
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: undefined, // Explicitly disable email redirect
           data: {
             first_name: formData.firstName,
             last_name: formData.lastName,
