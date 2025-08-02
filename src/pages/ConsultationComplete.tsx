@@ -73,7 +73,14 @@ const ConsultationComplete = () => {
       .order('created_at', { ascending: false });
       
     if (error) throw error;
-    return { responses: data };
+    
+    // Transform the array of responses into the format expected by generate-document
+    const responseMap = {};
+    data?.forEach(response => {
+      responseMap[response.question_id] = response.response_value;
+    });
+    
+    return { responses: responseMap };
   };
 
   const handleDownload = async () => {
