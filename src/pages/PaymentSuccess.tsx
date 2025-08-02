@@ -21,6 +21,20 @@ const PaymentSuccess = () => {
       // Handle free access case
       if (freeAccess === 'true') {
         setVerified(true);
+        
+        // Send welcome email for free access users
+        try {
+          await supabase.functions.invoke('send-welcome-email', {
+            body: {
+              email: 'guest@example.com', // Default for free access, or get from auth if available
+              firstName: '',
+              isPaid: false
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+        }
+        
         toast({
           title: "Free Access Granted!",
           description: "Redirecting to your assessment...",

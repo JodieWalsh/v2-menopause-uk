@@ -25,66 +25,90 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, firstName, isPaid }: WelcomeEmailRequest = await req.json();
 
     const emailResponse = await resend.emails.send({
-      from: "Health Assessment <onboarding@resend.dev>",
+      from: "The Empowered Patient <support@the-empowered-patient.org>",
       to: [email],
       subject: "Welcome to Your Health Assessment Journey!",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb; text-align: center;">Welcome${firstName ? ` ${firstName}` : ''}!</h1>
-          
-          <p style="font-size: 16px; line-height: 1.6;">
-            Thank you for ${isPaid ? 'your purchase and' : ''} joining our health assessment platform. 
-            We're excited to help you on your wellness journey.
-          </p>
-          
-          <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h2 style="color: #1e40af; margin-top: 0;">What's Next?</h2>
-            <ul style="line-height: 1.8;">
-              <li>Complete your comprehensive health assessment</li>
-              <li>Receive personalized recommendations</li>
-              <li>Track your progress over time</li>
-              <li>Access expert insights and guidance</li>
-            </ul>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
+          <div style="background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <!-- Header with Logo -->
+            <div style="text-align: center; margin-bottom: 30px;">
+              <img 
+                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
+                alt="The Empowered Patient Logo" 
+                style="height: 80px; width: auto; margin-bottom: 20px;"
+              />
+              <h1 style="color: #2563eb; margin: 0; font-size: 28px; font-weight: bold;">
+                Welcome${firstName ? ` ${firstName}` : ''}!
+              </h1>
+            </div>
+            
+            <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 25px;">
+              Thank you for ${isPaid ? 'your purchase and' : ''} joining The Empowered Patient community. 
+              We're excited to support you on your personalized menopause wellness journey.
+            </p>
+            
+            <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 25px; border-radius: 8px; margin: 25px 0;">
+              <h2 style="color: white; margin-top: 0; margin-bottom: 15px; font-size: 22px;">What's Next?</h2>
+              <ul style="line-height: 1.8; color: white; margin: 0; padding-left: 20px;">
+                <li>Complete your comprehensive menopause assessment</li>
+                <li>Receive personalized recommendations tailored to your needs</li>
+                <li>Track your progress and symptoms over time</li>
+                <li>Access expert insights and evidence-based guidance</li>
+                <li>Connect with a supportive community of women</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/welcome" 
+                 style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 15px 30px; 
+                        text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 16px;
+                        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+                Start Your Assessment Now
+              </a>
+            </div>
+            
+            <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 25px 0;">
+              <p style="margin: 0; font-size: 14px; color: #64748b; text-align: center;">
+                <strong>Need help?</strong> Our support team is here for you. 
+                Simply reply to this email or contact us at 
+                <a href="mailto:support@the-empowered-patient.org" style="color: #2563eb;">support@the-empowered-patient.org</a>
+              </p>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+            
+            <div style="text-align: center;">
+              <p style="font-size: 14px; color: #64748b; margin: 10px 0;">
+                <strong>The Empowered Patient</strong><br>
+                Empowering women through personalized menopause care
+              </p>
+              <p style="font-size: 12px; color: #94a3b8; margin: 5px 0;">
+                You're receiving this email because you created an account with us.
+              </p>
+            </div>
           </div>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/welcome" 
-               style="background-color: #2563eb; color: white; padding: 12px 24px; 
-                      text-decoration: none; border-radius: 6px; display: inline-block;">
-              Start Your Assessment
-            </a>
-          </div>
-          
-          <p style="font-size: 14px; color: #6b7280; text-align: center;">
-            If you have any questions, please don't hesitate to reach out to our support team.
-          </p>
-          
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          
-          <p style="font-size: 12px; color: #9ca3af; text-align: center;">
-            Health Assessment Platform<br>
-            Your journey to better health starts here.
-          </p>
         </div>
       `,
       text: `
         Welcome${firstName ? ` ${firstName}` : ''}!
         
-        Thank you for ${isPaid ? 'your purchase and' : ''} joining our health assessment platform. 
-        We're excited to help you on your wellness journey.
+        Thank you for ${isPaid ? 'your purchase and' : ''} joining The Empowered Patient community. 
+        We're excited to support you on your personalized menopause wellness journey.
         
         What's Next?
-        - Complete your comprehensive health assessment
-        - Receive personalized recommendations  
-        - Track your progress over time
-        - Access expert insights and guidance
+        • Complete your comprehensive menopause assessment
+        • Receive personalized recommendations tailored to your needs
+        • Track your progress and symptoms over time
+        • Access expert insights and evidence-based guidance
+        • Connect with a supportive community of women
         
         Start your assessment: ${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/welcome
         
-        If you have any questions, please don't hesitate to reach out to our support team.
+        Need help? Our support team is here for you. Simply reply to this email or contact us at support@the-empowered-patient.org
         
-        Health Assessment Platform
-        Your journey to better health starts here.
+        The Empowered Patient
+        Empowering women through personalized menopause care
       `
     });
 

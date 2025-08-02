@@ -64,6 +64,20 @@ serve(async (req) => {
         onConflict: 'user_id'
       });
 
+      // Send welcome email after successful payment
+      try {
+        await supabaseService.functions.invoke('send-welcome-email', {
+          body: {
+            email: user.email,
+            firstName: user.user_metadata?.first_name,
+            isPaid: true
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        // Don't fail the payment verification if email fails
+      }
+
       return new Response(JSON.stringify({ success: true, verified: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
