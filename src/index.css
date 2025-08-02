@@ -366,9 +366,6 @@ link[rel="preload"] {
 }
 
 /* Video optimization */
-video {
-  background-color: hsl(var(--muted));
-}
 
 video::-webkit-media-controls {
   background-color: rgba(0,0,0,0.8);
