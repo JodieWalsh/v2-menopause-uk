@@ -10,37 +10,10 @@ export type Database = {
   // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+    PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
-      assessments: {
-        Row: {
-          completed_at: string
-          email_sent: boolean | null
-          id: string
-          pdf_generated: boolean | null
-          responses: Json
-          user_email: string
-        }
-        Insert: {
-          completed_at?: string
-          email_sent?: boolean | null
-          id?: string
-          pdf_generated?: boolean | null
-          responses: Json
-          user_email: string
-        }
-        Update: {
-          completed_at?: string
-          email_sent?: boolean | null
-          id?: string
-          pdf_generated?: boolean | null
-          responses?: Json
-          user_email?: string
-        }
-        Relationships: []
-      }
       user_progress: {
         Row: {
           completed: boolean
@@ -49,7 +22,7 @@ export type Database = {
           id: string
           module_name: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           completed?: boolean
@@ -58,7 +31,7 @@ export type Database = {
           id?: string
           module_name: string
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           completed?: boolean
@@ -67,7 +40,7 @@ export type Database = {
           id?: string
           module_name?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -78,19 +51,19 @@ export type Database = {
           module_name: string
           question_id: string
           response_type: string
-          response_value: string | null
+          response_value: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           module_name: string
           question_id: string
-          response_type: string
-          response_value?: string | null
+          response_type?: string
+          response_value: string
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string
@@ -98,9 +71,9 @@ export type Database = {
           module_name?: string
           question_id?: string
           response_type?: string
-          response_value?: string | null
+          response_value?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -109,7 +82,6 @@ export type Database = {
           amount_paid: number | null
           created_at: string
           currency: string | null
-          discount_code: string | null
           expires_at: string | null
           id: string
           status: string
@@ -123,7 +95,6 @@ export type Database = {
           amount_paid?: number | null
           created_at?: string
           currency?: string | null
-          discount_code?: string | null
           expires_at?: string | null
           id?: string
           status?: string
@@ -137,7 +108,6 @@ export type Database = {
           amount_paid?: number | null
           created_at?: string
           currency?: string | null
-          discount_code?: string | null
           expires_at?: string | null
           id?: string
           status?: string
@@ -154,10 +124,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      user_has_valid_subscription: {
-        Args: { user_id_param: string }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
