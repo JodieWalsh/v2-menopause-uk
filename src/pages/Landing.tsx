@@ -336,13 +336,14 @@ const Landing = () => {
                   </div>
                   <div className="bg-gradient-to-br from-primary-light to-secondary-light p-6 sm:p-8 lg:p-12 flex items-center justify-center min-h-48 lg:min-h-0">
                     <div className="relative w-48 h-48 sm:w-64 sm:h-64 lg:w-80 lg:h-80">
-                      <OptimizedImage
-                        src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/photos//Jodie%20Headshot4.png"
-                        alt="Dr Jodie - Women's Health Specialist"
-                        className="w-full h-full rounded-full shadow-elegant border-4 border-white/20"
-                        aspectRatio="1/1"
-                        sizes="(max-width: 768px) 256px, (max-width: 1024px) 320px, 384px"
-                      />
+                       <img
+                         src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/photos/Jodie%20Headshot4.png"
+                         alt="Dr Jodie - Women's Health Specialist"
+                         className="w-full h-full rounded-full shadow-elegant border-4 border-white/20 object-cover"
+                         onError={(e) => {
+                           console.error('Failed to load Dr. Jodie image:', e);
+                         }}
+                       />
                     </div>
                   </div>
                 </div>
