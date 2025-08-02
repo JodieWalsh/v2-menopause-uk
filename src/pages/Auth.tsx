@@ -128,6 +128,16 @@ const Auth = () => {
         return;
       }
 
+      if (data.userExists) {
+        // User already exists - show message and redirect to sign in
+        toast({
+          title: data.freeAccess ? "Account Updated!" : "Account Exists",
+          description: data.message,
+          variant: data.freeAccess ? "default" : "destructive",
+        });
+        return;
+      }
+
       if (data.freeAccess) {
         toast({
           title: "Account Created Successfully!",

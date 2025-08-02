@@ -71,6 +71,54 @@ serve(async (req) => {
 
     if (authError) {
       console.error("User creation error:", authError);
+      
+      // Handle case where user already exists
+      if (authError.message.includes('already been registered') || authError.code === 'email_exists') {
+        // If user exists and has a valid discount code for free access, update their subscription
+        if (isValidDiscount && finalAmount === 0) {
+          // Get the existing user
+          const { data: existingUsers } = await supabaseService.auth.admin.listUsers();
+          const existingUser = existingUsers.users.find(u => u.email === email);
+          
+          if (existingUser) {
+            // Update their subscription to free
+            const { error: subError } = await supabaseService
+              .from('user_subscriptions')
+              .upsert({
+                user_id: existingUser.id,
+                subscription_type: 'free',
+                status: 'active',
+                amount_paid: 0,
+                currency: 'gbp',
+                expires_at: null,
+                stripe_customer_id: null,
+                stripe_session_id: null
+              }, {
+                onConflict: 'user_id'
+              });
+
+            if (!subError) {
+              return new Response(JSON.stringify({ 
+                success: true,
+                message: "Account updated with free access! Please sign in to continue.",
+                userExists: true,
+                freeAccess: true
+              }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200,
+              });
+            }
+          }
+        }
+        
+        return new Response(JSON.stringify({ 
+          error: "An account with this email already exists. Please sign in instead." 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+      
       return new Response(JSON.stringify({ 
         error: authError.message 
       }), {
