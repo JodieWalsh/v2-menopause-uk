@@ -38,7 +38,7 @@ serve(async (req) => {
     }
 
     // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripe = new Stripe(Deno.env.get("stripesecret") || "", {
       apiVersion: "2023-10-16",
     });
 
@@ -64,7 +64,7 @@ serve(async (req) => {
               name: "Menopause Doctors Visit UK",
               description: "12 months access to guided assessment tool with personalized report"
             },
-            unit_amount: Math.round(amount * 100), // Convert to pence
+            unit_amount: 1900, // £19.00 in pence
           },
           quantity: 1,
         },
