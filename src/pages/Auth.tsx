@@ -126,6 +126,22 @@ const Auth = () => {
         return;
       }
 
+      // Send welcome email
+      if (data.user) {
+        try {
+          await supabase.functions.invoke('send-welcome-email', {
+            body: {
+              email: formData.email,
+              firstName: formData.firstName,
+              isPaid: false // Will be updated after payment
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+          // Don't block the signup process if email fails
+        }
+      }
+
       toast({
         title: "Account Created Successfully!",
         description: "Please complete your payment to get started.",

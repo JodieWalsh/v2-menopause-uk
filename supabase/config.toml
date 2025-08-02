@@ -6,3 +6,6 @@ enable_signup = true
 
 [functions.generate-pdf-document]
 verify_jwt = true
+
+[functions.send-welcome-email]
+verify_jwt = false
