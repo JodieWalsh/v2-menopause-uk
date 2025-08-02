@@ -97,7 +97,7 @@ const Landing = () => {
           
           <div className="relative max-w-3xl mx-auto">
             <video 
-              className="w-full aspect-video rounded-xl shadow-lg touch-friendly bg-background"
+              className="w-full aspect-video rounded-xl shadow-lg"
               controls
               preload="metadata"
               playsInline
