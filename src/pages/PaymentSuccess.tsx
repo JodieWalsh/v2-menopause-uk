@@ -24,10 +24,15 @@ const PaymentSuccess = () => {
         
         // Send welcome email for free access users
         try {
+          // Get the current user's email
+          const { data: { user } } = await supabase.auth.getUser();
+          const userEmail = user?.email || 'guest@example.com';
+          const userFirstName = user?.user_metadata?.first_name || '';
+          
           await supabase.functions.invoke('send-welcome-email', {
             body: {
-              email: 'guest@example.com', // Default for free access, or get from auth if available
-              firstName: '',
+              email: userEmail,
+              firstName: userFirstName,
               isPaid: false
             }
           });
