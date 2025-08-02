@@ -25,22 +25,20 @@ const ConsultationComplete = () => {
 
   const handleResendEmail = async () => {
     try {
-      const assessment = await fetchLatestAssessment();
-      if (!assessment) {
+      const responses = await fetchLatestResponses();
+      if (!responses || Object.keys(responses).length === 0) {
         toast({
           title: "Error",
-          description: "No assessment found to resend email.",
+          description: "No consultation responses found to resend email.",
           variant: "destructive",
         });
         return;
       }
-
-      const userName = `${user?.user_metadata?.first_name} ${user?.user_metadata?.last_name}`.trim();
       
       // Use the same approach as the normal email sending - call generate-document with responses
       const { data, error } = await supabase.functions.invoke('generate-document', {
         body: { 
-          responses: assessment.responses,
+          responses,
           email: user?.email
         }
       });
@@ -62,27 +60,33 @@ const ConsultationComplete = () => {
   };
 
 
-  const fetchLatestAssessment = async () => {
-    if (!user?.email) return null;
+  const fetchLatestResponses = async () => {
+    if (!user?.id) return null;
     
     const { data, error } = await supabase
-      .from('assessments')
+      .from('user_responses')
       .select('*')
-      .eq('user_email', user.email)
-      .order('completed_at', { ascending: false })
-      .limit(1);
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
       
     if (error) throw error;
-    return data?.[0] || null;
+    
+    // Convert to the format expected by generate-document
+    const responseMap = {};
+    data?.forEach(response => {
+      responseMap[response.question_id] = response.response_value;
+    });
+    
+    return responseMap;
   };
 
   const handleDownload = async () => {
     try {
-      const assessment = await fetchLatestAssessment();
-      if (!assessment) {
+      const responses = await fetchLatestResponses();
+      if (!responses || Object.keys(responses).length === 0) {
         toast({
           title: "Error",
-          description: "No assessment found to download.",
+          description: "No consultation responses found to download.",
           variant: "destructive",
         });
         return;
@@ -93,7 +97,7 @@ const ConsultationComplete = () => {
       // Generate the same styled HTML document as the email
       const { data, error } = await supabase.functions.invoke('generate-document', {
         body: { 
-          responses: assessment.responses
+          responses
         }
       });
       
