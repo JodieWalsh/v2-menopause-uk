@@ -37,15 +37,34 @@ serve(async (req) => {
       throw new Error("User not authenticated");
     }
 
-    // Handle free access (amount = 0) without going through Stripe
+    // Handle free access (amount = 0) - create subscription record
     if (amount === 0) {
-      // For free access, directly create a subscription record or handle access grant
-      // You might want to create a record in a subscriptions table here
       console.log(`Granting free access to user ${user.id} with discount code: ${discountCode}`);
       
-      // Return a success URL that includes a special parameter indicating free access
+      // Create a free subscription record
+      const { error: subError } = await supabaseService
+        .from('user_subscriptions')
+        .upsert({
+          user_id: user.id,
+          subscription_type: 'free',
+          status: 'active',
+          amount_paid: 0,
+          currency: 'gbp',
+          expires_at: null, // Free access doesn't expire
+          stripe_customer_id: null,
+          stripe_session_id: null
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (subError) {
+        console.error('Error creating free subscription:', subError);
+        throw new Error('Failed to create free subscription');
+      }
+      
+      // Return success URL for free access
       return new Response(JSON.stringify({ 
-        url: `${req.headers.get("origin")}/payment-success?free_access=true&user_id=${user.id}` 
+        url: `${req.headers.get("origin")}/payment-success?free_access=true` 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

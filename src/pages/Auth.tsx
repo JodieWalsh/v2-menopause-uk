@@ -17,7 +17,8 @@ const Auth = () => {
     password: '',
     confirmPassword: '',
     firstName: '',
-    lastName: ''
+    lastName: '',
+    discountCode: ''
   });
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -98,43 +99,63 @@ const Auth = () => {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: undefined, // Explicitly disable email redirect
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-          }
+      // Use new registration function that handles discount codes
+      const { data, error } = await supabase.functions.invoke('register-with-discount', {
+        body: {
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          discountCode: formData.discountCode
         }
       });
 
       if (error) {
-        if (error.message === 'User already registered') {
-          toast({
-            title: "Account Already Exists",
-            description: "An account with this email already exists. Please sign in instead.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Sign Up Failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Registration Failed",
+          description: error.message || "An error occurred during registration.",
+          variant: "destructive",
+        });
         return;
       }
 
-      toast({
-        title: "Account Created Successfully!",
-        description: "Please complete your payment to get started.",
-      });
+      if (data.error) {
+        toast({
+          title: "Registration Failed",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Navigate to payment page for new users
-      if (data.user) {
-        navigate('/payment');
+      if (data.freeAccess) {
+        toast({
+          title: "Account Created Successfully!",
+          description: "Welcome! You have free access to the consultation tool.",
+        });
+        // Sign in the user automatically for free access
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (!signInError) {
+          navigate('/welcome');
+        }
+      } else {
+        toast({
+          title: "Account Created Successfully!",
+          description: "Please complete your payment to get started.",
+        });
+        // Sign in the user and navigate to payment
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (!signInError) {
+          navigate('/payment');
+        }
       }
 
       // Clear form
@@ -143,7 +164,8 @@ const Auth = () => {
         password: '',
         confirmPassword: '',
         firstName: '',
-        lastName: ''
+        lastName: '',
+        discountCode: ''
       });
 
     } catch (error) {
@@ -344,6 +366,21 @@ const Auth = () => {
                         onChange={handleInputChange}
                         className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
                         required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="discountCode" className="text-sm sm:text-base">Discount Code (Optional)</Label>
+                    <div className="relative">
+                      <Input
+                        id="discountCode"
+                        name="discountCode"
+                        type="text"
+                        placeholder="Enter discount code (optional)"
+                        value={formData.discountCode}
+                        onChange={handleInputChange}
+                        className="h-10 sm:h-11 text-sm sm:text-base"
                       />
                     </div>
                   </div>

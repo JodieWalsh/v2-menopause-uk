@@ -33,35 +33,22 @@ export function ProtectedRoute({ children, requiresSubscription = true }: Protec
 
         // If subscription is required, check subscription status
         if (requiresSubscription) {
-          console.log('ProtectedRoute: Checking subscription for user:', user.id);
           const { data: subscription, error: subError } = await supabase
             .from('user_subscriptions')
             .select('*')
             .eq('user_id', user.id)
             .maybeSingle();
 
-          console.log('ProtectedRoute: Subscription query result:', { subscription, subError });
-
           if (subError) {
-            console.error('ProtectedRoute: Error checking subscription:', subError);
+            console.error('Error checking subscription:', subError);
             setHasValidSubscription(false);
           } else if (!subscription) {
-            console.log('ProtectedRoute: No subscription found');
             setHasValidSubscription(false);
           } else {
             // Check if subscription is active and not expired
             const isActive = subscription.status === 'active';
             const isNotExpired = !subscription.expires_at || new Date(subscription.expires_at) > new Date();
-            const isValid = isActive && isNotExpired;
-            console.log('ProtectedRoute: Subscription validation:', {
-              status: subscription.status,
-              isActive,
-              expires_at: subscription.expires_at,
-              isNotExpired,
-              isValid,
-              subscription_type: subscription.subscription_type
-            });
-            setHasValidSubscription(isValid);
+            setHasValidSubscription(isActive && isNotExpired);
           }
         } else {
           setHasValidSubscription(true);
