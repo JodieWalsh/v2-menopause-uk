@@ -52,13 +52,54 @@ const Payment = () => {
     });
   };
 
-  const handleDiscountCode = () => {
-    // Discount codes are now handled by Stripe checkout
-    // Remove frontend validation since Stripe will handle all codes
-    toast({
-      title: "Discount Code",
-      description: "Discount codes will be applied during checkout with Stripe.",
-    });
+  const handleDiscountCode = async () => {
+    if (!paymentData.discountCode.trim()) {
+      toast({
+        title: "Discount Code Required",
+        description: "Please enter a discount code to apply.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-discount', {
+        body: {
+          discountCode: paymentData.discountCode.trim(),
+          amount: basePrice,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.valid) {
+        setDiscountApplied(true);
+        setDiscountAmount(data.discountAmount);
+        toast({
+          title: "Discount Applied!",
+          description: `You saved £${data.discountAmount} GBP`,
+        });
+      } else {
+        setDiscountApplied(false);
+        setDiscountAmount(0);
+        toast({
+          title: "Invalid Discount Code",
+          description: data.error || "This discount code is not valid.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Discount validation error:", error);
+      toast({
+        title: "Error",
+        description: "There was an error validating your discount code. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,6 +117,22 @@ const Payment = () => {
     setIsLoading(true);
 
     try {
+      // If the final price is 0, skip payment and grant free access
+      if (finalPrice === 0) {
+        // Handle free access - you might want to create a separate endpoint for this
+        // For now, we'll still go through the payment system but with amount 0
+        toast({
+          title: "Free Access Granted!",
+          description: "Redirecting you to your assessment...",
+        });
+        
+        // Redirect to welcome page or assessment
+        setTimeout(() => {
+          window.location.href = "/welcome";
+        }, 1500);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
           amount: finalPrice,
