@@ -38,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
                 alt="The Empowered Patient Logo" 
                 style="height: 80px; width: auto; margin-bottom: 20px;"
               />
-              <h1 style="color: #2563eb; margin: 0; font-size: 28px; font-weight: bold;">
+              <h1 style="color: #9ec0b7; margin: 0; font-size: 28px; font-weight: bold;">
                 Welcome${firstName ? ` ${firstName}` : ''}!
               </h1>
             </div>
@@ -48,7 +48,7 @@ const handler = async (req: Request): Promise<Response> => {
               We're excited to support you on your personalized menopause wellness journey.
             </p>
             
-            <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 25px; border-radius: 8px; margin: 25px 0;">
+            <div style="background: linear-gradient(135deg, #9ec0b7 0%, #7ba49e 100%); padding: 25px; border-radius: 8px; margin: 25px 0;">
               <h2 style="color: white; margin-top: 0; margin-bottom: 15px; font-size: 22px;">What's Next?</h2>
               <ul style="line-height: 1.8; color: white; margin: 0; padding-left: 20px;">
                 <li>Complete your comprehensive menopause assessment</li>
@@ -58,9 +58,9 @@ const handler = async (req: Request): Promise<Response> => {
             
             <div style="text-align: center; margin: 35px 0;">
               <a href="${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/welcome" 
-                 style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 15px 30px; 
+                 style="background: linear-gradient(135deg, #9ec0b7 0%, #7ba49e 100%); color: white; padding: 15px 30px; 
                         text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+                        box-shadow: 0 4px 6px rgba(158, 192, 183, 0.3);">
                 Start Your Assessment Now
               </a>
             </div>
@@ -69,7 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 0; font-size: 14px; color: #64748b; text-align: center;">
                 <strong>Need help?</strong> Our support team is here for you. 
                 Simply reply to this email or contact us at 
-                <a href="mailto:support@the-empowered-patient.org" style="color: #2563eb;">support@the-empowered-patient.org</a>
+                <a href="mailto:support@the-empowered-patient.org" style="color: #9ec0b7;">support@the-empowered-patient.org</a>
               </p>
             </div>
             
