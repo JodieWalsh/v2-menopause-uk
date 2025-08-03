@@ -31,7 +31,7 @@ const Payment = () => {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const basePrice = 19;
-  const finalPrice = discountApplied ? basePrice - discountAmount : basePrice;
+  const finalPrice = Math.round((discountApplied ? basePrice - discountAmount : basePrice) * 100) / 100;
 
   // Auto-fill email from authenticated user and check for discount from URL or database
   useEffect(() => {
