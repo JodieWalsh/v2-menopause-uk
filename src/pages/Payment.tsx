@@ -7,6 +7,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SimplePayment } from "@/components/SimplePayment";
 
 const Payment = () => {
   const { toast } = useToast();
@@ -592,9 +593,19 @@ const Payment = () => {
                       🔒 Your payment is secured by Stripe and protected with 256-bit SSL encryption
                     </p>
                   </div>
-                </form>
-              </CardContent>
-            </Card>
+                 </form>
+                 
+                 {/* Add simple payment test */}
+                 <div className="mt-8 pt-6 border-t">
+                   <h3 className="font-medium mb-4">🔧 Payment Test Tool</h3>
+                   <SimplePayment
+                     amount={finalPrice}
+                     email={paymentData.email}
+                     discountCode={paymentData.discountCode}
+                   />
+                 </div>
+               </CardContent>
+             </Card>
           </div>
         </div>
       </div>
