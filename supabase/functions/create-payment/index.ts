@@ -86,6 +86,9 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    // Round the amount to avoid floating point precision issues
+    const amountInPence = Math.round(amount * 100);
+    
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -98,7 +101,7 @@ serve(async (req) => {
               name: "Menopause Doctors Visit UK",
               description: "12 months access to guided assessment tool with personalized report"
             },
-            unit_amount: 1900, // £19.00 in pence
+            unit_amount: amountInPence, // Use the actual discounted amount
           },
           quantity: 1,
         },
