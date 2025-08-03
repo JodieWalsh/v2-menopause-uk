@@ -145,6 +145,8 @@ const Payment = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("=== PAYMENT SUBMIT STARTED ===");
+    
     if (!paymentData.email) {
       toast({
         title: "Email Required",
@@ -155,10 +157,12 @@ const Payment = () => {
     }
 
     setIsLoading(true);
+    console.log("Loading state set to true");
 
     try {
       // If the final price is 0, grant free access by calling create-payment with amount 0
       if (finalPrice === 0) {
+        console.log("Final price is 0, granting free access");
         const { data, error } = await supabase.functions.invoke('create-payment', {
           body: {
             amount: 0,
@@ -187,67 +191,75 @@ const Payment = () => {
         discountCode: paymentData.discountCode,
       });
 
-      try {
-        const response = await supabase.functions.invoke('create-payment', {
-          body: {
-            amount: finalPrice,
-            email: paymentData.email,
-            discountCode: paymentData.discountCode,
-          },
-        });
+      // Call the payment function with explicit timeout and error handling
+      const functionCall = supabase.functions.invoke('create-payment', {
+        body: {
+          amount: finalPrice,
+          email: paymentData.email,
+          discountCode: paymentData.discountCode,
+        },
+      });
 
-        console.log("Function invoke completed. Raw response:", response);
-        
-        const { data, error } = response;
-        console.log("Extracted data and error:", { data, error });
+      console.log("Function call initiated, waiting for response...");
+      
+      // Add a timeout to prevent infinite hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Function call timed out after 30 seconds')), 30000);
+      });
 
-        if (error) {
-          console.error("Error from create-payment:", error);
-          throw error;
-        }
+      const response = await Promise.race([functionCall, timeoutPromise]);
+      console.log("Function response received:", response);
 
-        if (!data) {
-          console.error("No data received from create-payment function");
-          throw new Error("No response data received");
-        }
+      const { data, error } = response as any;
+      console.log("Extracted data:", data);
+      console.log("Extracted error:", error);
 
-        console.log("Payment response received:", data);
-        
-        // Check if it's a free access response
-        if (data.freeAccess) {
-          console.log("Free access granted, redirecting to welcome");
-          toast({
-            title: "Free Access Granted!",
-            description: "Redirecting you to your assessment...",
-          });
-          setTimeout(() => {
-            navigate("/welcome");
-          }, 1500);
-          return;
-        }
-        
-        // Check for Stripe URL
-        if (data.url) {
-          console.log("About to redirect to Stripe URL:", data.url);
-          // Force immediate redirect
-          window.location.href = data.url;
-        } else {
-          console.error("No URL received from payment function. Full response:", data);
-          throw new Error("No payment URL received");
-        }
-      } catch (functionError) {
-        console.error("Function invoke failed:", functionError);
-        throw functionError;
+      if (error) {
+        console.error("Error from create-payment:", error);
+        throw error;
       }
+
+      if (!data) {
+        console.error("No data received from create-payment function");
+        throw new Error("No response data received");
+      }
+
+      // Check if it's a free access response
+      if (data.freeAccess) {
+        console.log("Free access response detected");
+        toast({
+          title: "Free Access Granted!",
+          description: "Redirecting you to your assessment...",
+        });
+        setTimeout(() => {
+          navigate("/welcome");
+        }, 1500);
+        return;
+      }
+      
+      // Check for Stripe URL
+      if (data.url) {
+        console.log("Stripe URL received:", data.url);
+        console.log("Attempting redirect...");
+        // Immediate redirect to Stripe
+        window.location.href = data.url;
+        console.log("Redirect command executed");
+      } else {
+        console.error("No URL in response. Full data:", JSON.stringify(data, null, 2));
+        throw new Error("No payment URL received from server");
+      }
+
     } catch (error) {
-      console.error("Payment error:", error);
+      console.error("=== PAYMENT ERROR ===", error);
       toast({
         title: "Payment Error",
-        description: "There was an error processing your payment. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error processing your payment. Please try again.",
         variant: "destructive",
       });
     } finally {
+      console.log("Setting loading to false");
       setIsLoading(false);
+      console.log("=== PAYMENT SUBMIT ENDED ===");
     }
   };
 
