@@ -7,7 +7,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { SimplePayment } from "@/components/SimplePayment";
+
 
 const Payment = () => {
   const { toast } = useToast();
@@ -143,56 +143,11 @@ const Payment = () => {
     }
   };
 
-  // Test function to see if ANY Supabase calls work
-  const testBasicFunction = () => {
-    console.log("=== TESTING BASIC FUNCTION ===");
-    
-    // Test 1: Simple timeout
-    console.log("Test 1: Starting simple timeout...");
-    setTimeout(() => {
-      console.log("Test 1: Simple timeout worked!");
-    }, 1000);
-    
-    // Test 2: Promise timeout
-    console.log("Test 2: Testing Promise.race with timeout...");
-    const testPromise = new Promise((resolve) => {
-      setTimeout(() => {
-        console.log("Test 2: Promise resolved!");
-        resolve("success");
-      }, 2000);
-    });
-    
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
-        console.log("Test 2: Timeout triggered!");
-        reject(new Error("timeout"));
-      }, 3000);
-    });
-    
-    Promise.race([testPromise, timeoutPromise])
-      .then((result) => console.log("Test 2: Promise race result:", result))
-      .catch((error) => console.log("Test 2: Promise race error:", error));
-    
-    // Test 3: Basic Supabase auth check
-    console.log("Test 3: Testing basic Supabase auth...");
-    supabase.auth.getUser()
-      .then((result) => {
-        console.log("Test 3: getUser result:", result);
-      })
-      .catch((error) => {
-        console.log("Test 3: getUser error:", error);
-      });
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log("=== PAYMENT SUBMIT STARTED ===");
-    console.log("finalPrice:", finalPrice);
-    console.log("paymentData.email:", paymentData.email);
-    
     if (!paymentData.email) {
-      console.log("ERROR: No email provided");
       toast({
         title: "Email Required",
         description: "Please enter your email address.",
@@ -203,73 +158,55 @@ const Payment = () => {
 
     // If final price is 0, redirect directly to welcome
     if (finalPrice === 0) {
-      console.log("Final price is 0, redirecting to welcome");
       navigate("/welcome");
       return;
     }
 
-    console.log("=== RUNNING BASIC TESTS FIRST ===");
-    testBasicFunction();
-    
-    console.log("=== ATTEMPTING SIMPLE PAYMENT ===");
     setIsLoading(true);
     
     try {
-      console.log("Calling create-payment with basic approach...");
+      // Use the working payment logic with timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Payment call timed out after 8 seconds')), 8000)
+      );
       
-      supabase.functions.invoke('create-payment', {
+      const paymentPromise = supabase.functions.invoke('create-payment', {
         body: {
           amount: finalPrice,
           email: paymentData.email,
           discountCode: paymentData.discountCode || "",
         },
-      })
-      .then((response) => {
-        console.log("Payment response received:", response);
-        setIsLoading(false);
-        
-        const { data, error } = response;
-        
-        if (error) {
-          console.error("Payment error:", error);
-          toast({
-            title: "Payment Error",
-            description: error.message,
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        if (data?.url) {
-          console.log("Redirecting to:", data.url);
-          window.location.href = data.url;
-        } else {
-          console.error("No URL in response:", data);
-          toast({
-            title: "Error",
-            description: "No payment URL received",
-            variant: "destructive",
-          });
-        }
-      })
-      .catch((error) => {
-        console.error("Payment catch error:", error);
-        setIsLoading(false);
+      });
+
+      const result: any = await Promise.race([paymentPromise, timeoutPromise]);
+      
+      if (result.error) {
         toast({
           title: "Payment Error",
-          description: error.message || "Unknown error",
+          description: result.error.message,
           variant: "destructive",
         });
-      });
+        return;
+      }
       
-    } catch (syncError) {
-      console.error("Sync error:", syncError);
-      setIsLoading(false);
+      if (result.data?.url) {
+        // Open Stripe checkout in a new tab
+        window.open(result.data.url, '_blank');
+      } else {
+        toast({
+          title: "Error",
+          description: "No payment URL received",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to start payment",
+        title: "Payment Error",
+        description: error.message || "Unknown error",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -594,16 +531,6 @@ const Payment = () => {
                     </p>
                   </div>
                  </form>
-                 
-                 {/* Add simple payment test */}
-                 <div className="mt-8 pt-6 border-t">
-                   <h3 className="font-medium mb-4">🔧 Payment Test Tool</h3>
-                   <SimplePayment
-                     amount={finalPrice}
-                     email={paymentData.email}
-                     discountCode={paymentData.discountCode}
-                   />
-                 </div>
                </CardContent>
              </Card>
           </div>
