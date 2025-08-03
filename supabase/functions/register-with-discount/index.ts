@@ -52,7 +52,7 @@ serve(async (req) => {
           finalAmount = Math.max(0, Math.round((finalAmount - discountAmount) * 100) / 100);
           isValidDiscount = true;
         } else {
-          // Invalid discount code - return error
+          // Invalid discount code - return error with 200 status so Supabase parses the response
           console.log(`Invalid discount code: ${discountCode.trim()}`);
           return new Response(
             JSON.stringify({ 
@@ -61,7 +61,7 @@ serve(async (req) => {
             }), 
             { 
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 400 
+              status: 200 
             }
           );
         }
