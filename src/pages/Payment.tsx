@@ -81,7 +81,11 @@ const Payment = () => {
   };
 
   const handleDiscountCode = async () => {
+    console.log("=== DISCOUNT VALIDATION STARTED ===");
+    console.log("Discount code entered:", paymentData.discountCode);
+    
     if (!paymentData.discountCode.trim()) {
+      console.log("Empty discount code");
       toast({
         title: "Discount Code Required",
         description: "Please enter a discount code to apply.",
@@ -90,6 +94,7 @@ const Payment = () => {
       return;
     }
 
+    console.log("Setting loading to true");
     setIsLoading(true);
 
     try {
