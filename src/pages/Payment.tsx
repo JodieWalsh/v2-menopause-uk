@@ -169,74 +169,56 @@ const Payment = () => {
 
       console.log("Making payment request...");
       
-      // Get auth session with better error handling
-      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log("Session retrieved:", session ? "Found" : "Not found", sessionError);
+      // Try using Supabase functions.invoke instead of direct fetch
+      console.log("Attempting Supabase function call...");
       
-      if (!session || !session.access_token) {
-        console.log("No valid session found, trying to re-authenticate...");
-        
-        // Try to refresh the session
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
-        console.log("Session refresh attempt:", refreshedSession ? "Success" : "Failed", refreshError);
-        
-        if (!refreshedSession || !refreshedSession.access_token) {
-          throw new Error("Authentication required. Please log in again.");
-        }
-        
-        // Use the refreshed session
-        session = refreshedSession;
-      }
-
-      console.log("Valid session confirmed, making direct fetch call...");
-      
-      // Make direct HTTP call with proper authentication
-      console.log("Making fetch request to create-payment...");
-      
-      const fetchResponse = await fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbnVubm1qdnBpd3JycmJsdW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMTc2MjgsImV4cCI6MjA2OTY5MzYyOH0.FjMYIRk6t2PO-E4GChTzyQG9vXU-N1hK-53AGmSesCE'
-        },
-        body: JSON.stringify({
-          amount: finalPrice,
-          email: paymentData.email,
-          discountCode: paymentData.discountCode || "",
-        })
-      });
-
-      console.log("Fetch completed with status:", fetchResponse.status);
-      
-      if (!fetchResponse.ok) {
-        const errorText = await fetchResponse.text();
-        console.error("HTTP Error:", fetchResponse.status, errorText);
-        throw new Error(`HTTP ${fetchResponse.status}: ${errorText}`);
-      }
-
-      const responseData = await fetchResponse.json();
-      console.log("Response data parsed:", responseData);
-
-      // Handle free access
-      if (responseData.freeAccess) {
-        console.log("Free access granted");
-        toast({
-          title: "Free Access Granted!",
-          description: "Redirecting you to your assessment...",
+      try {
+        const response = await supabase.functions.invoke('create-payment', {
+          body: {
+            amount: finalPrice,
+            email: paymentData.email,
+            discountCode: paymentData.discountCode || "",
+          },
         });
-        setTimeout(() => navigate("/welcome"), 1500);
-        return;
-      }
 
-      // Handle Stripe redirect
-      if (responseData.url) {
-        console.log("Stripe URL found:", responseData.url);
-        console.log("Executing redirect now...");
-        window.location.href = responseData.url;
-      } else {
-        console.error("No URL in response:", responseData);
-        throw new Error("No payment URL received");
+        console.log("Supabase function response:", response);
+
+        if (response.error) {
+          console.error("Supabase function error:", response.error);
+          throw new Error(response.error.message || "Payment function failed");
+        }
+
+        const data = response.data;
+        console.log("Payment response data:", data);
+
+        if (!data) {
+          throw new Error("No data received from payment function");
+        }
+
+        // Handle free access
+        if (data.freeAccess) {
+          console.log("Free access granted");
+          toast({
+            title: "Free Access Granted!",
+            description: "Redirecting you to your assessment...",
+          });
+          setTimeout(() => navigate("/welcome"), 1500);
+          return;
+        }
+
+        // Handle Stripe redirect
+        if (data.url) {
+          console.log("Stripe URL found:", data.url);
+          console.log("Executing redirect now...");
+          window.location.href = data.url;
+        } else {
+          console.error("No URL in response:", data);
+          throw new Error("No payment URL received");
+        }
+
+      } catch (functionError) {
+        console.error("Function call failed:", functionError);
+        throw functionError;
       }
 
     } catch (error) {
