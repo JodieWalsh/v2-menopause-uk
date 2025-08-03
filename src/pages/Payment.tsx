@@ -102,6 +102,8 @@ const Payment = () => {
 
       if (error) throw error;
 
+      console.log("Discount validation response:", data);
+      
       if (data.valid) {
         setDiscountApplied(true);
         setDiscountAmount(data.discountAmount);
@@ -109,14 +111,16 @@ const Payment = () => {
           title: "Discount Applied!",
           description: `You saved £${data.discountAmount} GBP`,
         });
+        console.log("Discount applied successfully");
       } else {
         setDiscountApplied(false);
         setDiscountAmount(0);
         toast({
-          title: "Invalid Discount Code",
+          title: "Invalid Discount Code", 
           description: data.error || "This discount code is not valid.",
           variant: "destructive",
         });
+        console.log("Invalid discount code:", data.error);
       }
     } catch (error) {
       console.error("Discount validation error:", error);
