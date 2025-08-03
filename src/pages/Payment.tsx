@@ -115,10 +115,13 @@ const Payment = () => {
       } else {
         setDiscountApplied(false);
         setDiscountAmount(0);
+        // Clear the discount code field when invalid
+        setPaymentData(prev => ({ ...prev, discountCode: "" }));
         toast({
-          title: "Invalid Discount Code", 
-          description: data.error || "This discount code is not valid.",
+          title: "❌ Invalid Discount Code", 
+          description: data.error || "This discount code is not valid. Please check and try again.",
           variant: "destructive",
+          duration: 5000, // Show for 5 seconds
         });
         console.log("Invalid discount code:", data.error);
       }
