@@ -142,7 +142,7 @@ const Payment = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     console.log("=== PAYMENT SUBMIT STARTED ===");
@@ -162,45 +162,48 @@ const Payment = () => {
     console.log("Setting loading to true");
     setIsLoading(true);
 
-    try {
-      // If final price is 0, redirect directly to welcome
-      if (finalPrice === 0) {
-        console.log("Final price is 0, redirecting to welcome");
-        navigate("/welcome");
-        return;
-      }
+    // If final price is 0, redirect directly to welcome
+    if (finalPrice === 0) {
+      console.log("Final price is 0, redirecting to welcome");
+      navigate("/welcome");
+      return;
+    }
 
-      console.log("About to call create-payment function...");
-      console.log("Starting payment process for amount:", finalPrice);
-
-      const { data, error } = await supabase.functions.invoke('create-payment', {
-        body: {
-          amount: finalPrice,
-          email: paymentData.email,
-          discountCode: paymentData.discountCode || "",
-        },
-      });
-
-      console.log("Raw response:", { data, error });
-
+    console.log("About to call create-payment function...");
+    
+    // Use non-async approach to avoid hanging
+    supabase.functions.invoke('create-payment', {
+      body: {
+        amount: finalPrice,
+        email: paymentData.email,
+        discountCode: paymentData.discountCode || "",
+      },
+    }).then(({ data, error }) => {
+      console.log("Response received:", { data, error });
+      
+      setIsLoading(false);
+      
       if (error) {
         console.error("Payment function error:", error);
-        throw new Error(error.message || "Payment processing failed");
+        toast({
+          title: "Payment Error",
+          description: error.message || "Payment processing failed",
+          variant: "destructive",
+        });
+        return;
       }
 
       if (!data) {
         console.error("No data in response");
-        throw new Error("No response data received");
+        toast({
+          title: "Payment Error", 
+          description: "No response data received",
+          variant: "destructive",
+        });
+        return;
       }
 
       console.log("Payment data:", data);
-
-      // Check for free access
-      if (data.freeAccess) {
-        console.log("Free access granted");
-        navigate("/welcome");
-        return;
-      }
 
       // Check for Stripe URL and redirect immediately
       if (data.url) {
@@ -210,20 +213,20 @@ const Payment = () => {
       }
 
       console.error("No URL in response data:", data);
-      throw new Error("No payment URL received");
-
-    } catch (error) {
-      console.error("Synchronous error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Payment processing failed";
-      
       toast({
         title: "Payment Error",
-        description: errorMessage,
+        description: "No payment URL received",
         variant: "destructive",
       });
-      
+    }).catch(error => {
+      console.error("Catch block error:", error);
       setIsLoading(false);
-    }
+      toast({
+        title: "Payment Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    });
   };
 
   return (
