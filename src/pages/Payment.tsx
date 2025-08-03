@@ -32,7 +32,7 @@ const Payment = () => {
   const basePrice = 19;
   const finalPrice = discountApplied ? basePrice - discountAmount : basePrice;
 
-  // Auto-fill email from authenticated user
+  // Auto-fill email from authenticated user and check for existing discount
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -41,6 +41,20 @@ const Payment = () => {
           ...prev,
           email: user.email || ""
         }));
+
+        // Check if user has a subscription with discount info
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (subscription && subscription.amount_paid !== null && subscription.amount_paid < 19) {
+          // User has a discounted amount from registration
+          const discountFromRegistration = 19 - (subscription.amount_paid || 0);
+          setDiscountApplied(true);
+          setDiscountAmount(discountFromRegistration);
+        }
       }
     };
     getUser();

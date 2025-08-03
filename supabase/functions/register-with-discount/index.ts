@@ -160,7 +160,7 @@ serve(async (req) => {
       user_id: newUser.id,
       subscription_type: finalAmount === 0 ? 'free' : 'pending',
       status: finalAmount === 0 ? 'active' : 'pending',
-      amount_paid: finalAmount === 0 ? 0 : null,
+      amount_paid: finalAmount,
       currency: 'gbp',
       expires_at: null,
       stripe_customer_id: null,
