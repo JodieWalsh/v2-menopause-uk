@@ -187,49 +187,57 @@ const Payment = () => {
         discountCode: paymentData.discountCode,
       });
 
-      const { data, error } = await supabase.functions.invoke('create-payment', {
-        body: {
-          amount: finalPrice,
-          email: paymentData.email,
-          discountCode: paymentData.discountCode,
-        },
-      });
-
-      console.log("Raw response from create-payment:", { data, error });
-
-      if (error) {
-        console.error("Error from create-payment:", error);
-        throw error;
-      }
-
-      if (!data) {
-        console.error("No data received from create-payment function");
-        throw new Error("No response data received");
-      }
-
-      console.log("Payment response received:", data);
-      
-      // Check if it's a free access response
-      if (data.freeAccess) {
-        console.log("Free access granted, redirecting to welcome");
-        toast({
-          title: "Free Access Granted!",
-          description: "Redirecting you to your assessment...",
+      try {
+        const response = await supabase.functions.invoke('create-payment', {
+          body: {
+            amount: finalPrice,
+            email: paymentData.email,
+            discountCode: paymentData.discountCode,
+          },
         });
-        setTimeout(() => {
-          navigate("/welcome");
-        }, 1500);
-        return;
-      }
-      
-      // Check for Stripe URL
-      if (data.url) {
-        console.log("About to redirect to Stripe URL:", data.url);
-        // Force immediate redirect
-        window.location.href = data.url;
-      } else {
-        console.error("No URL received from payment function. Full response:", data);
-        throw new Error("No payment URL received");
+
+        console.log("Function invoke completed. Raw response:", response);
+        
+        const { data, error } = response;
+        console.log("Extracted data and error:", { data, error });
+
+        if (error) {
+          console.error("Error from create-payment:", error);
+          throw error;
+        }
+
+        if (!data) {
+          console.error("No data received from create-payment function");
+          throw new Error("No response data received");
+        }
+
+        console.log("Payment response received:", data);
+        
+        // Check if it's a free access response
+        if (data.freeAccess) {
+          console.log("Free access granted, redirecting to welcome");
+          toast({
+            title: "Free Access Granted!",
+            description: "Redirecting you to your assessment...",
+          });
+          setTimeout(() => {
+            navigate("/welcome");
+          }, 1500);
+          return;
+        }
+        
+        // Check for Stripe URL
+        if (data.url) {
+          console.log("About to redirect to Stripe URL:", data.url);
+          // Force immediate redirect
+          window.location.href = data.url;
+        } else {
+          console.error("No URL received from payment function. Full response:", data);
+          throw new Error("No payment URL received");
+        }
+      } catch (functionError) {
+        console.error("Function invoke failed:", functionError);
+        throw functionError;
       }
     } catch (error) {
       console.error("Payment error:", error);
