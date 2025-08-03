@@ -44,12 +44,12 @@ serve(async (req) => {
           const coupon = promotionCodeData.coupon;
           
           if (coupon.percent_off) {
-            discountAmount = Math.round((finalAmount * coupon.percent_off) / 100);
+            discountAmount = Math.round((finalAmount * coupon.percent_off)) / 100;
           } else if (coupon.amount_off) {
             discountAmount = coupon.amount_off / 100; // Convert from cents to pounds
           }
           
-          finalAmount = Math.max(0, finalAmount - discountAmount);
+          finalAmount = Math.max(0, Math.round((finalAmount - discountAmount) * 100) / 100);
           isValidDiscount = true;
         }
       } catch (stripeError) {
