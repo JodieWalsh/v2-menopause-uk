@@ -51,6 +51,19 @@ serve(async (req) => {
           
           finalAmount = Math.max(0, Math.round((finalAmount - discountAmount) * 100) / 100);
           isValidDiscount = true;
+        } else {
+          // Invalid discount code - return error
+          console.log(`Invalid discount code: ${discountCode.trim()}`);
+          return new Response(
+            JSON.stringify({ 
+              success: false,
+              error: `Invalid discount code "${discountCode.trim()}". Please check the code and try again.`
+            }), 
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400 
+            }
+          );
         }
       } catch (stripeError) {
         console.error("Stripe discount validation error:", stripeError);
