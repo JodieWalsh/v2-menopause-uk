@@ -191,37 +191,43 @@ const Payment = () => {
         discountCode: paymentData.discountCode,
       });
 
-      // Call the payment function with explicit timeout and error handling
-      const functionCall = supabase.functions.invoke('create-payment', {
-        body: {
+      // Get the current user session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("No active session found");
+      }
+
+      console.log("Session found, making direct fetch call...");
+
+      // Make direct fetch call instead of using supabase.functions.invoke
+      const response = await fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbnVubm1qdnBpd3JycmJsdW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMTc2MjgsImV4cCI6MjA2OTY5MzYyOH0.FjMYIRk6t2PO-E4GChTzyQG9vXU-N1hK-53AGmSesCE'
+        },
+        body: JSON.stringify({
           amount: finalPrice,
           email: paymentData.email,
           discountCode: paymentData.discountCode,
-        },
+        })
       });
 
-      console.log("Function call initiated, waiting for response...");
-      
-      // Add a timeout to prevent infinite hanging
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Function call timed out after 30 seconds')), 30000);
-      });
+      console.log("Fetch response received:", response);
 
-      const response = await Promise.race([functionCall, timeoutPromise]);
-      console.log("Function response received:", response);
-
-      const { data, error } = response as any;
-      console.log("Extracted data:", data);
-      console.log("Extracted error:", error);
-
-      if (error) {
-        console.error("Error from create-payment:", error);
-        throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Fetch response not ok:", response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      if (!data) {
-        console.error("No data received from create-payment function");
-        throw new Error("No response data received");
+      const data = await response.json();
+      console.log("Payment response data:", data);
+
+      if (data.error) {
+        console.error("Error in response data:", data.error);
+        throw new Error(data.error);
       }
 
       // Check if it's a free access response
