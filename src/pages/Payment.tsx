@@ -142,7 +142,7 @@ const Payment = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     console.log("=== PAYMENT SUBMIT STARTED ===");
@@ -170,101 +170,73 @@ const Payment = () => {
       return;
     }
 
-    console.log("About to call create-payment function...");
-    console.log("Function call parameters:", {
-      amount: finalPrice,
-      email: paymentData.email,
-      discountCode: paymentData.discountCode || "",
-    });
-    
-    // Set a timeout to prevent infinite hanging
-    const timeoutId = setTimeout(() => {
-      console.log("TIMEOUT: Function call taking too long");
-      setIsLoading(false);
-      toast({
-        title: "Payment Timeout",
-        description: "Payment processing is taking too long. Please try again.",
-        variant: "destructive",
-      });
-    }, 30000); // 30 second timeout
-
     try {
-      console.log("Invoking supabase function...");
+      console.log("Making direct fetch call to create-payment...");
       
-      const functionCall = supabase.functions.invoke('create-payment', {
-        body: {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbnVubm1qdnBpd3JycmJsdW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMTc2MjgsImV4cCI6MjA2OTY5MzYyOH0.FjMYIRk6t2PO-E4GChTzyQG9vXU-N1hK-53AGmSesCE'
+        },
+        body: JSON.stringify({
           amount: finalPrice,
           email: paymentData.email,
           discountCode: paymentData.discountCode || "",
-        },
+        }),
       });
 
-      console.log("Function call initiated, waiting for response...");
+      console.log("Fetch response received:", response.status, response.statusText);
 
-      functionCall
-        .then((response) => {
-          console.log("Raw response received:", response);
-          clearTimeout(timeoutId);
-          
-          const { data, error } = response;
-          console.log("Destructured response - data:", data, "error:", error);
-          
-          setIsLoading(false);
-          
-          if (error) {
-            console.error("Payment function error:", error);
-            toast({
-              title: "Payment Error",
-              description: error.message || "Payment processing failed",
-              variant: "destructive",
-            });
-            return;
-          }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Fetch error response:", errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
 
-          if (!data) {
-            console.error("No data in response");
-            toast({
-              title: "Payment Error", 
-              description: "No response data received",
-              variant: "destructive",
-            });
-            return;
-          }
+      const data = await response.json();
+      console.log("Payment data received:", data);
 
-          console.log("Processing payment data:", data);
+      setIsLoading(false);
 
-          // Check for Stripe URL and redirect
-          if (data.url) {
-            console.log("Found Stripe URL, redirecting:", data.url);
-            window.location.href = data.url;
-            return;
-          }
-
-          console.error("No URL in response data:", data);
-          toast({
-            title: "Payment Error",
-            description: "No payment URL received",
-            variant: "destructive",
-          });
-        })
-        .catch((error) => {
-          console.error("Promise catch block error:", error);
-          clearTimeout(timeoutId);
-          setIsLoading(false);
-          toast({
-            title: "Payment Error",
-            description: "An unexpected error occurred: " + (error.message || error),
-            variant: "destructive",
-          });
+      if (data.error) {
+        console.error("Payment function error:", data.error);
+        toast({
+          title: "Payment Error",
+          description: data.error || "Payment processing failed",
+          variant: "destructive",
         });
+        return;
+      }
 
-    } catch (syncError) {
-      console.error("Synchronous error:", syncError);
-      clearTimeout(timeoutId);
+      // Check for Stripe URL and redirect
+      if (data.url) {
+        console.log("Redirecting to Stripe:", data.url);
+        window.location.href = data.url;
+        return;
+      }
+
+      console.error("No URL in response data:", data);
+      toast({
+        title: "Payment Error",
+        description: "No payment URL received",
+        variant: "destructive",
+      });
+
+    } catch (error) {
+      console.error("Payment error:", error);
       setIsLoading(false);
       toast({
         title: "Payment Error",
-        description: "Failed to initiate payment: " + (syncError.message || syncError),
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
     }
