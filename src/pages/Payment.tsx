@@ -165,68 +165,109 @@ const Payment = () => {
     // If final price is 0, redirect directly to welcome
     if (finalPrice === 0) {
       console.log("Final price is 0, redirecting to welcome");
+      setIsLoading(false);
       navigate("/welcome");
       return;
     }
 
     console.log("About to call create-payment function...");
-    
-    // Use non-async approach to avoid hanging
-    supabase.functions.invoke('create-payment', {
-      body: {
-        amount: finalPrice,
-        email: paymentData.email,
-        discountCode: paymentData.discountCode || "",
-      },
-    }).then(({ data, error }) => {
-      console.log("Response received:", { data, error });
-      
-      setIsLoading(false);
-      
-      if (error) {
-        console.error("Payment function error:", error);
-        toast({
-          title: "Payment Error",
-          description: error.message || "Payment processing failed",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!data) {
-        console.error("No data in response");
-        toast({
-          title: "Payment Error", 
-          description: "No response data received",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("Payment data:", data);
-
-      // Check for Stripe URL and redirect immediately
-      if (data.url) {
-        console.log("Redirecting to Stripe:", data.url);
-        window.location.href = data.url;
-        return;
-      }
-
-      console.error("No URL in response data:", data);
-      toast({
-        title: "Payment Error",
-        description: "No payment URL received",
-        variant: "destructive",
-      });
-    }).catch(error => {
-      console.error("Catch block error:", error);
-      setIsLoading(false);
-      toast({
-        title: "Payment Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
+    console.log("Function call parameters:", {
+      amount: finalPrice,
+      email: paymentData.email,
+      discountCode: paymentData.discountCode || "",
     });
+    
+    // Set a timeout to prevent infinite hanging
+    const timeoutId = setTimeout(() => {
+      console.log("TIMEOUT: Function call taking too long");
+      setIsLoading(false);
+      toast({
+        title: "Payment Timeout",
+        description: "Payment processing is taking too long. Please try again.",
+        variant: "destructive",
+      });
+    }, 30000); // 30 second timeout
+
+    try {
+      console.log("Invoking supabase function...");
+      
+      const functionCall = supabase.functions.invoke('create-payment', {
+        body: {
+          amount: finalPrice,
+          email: paymentData.email,
+          discountCode: paymentData.discountCode || "",
+        },
+      });
+
+      console.log("Function call initiated, waiting for response...");
+
+      functionCall
+        .then((response) => {
+          console.log("Raw response received:", response);
+          clearTimeout(timeoutId);
+          
+          const { data, error } = response;
+          console.log("Destructured response - data:", data, "error:", error);
+          
+          setIsLoading(false);
+          
+          if (error) {
+            console.error("Payment function error:", error);
+            toast({
+              title: "Payment Error",
+              description: error.message || "Payment processing failed",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          if (!data) {
+            console.error("No data in response");
+            toast({
+              title: "Payment Error", 
+              description: "No response data received",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          console.log("Processing payment data:", data);
+
+          // Check for Stripe URL and redirect
+          if (data.url) {
+            console.log("Found Stripe URL, redirecting:", data.url);
+            window.location.href = data.url;
+            return;
+          }
+
+          console.error("No URL in response data:", data);
+          toast({
+            title: "Payment Error",
+            description: "No payment URL received",
+            variant: "destructive",
+          });
+        })
+        .catch((error) => {
+          console.error("Promise catch block error:", error);
+          clearTimeout(timeoutId);
+          setIsLoading(false);
+          toast({
+            title: "Payment Error",
+            description: "An unexpected error occurred: " + (error.message || error),
+            variant: "destructive",
+          });
+        });
+
+    } catch (syncError) {
+      console.error("Synchronous error:", syncError);
+      clearTimeout(timeoutId);
+      setIsLoading(false);
+      toast({
+        title: "Payment Error",
+        description: "Failed to initiate payment: " + (syncError.message || syncError),
+        variant: "destructive",
+      });
+    }
   };
 
   return (
