@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 const Payment = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [paymentData, setPaymentData] = useState({
     email: "",
     cardNumber: "",
@@ -32,7 +33,7 @@ const Payment = () => {
   const basePrice = 19;
   const finalPrice = discountApplied ? basePrice - discountAmount : basePrice;
 
-  // Auto-fill email from authenticated user and check for existing discount
+  // Auto-fill email from authenticated user and check for discount from URL or database
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -42,7 +43,18 @@ const Payment = () => {
           email: user.email || ""
         }));
 
-        // Check if user has a subscription with discount info
+        // First check URL parameters for discount info from registration
+        const discountAppliedParam = searchParams.get('discount_applied');
+        const discountAmountParam = searchParams.get('discount_amount');
+        
+        if (discountAppliedParam === 'true' && discountAmountParam) {
+          setDiscountApplied(true);
+          setDiscountAmount(parseFloat(discountAmountParam));
+          console.log(`Discount from URL: £${discountAmountParam}`);
+          return; // Use URL params, don't check database
+        }
+
+        // Fallback: Check if user has a subscription with discount info
         const { data: subscription } = await supabase
           .from('user_subscriptions')
           .select('*')
@@ -54,11 +66,12 @@ const Payment = () => {
           const discountFromRegistration = 19 - (subscription.amount_paid || 0);
           setDiscountApplied(true);
           setDiscountAmount(discountFromRegistration);
+          console.log(`Discount from DB: £${discountFromRegistration}`);
         }
       }
     };
     getUser();
-  }, []);
+  }, [searchParams]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPaymentData({

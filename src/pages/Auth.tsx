@@ -155,7 +155,9 @@ const Auth = () => {
       } else {
         toast({
           title: "Account Created Successfully!",
-          description: "Please complete your payment to get started.",
+          description: data.discountApplied ? 
+            `Discount applied! Your total is £${data.finalAmount}.` : 
+            "Please complete your payment to get started.",
         });
         // Sign in the user and navigate to payment
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -164,7 +166,15 @@ const Auth = () => {
         });
         
         if (!signInError) {
-          navigate('/payment');
+          // Pass discount information via URL parameters
+          const params = new URLSearchParams();
+          if (data.discountApplied) {
+            params.set('discount_applied', 'true');
+            params.set('discount_amount', data.discountAmount.toString());
+            params.set('final_amount', data.finalAmount.toString());
+            params.set('original_amount', data.originalAmount.toString());
+          }
+          navigate(`/payment?${params.toString()}`);
         }
       }
 
