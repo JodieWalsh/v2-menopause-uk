@@ -157,80 +157,80 @@ const Payment = () => {
     }
 
     setIsLoading(true);
-    console.log("Loading state set to true");
 
     try {
-      // If the final price is 0, grant free access
+      // If final price is 0, redirect directly to welcome
       if (finalPrice === 0) {
-        console.log("Final price is 0, granting free access");
+        console.log("Final price is 0, redirecting to welcome");
         navigate("/welcome");
         return;
       }
 
-      console.log("Making payment request...");
+      console.log("Starting payment process for amount:", finalPrice);
+
+      // Create a timeout promise to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Payment request timed out')), 15000);
+      });
+
+      // Create the payment function call
+      const paymentPromise = supabase.functions.invoke('create-payment', {
+        body: {
+          amount: finalPrice,
+          email: paymentData.email,
+          discountCode: paymentData.discountCode || "",
+        },
+      });
+
+      console.log("Function call initiated, waiting for response...");
+
+      // Race between the function call and timeout
+      const response = await Promise.race([paymentPromise, timeoutPromise]);
       
-      // Try using Supabase functions.invoke instead of direct fetch
-      console.log("Attempting Supabase function call...");
+      console.log("Response received:", response);
+
+      // Extract data from response
+      const { data, error } = response as any;
       
-      try {
-        const response = await supabase.functions.invoke('create-payment', {
-          body: {
-            amount: finalPrice,
-            email: paymentData.email,
-            discountCode: paymentData.discountCode || "",
-          },
-        });
-
-        console.log("Supabase function response:", response);
-
-        if (response.error) {
-          console.error("Supabase function error:", response.error);
-          throw new Error(response.error.message || "Payment function failed");
-        }
-
-        const data = response.data;
-        console.log("Payment response data:", data);
-
-        if (!data) {
-          throw new Error("No data received from payment function");
-        }
-
-        // Handle free access
-        if (data.freeAccess) {
-          console.log("Free access granted");
-          toast({
-            title: "Free Access Granted!",
-            description: "Redirecting you to your assessment...",
-          });
-          setTimeout(() => navigate("/welcome"), 1500);
-          return;
-        }
-
-        // Handle Stripe redirect
-        if (data.url) {
-          console.log("Stripe URL found:", data.url);
-          console.log("Executing redirect now...");
-          window.location.href = data.url;
-        } else {
-          console.error("No URL in response:", data);
-          throw new Error("No payment URL received");
-        }
-
-      } catch (functionError) {
-        console.error("Function call failed:", functionError);
-        throw functionError;
+      if (error) {
+        console.error("Payment function error:", error);
+        throw new Error(error.message || "Payment processing failed");
       }
 
+      if (!data) {
+        console.error("No data in response");
+        throw new Error("No response data received");
+      }
+
+      console.log("Payment data:", data);
+
+      // Check for free access
+      if (data.freeAccess) {
+        console.log("Free access granted");
+        navigate("/welcome");
+        return;
+      }
+
+      // Check for Stripe URL and redirect immediately
+      if (data.url) {
+        console.log("Redirecting to Stripe:", data.url);
+        window.location.href = data.url;
+        return;
+      }
+
+      console.error("No URL in response data:", data);
+      throw new Error("No payment URL received");
+
     } catch (error) {
-      console.error("=== PAYMENT ERROR ===", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      console.error("Payment error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Payment processing failed";
+      
       toast({
         title: "Payment Error",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      console.log("Setting loading to false");
       setIsLoading(false);
     }
   };
