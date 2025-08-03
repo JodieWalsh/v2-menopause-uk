@@ -171,19 +171,30 @@ const Payment = () => {
     }
 
     try {
-      console.log("Making direct fetch call to create-payment...");
+      console.log("Getting current session...");
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      
-      if (!token) {
-        throw new Error("No authentication token found");
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        throw new Error("Authentication failed: " + sessionError.message);
       }
-
-      const response = await fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
+      
+      if (!session?.access_token) {
+        console.error("No session token found");
+        throw new Error("You must be logged in to make a payment");
+      }
+      
+      console.log("Session found, making payment request...");
+      
+      // Use a Promise.race to add timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Payment request timed out")), 15000)
+      );
+      
+      const paymentPromise = fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbnVubm1qdnBpd3JycmJsdW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMTc2MjgsImV4cCI6MjA2OTY5MzYyOH0.FjMYIRk6t2PO-E4GChTzyQG9vXU-N1hK-53AGmSesCE'
         },
@@ -194,49 +205,40 @@ const Payment = () => {
         }),
       });
 
-      console.log("Fetch response received:", response.status, response.statusText);
+      console.log("Waiting for payment response...");
+      const response = await Promise.race([paymentPromise, timeoutPromise]) as Response;
+      
+      console.log("Response received:", response.status, response.statusText);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Fetch error response:", errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        console.error("HTTP error:", response.status, errorText);
+        throw new Error(`Payment failed: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
-      console.log("Payment data received:", data);
-
-      setIsLoading(false);
+      console.log("Payment response data:", data);
 
       if (data.error) {
-        console.error("Payment function error:", data.error);
-        toast({
-          title: "Payment Error",
-          description: data.error || "Payment processing failed",
-          variant: "destructive",
-        });
-        return;
+        throw new Error(data.error);
       }
 
-      // Check for Stripe URL and redirect
       if (data.url) {
         console.log("Redirecting to Stripe:", data.url);
         window.location.href = data.url;
         return;
       }
 
-      console.error("No URL in response data:", data);
-      toast({
-        title: "Payment Error",
-        description: "No payment URL received",
-        variant: "destructive",
-      });
+      throw new Error("No payment URL received from server");
 
     } catch (error) {
       console.error("Payment error:", error);
       setIsLoading(false);
+      
+      const errorMessage = error instanceof Error ? error.message : "Payment failed";
       toast({
         title: "Payment Error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        description: errorMessage,
         variant: "destructive",
       });
     }
