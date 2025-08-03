@@ -169,16 +169,29 @@ const Payment = () => {
 
       console.log("Making payment request...");
       
-      // Get auth session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Get auth session with better error handling
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
       console.log("Session retrieved:", session ? "Found" : "Not found", sessionError);
       
-      if (!session) {
-        throw new Error("No authentication session");
+      if (!session || !session.access_token) {
+        console.log("No valid session found, trying to re-authenticate...");
+        
+        // Try to refresh the session
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        console.log("Session refresh attempt:", refreshedSession ? "Success" : "Failed", refreshError);
+        
+        if (!refreshedSession || !refreshedSession.access_token) {
+          throw new Error("Authentication required. Please log in again.");
+        }
+        
+        // Use the refreshed session
+        session = refreshedSession;
       }
 
-      // Make direct HTTP call to bypass any Supabase client issues
-      console.log("Making direct fetch call...");
+      console.log("Valid session confirmed, making direct fetch call...");
+      
+      // Make direct HTTP call with proper authentication
+      console.log("Making fetch request to create-payment...");
       
       const fetchResponse = await fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
         method: 'POST',
