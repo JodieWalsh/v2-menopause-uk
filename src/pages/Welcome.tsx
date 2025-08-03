@@ -16,38 +16,55 @@ const Welcome = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const getUser = async () => {
-      console.log("Welcome page: checking authentication...");
-      const { data: { user }, error } = await supabase.auth.getUser();
-      console.log("Welcome page: user data:", user, "error:", error);
+    const checkAuthWithRetry = async () => {
+      console.log("Welcome page: checking authentication with retry...");
       
-      if (error || !user) {
-        console.log("Welcome page: No authenticated user, redirecting to login");
-        navigate('/login');
-        return;
+      // Try multiple times to get the session - sometimes it takes a moment after external redirect
+      for (let attempt = 1; attempt <= 5; attempt++) {
+        console.log(`Welcome page: Auth check attempt ${attempt}`);
+        
+        const { data: { user }, error } = await supabase.auth.getUser();
+        console.log(`Welcome page attempt ${attempt}: user data:`, user, "error:", error);
+        
+        if (user && !error) {
+          console.log("Welcome page: User authenticated:", user.email);
+          setUser(user);
+          await loadProgress();
+          setLoading(false);
+          return;
+        }
+        
+        // Wait a bit before retrying (except on last attempt)
+        if (attempt < 5) {
+          console.log(`Welcome page: Waiting before retry ${attempt + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
       
-      console.log("Welcome page: User authenticated:", user.email);
-      setUser(user);
-      await loadProgress();
-      setLoading(false);
+      console.log("Welcome page: No authenticated user after retries, redirecting to login");
+      navigate('/login');
     };
 
     // Set up auth state listener to handle session changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Welcome page: Auth state changed:", event, session?.user?.email);
+      
       if (event === 'SIGNED_OUT' || !session) {
         console.log("Welcome page: User signed out, redirecting to login");
         navigate('/login');
       } else if (event === 'SIGNED_IN' && session.user) {
         console.log("Welcome page: User signed in:", session.user.email);
         setUser(session.user);
-        loadProgress();
+        await loadProgress();
+        setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED' && session.user) {
+        console.log("Welcome page: Token refreshed:", session.user.email);
+        setUser(session.user);
         setLoading(false);
       }
     });
 
-    getUser();
+    checkAuthWithRetry();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
