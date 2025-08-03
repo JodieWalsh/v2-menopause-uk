@@ -17,17 +17,39 @@ const Welcome = () => {
 
   useEffect(() => {
     const getUser = async () => {
+      console.log("Welcome page: checking authentication...");
       const { data: { user }, error } = await supabase.auth.getUser();
+      console.log("Welcome page: user data:", user, "error:", error);
+      
       if (error || !user) {
+        console.log("Welcome page: No authenticated user, redirecting to login");
         navigate('/login');
         return;
       }
+      
+      console.log("Welcome page: User authenticated:", user.email);
       setUser(user);
       await loadProgress();
       setLoading(false);
     };
 
+    // Set up auth state listener to handle session changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Welcome page: Auth state changed:", event, session?.user?.email);
+      if (event === 'SIGNED_OUT' || !session) {
+        console.log("Welcome page: User signed out, redirecting to login");
+        navigate('/login');
+      } else if (event === 'SIGNED_IN' && session.user) {
+        console.log("Welcome page: User signed in:", session.user.email);
+        setUser(session.user);
+        loadProgress();
+        setLoading(false);
+      }
+    });
+
     getUser();
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const loadProgress = async () => {

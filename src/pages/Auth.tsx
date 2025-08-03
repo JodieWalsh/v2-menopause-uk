@@ -149,9 +149,19 @@ const Auth = () => {
           password: formData.password,
         });
         
-        if (!signInError) {
-          navigate('/welcome');
+        if (signInError) {
+          console.error("Auto sign-in error after free registration:", signInError);
+          toast({
+            title: "Sign In Error",
+            description: "Account created but couldn't sign you in automatically. Please sign in manually.",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
         }
+        
+        console.log("Free access user signed in successfully, navigating to welcome");
+        navigate('/welcome');
       } else {
         toast({
           title: "Account Created Successfully!",
@@ -165,17 +175,27 @@ const Auth = () => {
           password: formData.password,
         });
         
-        if (!signInError) {
-          // Pass discount information via URL parameters
-          const params = new URLSearchParams();
-          if (data.discountApplied) {
-            params.set('discount_applied', 'true');
-            params.set('discount_amount', data.discountAmount.toString());
-            params.set('final_amount', data.finalAmount.toString());
-            params.set('original_amount', data.originalAmount.toString());
-          }
-          navigate(`/payment?${params.toString()}`);
+        if (signInError) {
+          console.error("Auto sign-in error after paid registration:", signInError);
+          toast({
+            title: "Sign In Error", 
+            description: "Account created but couldn't sign you in automatically. Please sign in manually.",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
         }
+        
+        console.log("Paid user signed in successfully, navigating to payment");
+        // Pass discount information via URL parameters
+        const params = new URLSearchParams();
+        if (data.discountApplied) {
+          params.set('discount_applied', 'true');
+          params.set('discount_amount', data.discountAmount.toString());
+          params.set('final_amount', data.finalAmount.toString());
+          params.set('original_amount', data.originalAmount.toString());
+        }
+        navigate(`/payment?${params.toString()}`);
       }
 
       // Clear form
