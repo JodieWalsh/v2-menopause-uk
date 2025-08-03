@@ -121,7 +121,7 @@ const Auth = () => {
 
       if (data.error) {
         toast({
-          title: "Registration Failed",
+          title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
           description: data.error,
           variant: "destructive",
         });
