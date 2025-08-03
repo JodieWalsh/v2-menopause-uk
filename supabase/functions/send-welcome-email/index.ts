@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, firstName, isPaid }: WelcomeEmailRequest = await req.json();
 
     const emailResponse = await resend.emails.send({
-      from: "The Empowered Patient <support@the-empowered-patient.org>",
+      from: "The Empowered Patient <onboarding@resend.dev>",
       to: [email],
       subject: "Welcome to Your Health Assessment Journey!",
       html: `
