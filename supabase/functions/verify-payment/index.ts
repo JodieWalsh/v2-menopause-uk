@@ -15,6 +15,7 @@ serve(async (req) => {
 
   try {
     const { session_id } = await req.json();
+    console.log(`Verifying payment for session: ${session_id}`);
 
     if (!session_id) {
       throw new Error("Session ID is required");
@@ -40,6 +41,7 @@ serve(async (req) => {
     if (!user) {
       throw new Error("User not authenticated");
     }
+    console.log(`User authenticated: ${user.id}`);
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("stripesecret") || "", {
@@ -47,7 +49,9 @@ serve(async (req) => {
     });
 
     // Retrieve the session from Stripe
+    console.log(`Retrieving Stripe session: ${session_id}`);
     const session = await stripe.checkout.sessions.retrieve(session_id);
+    console.log(`Session payment status: ${session.payment_status}, amount: ${session.amount_total}`);
 
     if (session.payment_status === "paid") {
       // Create or update subscription

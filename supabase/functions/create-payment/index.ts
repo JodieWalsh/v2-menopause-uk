@@ -39,7 +39,7 @@ serve(async (req) => {
 
     // Handle free access (amount = 0) or amounts below Stripe's minimum threshold
     // Stripe requires minimum 50 cents, which is about £0.40
-    if (amount === 0 || amount < 1.00) {
+    if (amount === 0 || amount < 0.50) {
       console.log(`Granting free access to user ${user.id} with amount: ${amount}, discount code: ${discountCode}`);
       
       // Create a free subscription record
