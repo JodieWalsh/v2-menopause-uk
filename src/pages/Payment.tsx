@@ -202,16 +202,34 @@ const Payment = () => {
         throw error;
       }
 
+      if (!data) {
+        console.error("No data received from create-payment function");
+        throw new Error("No response data received");
+      }
+
       console.log("Payment response received:", data);
-      if (data && data.url) {
-        console.log("About to redirect to Stripe URL:", data.url);
-        // Add a small delay to ensure logs are captured
+      
+      // Check if it's a free access response
+      if (data.freeAccess) {
+        console.log("Free access granted, redirecting to welcome");
+        toast({
+          title: "Free Access Granted!",
+          description: "Redirecting you to your assessment...",
+        });
         setTimeout(() => {
-          console.log("Executing redirect now...");
-          window.location.href = data.url;
-        }, 100);
+          navigate("/welcome");
+        }, 1500);
+        return;
+      }
+      
+      // Check for Stripe URL
+      if (data.url) {
+        console.log("About to redirect to Stripe URL:", data.url);
+        // Force immediate redirect
+        window.location.href = data.url;
       } else {
         console.error("No URL received from payment function. Full response:", data);
+        throw new Error("No payment URL received");
       }
     } catch (error) {
       console.error("Payment error:", error);
