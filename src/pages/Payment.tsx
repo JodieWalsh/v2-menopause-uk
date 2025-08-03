@@ -146,8 +146,11 @@ const Payment = () => {
     e.preventDefault();
     
     console.log("=== PAYMENT SUBMIT STARTED ===");
+    console.log("finalPrice:", finalPrice);
+    console.log("paymentData.email:", paymentData.email);
     
     if (!paymentData.email) {
+      console.log("ERROR: No email provided");
       toast({
         title: "Email Required",
         description: "Please enter your email address.",
@@ -156,6 +159,7 @@ const Payment = () => {
       return;
     }
 
+    console.log("Setting loading to true");
     setIsLoading(true);
 
     try {
@@ -166,6 +170,7 @@ const Payment = () => {
         return;
       }
 
+      console.log("About to call create-payment function...");
       console.log("Starting payment process for amount:", finalPrice);
 
       const { data, error } = await supabase.functions.invoke('create-payment', {
