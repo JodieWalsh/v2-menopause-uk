@@ -182,8 +182,8 @@ const Payment = () => {
       console.log("Payment response received:", data);
       if (data.url) {
         console.log("Redirecting to Stripe:", data.url);
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
+        // Open Stripe checkout in a new tab
+        window.open(data.url, '_blank');
       } else {
         console.error("No URL received from payment function");
       }
