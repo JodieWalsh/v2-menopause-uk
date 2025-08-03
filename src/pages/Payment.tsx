@@ -181,6 +181,12 @@ const Payment = () => {
         return;
       }
 
+      console.log("About to call create-payment with:", {
+        amount: finalPrice,
+        email: paymentData.email,
+        discountCode: paymentData.discountCode,
+      });
+
       const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
           amount: finalPrice,
@@ -189,15 +195,23 @@ const Payment = () => {
         },
       });
 
-      if (error) throw error;
+      console.log("Raw response from create-payment:", { data, error });
+
+      if (error) {
+        console.error("Error from create-payment:", error);
+        throw error;
+      }
 
       console.log("Payment response received:", data);
-      if (data.url) {
-        console.log("Redirecting to Stripe:", data.url);
-        // Redirect to Stripe checkout in the same tab
-        window.location.href = data.url;
+      if (data && data.url) {
+        console.log("About to redirect to Stripe URL:", data.url);
+        // Add a small delay to ensure logs are captured
+        setTimeout(() => {
+          console.log("Executing redirect now...");
+          window.location.href = data.url;
+        }, 100);
       } else {
-        console.error("No URL received from payment function");
+        console.error("No URL received from payment function. Full response:", data);
       }
     } catch (error) {
       console.error("Payment error:", error);
