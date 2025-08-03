@@ -168,62 +168,44 @@ const Payment = () => {
 
       console.log("Starting payment process for amount:", finalPrice);
 
-      // Try a completely different approach - use .then() instead of async/await
-      console.log("Making payment request with .then() approach...");
-      
-      supabase.functions.invoke('create-payment', {
+      const { data, error } = await supabase.functions.invoke('create-payment', {
         body: {
           amount: finalPrice,
           email: paymentData.email,
           discountCode: paymentData.discountCode || "",
         },
-      })
-      .then(response => {
-        console.log("Response received via .then():", response);
-        
-        const { data, error } = response;
-        
-        if (error) {
-          console.error("Payment function error:", error);
-          throw new Error(error.message || "Payment processing failed");
-        }
-
-        if (!data) {
-          console.error("No data in response");
-          throw new Error("No response data received");
-        }
-
-        console.log("Payment data:", data);
-
-        // Check for free access
-        if (data.freeAccess) {
-          console.log("Free access granted");
-          navigate("/welcome");
-          return;
-        }
-
-        // Check for Stripe URL and redirect immediately
-        if (data.url) {
-          console.log("Redirecting to Stripe:", data.url);
-          window.location.href = data.url;
-          return;
-        }
-
-        console.error("No URL in response data:", data);
-        throw new Error("No payment URL received");
-      })
-      .catch(error => {
-        console.error("Payment error in .catch():", error);
-        const errorMessage = error instanceof Error ? error.message : "Payment processing failed";
-        
-        toast({
-          title: "Payment Error",
-          description: errorMessage,
-          variant: "destructive",
-        });
-        
-        setIsLoading(false);
       });
+
+      console.log("Raw response:", { data, error });
+
+      if (error) {
+        console.error("Payment function error:", error);
+        throw new Error(error.message || "Payment processing failed");
+      }
+
+      if (!data) {
+        console.error("No data in response");
+        throw new Error("No response data received");
+      }
+
+      console.log("Payment data:", data);
+
+      // Check for free access
+      if (data.freeAccess) {
+        console.log("Free access granted");
+        navigate("/welcome");
+        return;
+      }
+
+      // Check for Stripe URL and redirect immediately
+      if (data.url) {
+        console.log("Redirecting to Stripe:", data.url);
+        window.location.href = data.url;
+        return;
+      }
+
+      console.error("No URL in response data:", data);
+      throw new Error("No payment URL received");
 
     } catch (error) {
       console.error("Synchronous error:", error);
