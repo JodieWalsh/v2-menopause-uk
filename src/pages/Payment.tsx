@@ -179,9 +179,13 @@ const Payment = () => {
 
       if (error) throw error;
 
+      console.log("Payment response received:", data);
       if (data.url) {
+        console.log("Redirecting to Stripe:", data.url);
         // Redirect to Stripe checkout
         window.location.href = data.url;
+      } else {
+        console.error("No URL received from payment function");
       }
     } catch (error) {
       console.error("Payment error:", error);
