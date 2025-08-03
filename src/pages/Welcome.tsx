@@ -16,17 +16,31 @@ const Welcome = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAuthWithRetry = async () => {
       console.log("Welcome page: checking authentication with retry...");
       
-      // Try multiple times to get the session - sometimes it takes a moment after external redirect
-      for (let attempt = 1; attempt <= 5; attempt++) {
+      // First try to get existing session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && mounted) {
+        console.log("Welcome page: Found existing session:", session.user.email);
+        setUser(session.user);
+        await loadProgress();
+        setLoading(false);
+        return;
+      }
+      
+      // Try multiple times to get the user - sometimes it takes a moment after external redirect
+      for (let attempt = 1; attempt <= 8; attempt++) {
+        if (!mounted) return;
+        
         console.log(`Welcome page: Auth check attempt ${attempt}`);
         
         const { data: { user }, error } = await supabase.auth.getUser();
         console.log(`Welcome page attempt ${attempt}: user data:`, user, "error:", error);
         
-        if (user && !error) {
+        if (user && !error && mounted) {
           console.log("Welcome page: User authenticated:", user.email);
           setUser(user);
           await loadProgress();
@@ -35,23 +49,27 @@ const Welcome = () => {
         }
         
         // Wait a bit before retrying (except on last attempt)
-        if (attempt < 5) {
+        if (attempt < 8) {
           console.log(`Welcome page: Waiting before retry ${attempt + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
       
-      console.log("Welcome page: No authenticated user after retries, redirecting to login");
-      navigate('/login');
+      if (mounted) {
+        console.log("Welcome page: No authenticated user after retries, redirecting to login");
+        navigate('/auth');
+      }
     };
 
     // Set up auth state listener to handle session changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       console.log("Welcome page: Auth state changed:", event, session?.user?.email);
       
       if (event === 'SIGNED_OUT' || !session) {
-        console.log("Welcome page: User signed out, redirecting to login");
-        navigate('/login');
+        console.log("Welcome page: User signed out, redirecting to auth");
+        navigate('/auth');
       } else if (event === 'SIGNED_IN' && session.user) {
         console.log("Welcome page: User signed in:", session.user.email);
         setUser(session.user);
@@ -66,7 +84,10 @@ const Welcome = () => {
 
     checkAuthWithRetry();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const loadProgress = async () => {
