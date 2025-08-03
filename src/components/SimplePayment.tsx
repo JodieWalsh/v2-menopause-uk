@@ -45,55 +45,44 @@ export const SimplePayment = ({ amount, email, discountCode = "", onSuccess }: S
   };
 
   const testDirectStripeCall = async () => {
-    addTestResult("Testing direct payment call...");
+    addTestResult("Testing payment with supabase.functions.invoke...");
     
     try {
-      // Get the current session token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        addTestResult("❌ No user session found");
-        return false;
-      }
+      // Use supabase.functions.invoke with timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Payment call timed out after 8 seconds')), 8000)
+      );
       
-      const response = await fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbnVubm1qdnBpd3JycmJsdW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMTc2MjgsImV4cCI6MjA2OTY5MzYyOH0.FjMYIRk6t2PO-E4GChTzyQG9vXU-N1hK-53AGmSesCE'
-        },
-        body: JSON.stringify({
+      const paymentPromise = supabase.functions.invoke('create-payment', {
+        body: {
           amount: amount,
           email: email,
           discountCode: discountCode,
-        }),
+        },
       });
 
-      addTestResult(`Response status: ${response.status}`);
+      const result: any = await Promise.race([paymentPromise, timeoutPromise]);
+      addTestResult(`Response received: ${JSON.stringify(result)}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        addTestResult("✅ Payment call successful!");
-        
-        if (data.url) {
-          addTestResult("✅ Got Stripe URL!");
-          if (onSuccess) {
-            onSuccess(data.url);
-          } else {
-            window.location.href = data.url;
-          }
-          return true;
-        } else {
-          addTestResult(`❌ No URL in response: ${JSON.stringify(data)}`);
-          return false;
-        }
-      } else {
-        const errorText = await response.text();
-        addTestResult(`❌ Payment call failed: ${response.status} - ${errorText}`);
+      if (result.error) {
+        addTestResult(`❌ Payment call failed: ${result.error.message}`);
         return false;
       }
-    } catch (error) {
-      addTestResult(`❌ Payment call error: ${error}`);
+      
+      if (result.data?.url) {
+        addTestResult("✅ Got payment URL!");
+        if (onSuccess) {
+          onSuccess(result.data.url);
+        } else {
+          window.open(result.data.url, '_blank');
+        }
+        return true;
+      } else {
+        addTestResult(`❌ No URL in response: ${JSON.stringify(result.data)}`);
+        return false;
+      }
+    } catch (error: any) {
+      addTestResult(`❌ Payment call error: ${error.message}`);
       return false;
     }
   };
