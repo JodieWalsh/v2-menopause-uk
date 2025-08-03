@@ -199,11 +199,26 @@ serve(async (req) => {
     }
 
     // Return response based on whether it's free or paid
-    if (finalAmount === 0) {
-      // Free access - direct to welcome
+    if (finalAmount === 0 && isValidDiscount) {
+      // Discount resulted in free access - direct to welcome
       return new Response(JSON.stringify({ 
         success: true,
-        message: "Account created successfully with free access! Check your email for a warm welcome message.",
+        message: "Account created successfully! Your discount code gave you free access. Check your email for a welcome message.",
+        userId: newUser.id,
+        redirectTo: "/welcome",
+        freeAccess: true,
+        discountApplied: true,
+        originalAmount: 19,
+        discountAmount: discountAmount
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else if (finalAmount === 0) {
+      // Truly free access (no discount code)
+      return new Response(JSON.stringify({ 
+        success: true,
+        message: "Account created successfully with free access! Check your email for a welcome message.",
         userId: newUser.id,
         redirectTo: "/welcome",
         freeAccess: true
@@ -215,11 +230,14 @@ serve(async (req) => {
       // Paid access - need to go to payment
       return new Response(JSON.stringify({ 
         success: true,
-        message: "Account created successfully! Check your email for a welcome message.",
+        message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to £${finalAmount}.` : ''} Check your email for a welcome message.`,
         userId: newUser.id,
         redirectTo: "/payment",
         freeAccess: false,
-        finalAmount
+        finalAmount,
+        discountApplied: isValidDiscount,
+        originalAmount: 19,
+        discountAmount: discountAmount
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
