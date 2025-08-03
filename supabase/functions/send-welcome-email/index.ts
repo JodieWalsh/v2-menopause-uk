@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, firstName, isPaid }: WelcomeEmailRequest = await req.json();
 
     const emailResponse = await resend.emails.send({
-      from: "The Empowered Patient <onboarding@resend.dev>",
+      from: "The Empowered Patient <support@the-empowered-patient.org>",
       to: [email],
       subject: "Welcome to Your Health Assessment Journey!",
       html: `
@@ -34,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
             <!-- Header with Logo -->
             <div style="text-align: center; margin-bottom: 30px;">
               <img 
-                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/revised_logo.png" 
+                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos//website_logo_transparent.png" 
                 alt="The Empowered Patient Logo" 
                 style="height: 80px; width: auto; margin-bottom: 20px;"
               />
@@ -52,10 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
               <h2 style="color: white; margin-top: 0; margin-bottom: 15px; font-size: 22px;">What's Next?</h2>
               <ul style="line-height: 1.8; color: white; margin: 0; padding-left: 20px;">
                 <li>Complete your comprehensive menopause assessment</li>
-                <li>Receive personalized recommendations tailored to your needs</li>
-                <li>Track your progress and symptoms over time</li>
-                <li>Access expert insights and evidence-based guidance</li>
-                <li>Connect with a supportive community of women</li>
+                <li>Receive your personalised "doctor ready" document to bring to your appointment</li>
               </ul>
             </div>
             
@@ -98,10 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
         
         What's Next?
         • Complete your comprehensive menopause assessment
-        • Receive personalized recommendations tailored to your needs
-        • Track your progress and symptoms over time
-        • Access expert insights and evidence-based guidance
-        • Connect with a supportive community of women
+        • Receive your personalised "doctor ready" document to bring to your appointment
         
         Start your assessment: ${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/welcome
         
