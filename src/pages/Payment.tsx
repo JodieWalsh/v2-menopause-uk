@@ -142,7 +142,7 @@ const Payment = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     console.log("=== PAYMENT SUBMIT STARTED ===");
@@ -170,78 +170,77 @@ const Payment = () => {
       return;
     }
 
-    try {
-      console.log("Getting current session...");
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error("Session error:", sessionError);
-        throw new Error("Authentication failed: " + sessionError.message);
-      }
-      
-      if (!session?.access_token) {
-        console.error("No session token found");
-        throw new Error("You must be logged in to make a payment");
-      }
-      
-      console.log("Session found, making payment request...");
-      
-      // Use a Promise.race to add timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Payment request timed out")), 15000)
-      );
-      
-      const paymentPromise = fetch('https://ppnunnmjvpiwrrrbluno.supabase.co/functions/v1/create-payment', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbnVubm1qdnBpd3JycmJsdW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMTc2MjgsImV4cCI6MjA2OTY5MzYyOH0.FjMYIRk6t2PO-E4GChTzyQG9vXU-N1hK-53AGmSesCE'
-        },
-        body: JSON.stringify({
-          amount: finalPrice,
-          email: paymentData.email,
-          discountCode: paymentData.discountCode || "",
-        }),
+    console.log("Starting payment with fallback approach...");
+    
+    // Create a timeout promise that will reject after 10 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Payment request timed out after 10 seconds"));
+      }, 10000);
+    });
+
+    // Create the actual payment promise
+    const paymentPromise = supabase.functions.invoke('create-payment', {
+      body: {
+        amount: finalPrice,
+        email: paymentData.email,
+        discountCode: paymentData.discountCode || "",
+      },
+    });
+
+    console.log("Racing payment vs timeout...");
+    
+    // Race the payment against the timeout
+    Promise.race([paymentPromise, timeoutPromise])
+      .then((result: any) => {
+        console.log("Promise race resolved:", result);
+        setIsLoading(false);
+        
+        // Handle timeout case
+        if (result instanceof Error) {
+          throw result;
+        }
+        
+        const { data, error } = result;
+        console.log("Payment result - data:", data, "error:", error);
+        
+        if (error) {
+          throw new Error(error.message || "Payment processing failed");
+        }
+
+        if (!data) {
+          throw new Error("No response data received");
+        }
+
+        if (data.url) {
+          console.log("Success! Redirecting to Stripe:", data.url);
+          window.location.href = data.url;
+          return;
+        }
+
+        throw new Error("No payment URL received from server");
+      })
+      .catch((error) => {
+        console.error("Payment failed:", error);
+        setIsLoading(false);
+        
+        const errorMessage = error instanceof Error ? error.message : "Payment processing failed";
+        
+        // If it's a timeout, offer alternative
+        if (errorMessage.includes("timed out")) {
+          toast({
+            title: "Payment Timeout",
+            description: "The payment is taking too long. Please try refreshing the page and trying again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Payment Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
       });
-
-      console.log("Waiting for payment response...");
-      const response = await Promise.race([paymentPromise, timeoutPromise]) as Response;
-      
-      console.log("Response received:", response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("HTTP error:", response.status, errorText);
-        throw new Error(`Payment failed: ${response.status} ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log("Payment response data:", data);
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      if (data.url) {
-        console.log("Redirecting to Stripe:", data.url);
-        window.location.href = data.url;
-        return;
-      }
-
-      throw new Error("No payment URL received from server");
-
-    } catch (error) {
-      console.error("Payment error:", error);
-      setIsLoading(false);
-      
-      const errorMessage = error instanceof Error ? error.message : "Payment failed";
-      toast({
-        title: "Payment Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    }
   };
 
   return (
