@@ -21,6 +21,31 @@ const Welcome = () => {
     const checkAuthWithRetry = async () => {
       console.log("Welcome page: checking authentication with retry...");
       
+      // Check if coming from payment success
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentVerified = urlParams.get('payment_verified');
+      const sessionId = urlParams.get('session_id');
+      
+      // If coming from payment, verify payment first
+      if (paymentVerified === 'true' && sessionId) {
+        console.log("Welcome page: Verifying payment for session:", sessionId);
+        try {
+          const { data, error } = await supabase.functions.invoke('verify-payment', {
+            body: { session_id: sessionId }
+          });
+          
+          if (error) throw error;
+          
+          if (data?.verified) {
+            console.log("Welcome page: Payment verified successfully");
+            // Clean up URL parameters
+            window.history.replaceState({}, document.title, '/welcome');
+          }
+        } catch (error) {
+          console.error('Welcome page: Payment verification error:', error);
+        }
+      }
+      
       // First try to get existing session
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user && mounted) {
