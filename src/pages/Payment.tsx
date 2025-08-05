@@ -190,8 +190,8 @@ const Payment = () => {
       }
       
       if (result.data?.url) {
-        // Open Stripe checkout in a new tab
-        window.open(result.data.url, '_blank');
+        // Redirect to Stripe checkout in the same tab
+        window.location.href = result.data.url;
       } else {
         toast({
           title: "Error",

@@ -32,12 +32,20 @@ const Welcome = () => {
       }
       
       // Try multiple times to get the user - sometimes it takes a moment after external redirect
-      for (let attempt = 1; attempt <= 8; attempt++) {
+      for (let attempt = 1; attempt <= 10; attempt++) {
         if (!mounted) return;
         
         console.log(`Welcome page: Auth check attempt ${attempt}`);
         
-        const { data: { user }, error } = await supabase.auth.getUser();
+        // Try both getUser and getSession on each attempt
+        const [userResult, sessionResult] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.auth.getSession()
+        ]);
+        
+        const user = userResult.data?.user || sessionResult.data?.session?.user;
+        const error = userResult.error || sessionResult.error;
+        
         console.log(`Welcome page attempt ${attempt}: user data:`, user, "error:", error);
         
         if (user && !error && mounted) {
@@ -48,15 +56,16 @@ const Welcome = () => {
           return;
         }
         
-        // Wait a bit before retrying (except on last attempt)
-        if (attempt < 8) {
-          console.log(`Welcome page: Waiting before retry ${attempt + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, 1500));
+        // Wait progressively longer between retries
+        if (attempt < 10) {
+          const waitTime = Math.min(attempt * 500, 3000); // Max 3 seconds
+          console.log(`Welcome page: Waiting ${waitTime}ms before retry ${attempt + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
       
       if (mounted) {
-        console.log("Welcome page: No authenticated user after retries, redirecting to login");
+        console.log("Welcome page: No authenticated user after retries, redirecting to auth");
         navigate('/auth');
       }
     };
