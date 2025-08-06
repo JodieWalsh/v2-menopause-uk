@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft } from "lucide-react";
+import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft, Percent } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { StripePaymentForm } from "@/components/StripePaymentForm";
 
 
 const Payment = () => {
@@ -15,15 +16,6 @@ const Payment = () => {
   const [searchParams] = useSearchParams();
   const [paymentData, setPaymentData] = useState({
     email: "",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    nameOnCard: "",
-    billingAddress: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    country: "",
     discountCode: "",
   });
 
@@ -31,6 +23,7 @@ const Payment = () => {
   const [discountApplied, setDiscountApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
   const basePrice = 19;
   const finalPrice = Math.round((discountApplied ? basePrice - discountAmount : basePrice) * 100) / 100;
 
@@ -144,9 +137,7 @@ const Payment = () => {
   };
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleProceedToPayment = () => {
     if (!paymentData.email) {
       toast({
         title: "Email Required",
@@ -156,58 +147,52 @@ const Payment = () => {
       return;
     }
 
-    // If final price is 0, redirect directly to welcome
+    // If final price is 0, create free subscription and redirect
     if (finalPrice === 0) {
-      navigate("/welcome");
+      handleFreeAccess();
       return;
     }
 
-    setIsLoading(true);
-    
+    setShowPaymentForm(true);
+  };
+
+  const handleFreeAccess = async () => {
     try {
-      // Use the working payment logic with timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Payment call timed out after 8 seconds')), 8000)
-      );
+      setIsLoading(true);
       
-      const paymentPromise = supabase.functions.invoke('create-payment', {
+      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          amount: finalPrice,
+          amount: 0,
           email: paymentData.email,
           discountCode: paymentData.discountCode || "",
         },
       });
 
-      const result: any = await Promise.race([paymentPromise, timeoutPromise]);
-      
-      if (result.error) {
+      if (error) throw error;
+
+      if (data?.free_access) {
         toast({
-          title: "Payment Error",
-          description: result.error.message,
-          variant: "destructive",
+          title: "Free Access Granted!",
+          description: "You have been granted free access. Redirecting to your assessment...",
         });
-        return;
-      }
-      
-      if (result.data?.url) {
-        // Redirect to Stripe checkout in the same tab
-        window.location.href = result.data.url;
-      } else {
-        toast({
-          title: "Error",
-          description: "No payment URL received",
-          variant: "destructive",
-        });
+        setTimeout(() => {
+          navigate('/welcome');
+        }, 1500);
       }
     } catch (error: any) {
       toast({
-        title: "Payment Error",
-        description: error.message || "Unknown error",
+        title: "Error",
+        description: error.message || "Failed to grant free access",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    // Payment success is handled in StripePaymentForm
+    console.log("Payment successful - redirecting to welcome page");
   };
 
   return (
@@ -302,18 +287,18 @@ const Payment = () => {
 
           {/* Payment Form */}
           <div className="order-1 lg:order-2">
-            <Card className="card-gradient">
-              <CardHeader>
-                <CardTitle className="font-serif flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Payment Details
-                </CardTitle>
-                <CardDescription>
-                  Enter your payment information to complete your purchase
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
+            {!showPaymentForm ? (
+              <Card className="card-gradient">
+                <CardHeader>
+                  <CardTitle className="font-serif flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Payment Details
+                  </CardTitle>
+                  <CardDescription>
+                    Enter your email address to continue
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                   {/* Email Address */}
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
@@ -329,210 +314,76 @@ const Payment = () => {
                     />
                   </div>
                   
-                  {/* Card Information - Only show if not free */}
-                  {finalPrice > 0 && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="cardNumber">Card Number</Label>
-                        <Input
-                          id="cardNumber"
-                          name="cardNumber"
-                          type="text"
-                          placeholder="1234 5678 9012 3456"
-                          value={paymentData.cardNumber}
-                          onChange={handleInputChange}
-                          required
-                          className="transition-smooth focus:ring-primary"
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="expiryDate">Expiry Date</Label>
-                          <Input
-                            id="expiryDate"
-                            name="expiryDate"
-                            type="text"
-                            placeholder="MM/YY"
-                            value={paymentData.expiryDate}
-                            onChange={handleInputChange}
-                            required
-                            className="transition-smooth focus:ring-primary"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="cvv">CVV</Label>
-                          <Input
-                            id="cvv"
-                            name="cvv"
-                            type="text"
-                            placeholder="123"
-                            value={paymentData.cvv}
-                            onChange={handleInputChange}
-                            required
-                            className="transition-smooth focus:ring-primary"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="nameOnCard">Name on Card</Label>
-                        <Input
-                          id="nameOnCard"
-                          name="nameOnCard"
-                          type="text"
-                          placeholder="John Doe"
-                          value={paymentData.nameOnCard}
-                          onChange={handleInputChange}
-                          required
-                          className="transition-smooth focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Billing Address - Only show if not free */}
-                  {finalPrice > 0 && (
-                    <div className="space-y-4 pt-4 border-t">
-                      <h3 className="font-medium">Billing Address</h3>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="billingAddress">Address</Label>
-                        <Input
-                          id="billingAddress"
-                          name="billingAddress"
-                          type="text"
-                          placeholder="123 Main Street"
-                          value={paymentData.billingAddress}
-                          onChange={handleInputChange}
-                          required
-                          className="transition-smooth focus:ring-primary"
-                        />
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            name="city"
-                            type="text"
-                            placeholder="Sydney"
-                            value={paymentData.city}
-                            onChange={handleInputChange}
-                            required
-                            className="transition-smooth focus:ring-primary"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            name="state"
-                            type="text"
-                            placeholder="NSW"
-                            value={paymentData.state}
-                            onChange={handleInputChange}
-                            required
-                            className="transition-smooth focus:ring-primary"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="zipCode">Post Code</Label>
-                          <Input
-                            id="zipCode"
-                            name="zipCode"
-                            type="text"
-                            placeholder="2000"
-                            value={paymentData.zipCode}
-                            onChange={handleInputChange}
-                            required
-                            className="transition-smooth focus:ring-primary"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="country">Country</Label>
-                          <Input
-                            id="country"
-                            name="country"
-                            type="text"
-                            placeholder="Australia"
-                            value={paymentData.country}
-                            onChange={handleInputChange}
-                            required
-                            className="transition-smooth focus:ring-primary"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Discount Code */}
+                  {/* Discount Code Section */}
                   <div className="pt-4 border-t">
                     {!showDiscountCode ? (
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
                         onClick={() => setShowDiscountCode(true)}
                         className="w-full"
                       >
+                        <Percent className="mr-2 h-4 w-4" />
                         Have a discount code?
                       </Button>
                     ) : (
-                      <div className="space-y-2">
-                        <Label htmlFor="discountCode">Discount Code</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="discountCode"
-                            name="discountCode"
-                            type="text"
-                            placeholder="Enter code"
-                            value={paymentData.discountCode}
-                            onChange={handleInputChange}
-                            className="transition-smooth focus:ring-primary"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleDiscountCode}
-                            disabled={discountApplied}
-                          >
-                            {discountApplied ? "Applied" : "Apply"}
-                          </Button>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="discountCode">Discount Code</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="discountCode"
+                              name="discountCode"
+                              type="text"
+                              placeholder="Enter discount code"
+                              value={paymentData.discountCode}
+                              onChange={handleInputChange}
+                              className="transition-smooth focus:ring-primary"
+                            />
+                            <Button
+                              type="button"
+                              onClick={handleDiscountCode}
+                              disabled={isLoading || !paymentData.discountCode.trim()}
+                              variant="outline"
+                            >
+                              {isLoading ? "Checking..." : "Apply"}
+                            </Button>
+                          </div>
                         </div>
+                        
+                        {discountApplied && (
+                          <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
+                            ✅ Discount applied! You saved £{discountAmount} GBP
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
 
-                  {/* Submit Button */}
+                  {/* Proceed Button */}
                   <Button 
-                    type="submit" 
-                    variant="hero" 
+                    onClick={handleProceedToPayment}
+                    className="w-full" 
                     size="lg" 
-                    className="w-full mt-6"
                     disabled={isLoading || !paymentData.email}
                   >
                     {isLoading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                        Processing...
-                      </>
-                    ) : finalPrice === 0 ? "Get Free Access" : `Complete Purchase - £${finalPrice} GBP`}
+                      "Processing..."
+                    ) : finalPrice === 0 ? (
+                      "Start Free Assessment"
+                    ) : (
+                      `Continue to Payment - £${finalPrice} GBP`
+                    )}
                   </Button>
-                  
-                  {/* Security notice */}
-                  <div className="text-center mt-4">
-                    <p className="text-xs text-muted-foreground">
-                      🔒 Your payment is secured by Stripe and protected with 256-bit SSL encryption
-                    </p>
-                  </div>
-                 </form>
-               </CardContent>
-             </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <StripePaymentForm 
+                amount={finalPrice}
+                discountCode={paymentData.discountCode}
+                onSuccess={handlePaymentSuccess}
+              />
+            )}
           </div>
         </div>
       </div>

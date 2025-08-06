@@ -19,54 +19,93 @@ export function ProtectedRoute({ children, requiresSubscription = true }: Protec
   const { toast } = useToast();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkAuthAndSubscription = async () => {
       try {
+        // Add delay to ensure auth state is properly loaded
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (!mounted) return;
+
         // Check if user is authenticated
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError || !user) {
-          navigate('/login');
+          if (mounted) {
+            navigate('/login');
+          }
           return;
         }
 
-        setUser(user);
+        if (mounted) {
+          setUser(user);
+        }
 
-        // If subscription is required, check subscription status
-        if (requiresSubscription) {
-          const { data: subscription, error: subError } = await supabase
-            .from('user_subscriptions')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
+        // If subscription is required, check subscription status with retries
+        if (requiresSubscription && mounted) {
+          let retries = 3;
+          let subscription = null;
+          
+          while (retries > 0 && mounted) {
+            const { data: sub, error: subError } = await supabase
+              .from('user_subscriptions')
+              .select('*')
+              .eq('user_id', user.id)
+              .maybeSingle();
 
-          if (subError) {
-            console.error('Error checking subscription:', subError);
-            setHasValidSubscription(false);
-          } else if (!subscription) {
-            setHasValidSubscription(false);
-          } else {
-            // Check if subscription is active and not expired
-            const isActive = subscription.status === 'active';
-            const isNotExpired = !subscription.expires_at || new Date(subscription.expires_at) > new Date();
-            setHasValidSubscription(isActive && isNotExpired);
+            if (!subError && sub) {
+              subscription = sub;
+              break;
+            }
+            
+            if (subError) {
+              console.error(`Error checking subscription (attempt ${4 - retries}):`, subError);
+            }
+            
+            retries--;
+            if (retries > 0) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
-        } else {
+
+          if (mounted) {
+            if (!subscription) {
+              console.log('No subscription found for user:', user.id);
+              setHasValidSubscription(false);
+            } else {
+              // Check if subscription is active and not expired
+              const isActive = subscription.status === 'active';
+              const isNotExpired = !subscription.expires_at || new Date(subscription.expires_at) > new Date();
+              console.log('Subscription check:', { isActive, isNotExpired, subscription });
+              setHasValidSubscription(isActive && isNotExpired);
+            }
+          }
+        } else if (mounted) {
           setHasValidSubscription(true);
         }
       } catch (error) {
         console.error('Error checking authentication/subscription:', error);
-        toast({
-          title: "Error",
-          description: "Unable to verify access. Please try again.",
-          variant: "destructive",
-        });
-        navigate('/login');
+        if (mounted) {
+          toast({
+            title: "Error",
+            description: "Unable to verify access. Please try again.",
+            variant: "destructive",
+          });
+          navigate('/login');
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkAuthAndSubscription();
+
+    return () => {
+      mounted = false;
+    };
   }, [navigate, requiresSubscription, toast]);
 
   if (loading) {

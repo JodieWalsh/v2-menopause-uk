@@ -40,9 +40,14 @@ const Welcome = () => {
             console.log("Welcome page: Payment verified successfully");
             // Clean up URL parameters
             window.history.replaceState({}, document.title, '/welcome');
+            // Force a slight delay to ensure subscription is properly created
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            console.error('Welcome page: Payment verification failed:', data);
           }
         } catch (error) {
           console.error('Welcome page: Payment verification error:', error);
+          // Don't redirect on error, let user try to continue
         }
       }
       
