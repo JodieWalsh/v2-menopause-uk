@@ -86,22 +86,19 @@ serve(async (req) => {
 
         console.log(`Subscription created/updated for user ${user.id}`);
 
-        // Send welcome email only if not already sent
-        const { data: subscription } = await supabaseService
-          .from('user_subscriptions')
-          .select('welcome_email_sent')
-          .eq('user_id', user.id)
-          .single();
+        // Send welcome email only after payment is fully confirmed
+        try {
+          const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email', {
+            body: {
+              email: user.email,
+              firstName: user.user_metadata?.first_name,
+              isPaid: true
+            }
+          });
 
-        if (subscription && !subscription.welcome_email_sent) {
-          try {
-            await supabaseService.functions.invoke('send-welcome-email', {
-              body: {
-                email: user.email,
-                firstName: user.user_metadata?.first_name,
-                isPaid: true
-              }
-            });
+          if (emailError) {
+            console.error('Failed to send welcome email:', emailError);
+          } else {
             console.log(`Welcome email sent to ${user.email}`);
             
             // Mark email as sent
@@ -109,12 +106,10 @@ serve(async (req) => {
               .from("user_subscriptions")
               .update({ welcome_email_sent: true })
               .eq('user_id', user.id);
-          } catch (emailError) {
-            console.error('Failed to send welcome email:', emailError);
-            // Don't fail the payment confirmation if email fails
           }
-        } else {
-          console.log(`Welcome email already sent for user ${user.id}, skipping`);
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+          // Don't fail the payment confirmation if email fails
         }
       } else {
         console.log(`Subscription already exists for user ${user.id}, skipping duplicate`);
