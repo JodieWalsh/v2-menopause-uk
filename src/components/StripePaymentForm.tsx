@@ -21,6 +21,7 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
+  const [hasConfirmed, setHasConfirmed] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -47,7 +48,8 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
           description: error.message || "An error occurred during payment",
           variant: "destructive",
         });
-      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      } else if (paymentIntent && paymentIntent.status === 'succeeded' && !hasConfirmed) {
+        setHasConfirmed(true); // Prevent double confirmation
         console.log("Payment succeeded:", paymentIntent.id);
         
         // Only confirm payment on our backend - this will handle subscription creation and welcome email
@@ -57,6 +59,7 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
 
         if (confirmError) {
           console.error("Payment confirmation error:", confirmError);
+          setHasConfirmed(false); // Allow retry on error
           toast({
             title: "Payment Verification Failed",
             description: "Payment succeeded but verification failed. Please contact support.",

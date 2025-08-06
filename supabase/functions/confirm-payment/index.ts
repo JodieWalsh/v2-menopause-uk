@@ -58,10 +58,10 @@ serve(async (req) => {
       const { data: existingSub } = await supabaseService
         .from('user_subscriptions')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('stripe_session_id', payment_intent_id)
         .single();
 
-      if (!existingSub || existingSub.status !== 'active') {
+      if (!existingSub) {
         // Create or update subscription
         const { error: subError } = await supabaseService
           .from("user_subscriptions")

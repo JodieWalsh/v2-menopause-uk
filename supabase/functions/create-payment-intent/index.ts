@@ -139,6 +139,9 @@ serve(async (req) => {
     // Apply promotion code if found - this ensures Stripe tracks the redemption properly
     if (promotionCodeId) {
       paymentIntentParams.discounts = [{ promotion_code: promotionCodeId }];
+      // Also add to metadata to ensure Stripe tracks the specific promotion code redemption
+      paymentIntentParams.metadata.promotion_code_id = promotionCodeId;
+      paymentIntentParams.metadata.original_discount_code = discountCode;
       console.log(`Applying promotion code ${promotionCodeId} to PaymentIntent - Stripe will calculate final amount and track redemption`);
     }
     
