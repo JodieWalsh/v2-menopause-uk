@@ -43,6 +43,8 @@ serve(async (req) => {
     if (amount <= 0) {
       logStep("Free access granted", { amount });
       
+      // For truly free access (100% discount), create subscription immediately
+      // This only happens when discount codes make the total 0
       const { error: subError } = await supabaseClient
         .from("user_subscriptions")
         .upsert({
@@ -59,6 +61,28 @@ serve(async (req) => {
       if (subError) {
         logStep("ERROR creating free subscription", { error: subError.message });
         throw new Error(`Failed to create free subscription: ${subError.message}`);
+      }
+
+      // Send welcome email for free access
+      try {
+        const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
+          body: {
+            email: user.email,
+            firstName: user.user_metadata?.first_name,
+            isPaid: false
+          }
+        });
+
+        if (!emailError) {
+          // Mark email as sent
+          await supabaseClient
+            .from("user_subscriptions")
+            .update({ welcome_email_sent: true })
+            .eq('user_id', user.id);
+          logStep("Welcome email sent for free access");
+        }
+      } catch (emailError) {
+        logStep("ERROR sending welcome email for free access", { error: emailError });
       }
 
       logStep("Free subscription created successfully");
