@@ -384,7 +384,27 @@ export default function Module1() {
     }
   };
 
+  const validateMultipleChoiceAnswers = () => {
+    const multipleChoiceQuestions = questions.filter(q => q.type === 'multiple_choice');
+    const unansweredQuestions = multipleChoiceQuestions.filter(q => !responses[q.id] || responses[q.id].trim() === '');
+    
+    if (unansweredQuestions.length > 0) {
+      toast({
+        title: "Please Complete All Multiple Choice Questions",
+        description: "At the end of the process you will need to have given an answer to all the multiple choice questions in this section. Please go back and give an answer to all the multiple choice questions. You will be able to review and change your answers later if you wish.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleNext = async () => {
+    // First validate that all multiple choice questions are answered
+    if (!validateMultipleChoiceAnswers()) {
+      return;
+    }
+
     setIsLoading(true);
     const success = await saveResponses();
     if (success) {
