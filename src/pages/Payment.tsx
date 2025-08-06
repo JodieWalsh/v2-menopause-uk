@@ -162,7 +162,7 @@ const Payment = () => {
       
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          amount: 0,
+          amount: 0, // Free access - amount is already in pence
           email: paymentData.email,
           discountCode: paymentData.discountCode || "",
         },
@@ -379,7 +379,7 @@ const Payment = () => {
               </Card>
             ) : (
               <StripePaymentForm 
-                amount={finalPrice} // Send amount in pounds, backend converts to pence
+                amount={Math.round(finalPrice * 100)} // Send amount in pence
                 discountCode={paymentData.discountCode}
                 onSuccess={handlePaymentSuccess}
               />

@@ -39,8 +39,8 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Check for free access (amount < 50 pence or 0)
-    if (amount < 50) {
+    // Check for free access (amount is 0 or less than 1 pence)
+    if (amount <= 0) {
       logStep("Free access granted", { amount });
       
       const { error: subError } = await supabaseClient
@@ -115,6 +115,8 @@ serve(async (req) => {
       logStep("Found valid promotion code", { promotionCodeId: promotionCode.id });
 
       // Create Checkout Session with promotion code
+      // For discount codes, use base price (19 GBP = 1900 pence) to let Stripe apply the discount
+      const basePriceInPence = 1900; // £19 base price
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         line_items: [
@@ -122,7 +124,7 @@ serve(async (req) => {
             price_data: {
               currency: "gbp",
               product_data: { name: "Premium Access" },
-              unit_amount: amount * 100, // Convert to pence
+              unit_amount: basePriceInPence, // Use base price, let Stripe apply discount
             },
             quantity: 1,
           },
@@ -133,7 +135,7 @@ serve(async (req) => {
         cancel_url: `${req.headers.get("origin")}/payment`,
         metadata: {
           user_id: user.id,
-          original_amount: (amount * 100).toString(),
+          original_amount: basePriceInPence.toString(),
           discount_code: discountCode,
         },
       });
@@ -154,7 +156,7 @@ serve(async (req) => {
     logStep("Creating PaymentIntent without discount", { amount });
 
     const paymentIntentParams: any = {
-      amount: amount * 100, // Convert to pence
+      amount: amount, // Amount already in pence from frontend
       currency: "gbp",
       customer: customerId,
       metadata: {
