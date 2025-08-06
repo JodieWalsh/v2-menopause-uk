@@ -115,16 +115,23 @@ serve(async (req) => {
       logStep("Found valid promotion code", { promotionCodeId: promotionCode.id });
 
       // Create Checkout Session with promotion code
-      // For discount codes, use base price (19 GBP = 1900 pence) to let Stripe apply the discount
-      const basePriceInPence = 1900; // £19 base price
+      // Always use the base price (19 GBP = 1900 pence) regardless of frontend calculations
+      // Stripe will apply the discount automatically through the promotion code
+      const basePriceInPence = 1900; // £19 base price - always consistent
+      
+      logStep("Creating session with base price", { basePriceInPence, frontendAmount: amount });
+      
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         line_items: [
           {
             price_data: {
               currency: "gbp",
-              product_data: { name: "Premium Access" },
-              unit_amount: basePriceInPence, // Use base price, let Stripe apply discount
+              product_data: { 
+                name: "Menopause Assessment Tool",
+                description: "12 months access with guided assessment and personalized report"
+              },
+              unit_amount: basePriceInPence, // Always use base price - Stripe applies discount
             },
             quantity: 1,
           },
@@ -137,6 +144,7 @@ serve(async (req) => {
           user_id: user.id,
           original_amount: basePriceInPence.toString(),
           discount_code: discountCode,
+          promotion_code_id: promotionCode.id,
         },
       });
 

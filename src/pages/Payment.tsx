@@ -25,7 +25,9 @@ const Payment = () => {
   const [isLoading, setIsLoading] = useState(false);
   // Removed showPaymentForm state since we're integrating the form directly
   const basePrice = 19;
-  const finalPrice = Math.round((discountApplied ? basePrice - discountAmount : basePrice) * 100) / 100;
+  // When discount code is applied, show original price - Stripe will apply discount at checkout
+  // For free access scenarios, we'll check the amount in the payment form logic
+  const finalPrice = basePrice;
 
   // Auto-fill email from authenticated user and check for discount from URL or database
   useEffect(() => {
@@ -104,13 +106,15 @@ const Payment = () => {
       console.log("Discount validation response:", data);
       
       if (data.valid) {
+        // Only mark as applied for UI purposes - don't calculate final price here
+        // Stripe will handle the actual discount application
         setDiscountApplied(true);
-        setDiscountAmount(data.discountAmount);
+        setDiscountAmount(data.discountAmount); // For display only
         toast({
-          title: "Discount Applied!",
-          description: `You saved £${data.discountAmount} GBP`,
+          title: "Discount Code Valid!",
+          description: `Discount will be applied at checkout`,
         });
-        console.log("Discount applied successfully");
+        console.log("Valid discount code - will be applied by Stripe");
       } else {
         setDiscountApplied(false);
         setDiscountAmount(0);
@@ -219,12 +223,12 @@ const Payment = () => {
                     <span className="font-medium">£{basePrice.toFixed(2)} GBP</span>
                   </div>
                   
-                  {discountApplied && (
-                    <div className="flex justify-between items-center text-green-600">
-                      <span>Discount Applied</span>
-                      <span>-£{discountAmount.toFixed(2)} GBP</span>
-                    </div>
-                  )}
+                   {discountApplied && (
+                     <div className="flex justify-between items-center text-green-600">
+                       <span>Discount Code Applied</span>
+                       <span>Discount at checkout</span>
+                     </div>
+                   )}
                   
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center text-lg font-semibold">
@@ -335,7 +339,7 @@ const Payment = () => {
                       
                       {discountApplied && (
                         <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
-                          ✅ Discount applied! You saved £{discountAmount.toFixed(2)} GBP
+                          ✅ Valid discount code! Discount will be applied at checkout.
                         </div>
                       )}
                     </div>
@@ -345,22 +349,11 @@ const Payment = () => {
                 {/* Payment Form - Integrated */}
                 {paymentData.email && (
                   <div className="pt-4 border-t">
-                    {finalPrice === 0 ? (
-                      <Button 
-                        onClick={handleFreeAccess}
-                        className="w-full" 
-                        size="lg" 
-                        disabled={isLoading}
-                      >
-                        {isLoading ? "Processing..." : "Start Free Assessment"}
-                      </Button>
-                    ) : (
-                      <StripePaymentForm 
-                        amount={Math.round(finalPrice * 100)} // Send amount in pence
-                        discountCode={paymentData.discountCode}
-                        onSuccess={handlePaymentSuccess}
-                      />
-                    )}
+                    <StripePaymentForm 
+                      amount={Math.round(basePrice * 100)} // Always send base price - Stripe applies discount
+                      discountCode={discountApplied ? paymentData.discountCode : ""}
+                      onSuccess={handlePaymentSuccess}
+                    />
                   </div>
                 )}
               </CardContent>
