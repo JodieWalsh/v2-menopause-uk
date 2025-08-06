@@ -8,8 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-// Initialize Stripe - using test publishable key
-const stripePromise = loadStripe("pk_test_51QXdOJJ0gKUqO3raBRLRZb5eQjQcnobvhDnBt1QUjRAZPnX7Ij45YZ8cjHCOEWdQyRBrsZUjRJwQNNh50DQYp2Ni007aCJcV3K");
+// Initialize Stripe with your live publishable key
+const stripePromise = loadStripe("pk_live_51RlQthATHqCGypnRfAeJWQpjmMYpyjfqSvaad1SJadYKtWIrBsPyY4h0CFJ3E2K9YO3WSitqNn8jThNxsBqPnKcU00hQc5hKAU");
 
 interface PaymentFormProps {
   clientSecret: string;
