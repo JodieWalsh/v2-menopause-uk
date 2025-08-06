@@ -86,7 +86,10 @@ serve(async (req) => {
 
         console.log(`Subscription created/updated for user ${user.id}`);
 
-        // Send welcome email only after payment is fully confirmed
+        // Only send welcome email for PaymentIntent payments (not checkout sessions)
+        // Checkout sessions are handled by verify-checkout-session function
+        console.log(`Subscription created/updated for user ${user.id} - PaymentIntent flow`);
+        
         try {
           const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email', {
             body: {
@@ -99,7 +102,7 @@ serve(async (req) => {
           if (emailError) {
             console.error('Failed to send welcome email:', emailError);
           } else {
-            console.log(`Welcome email sent to ${user.email}`);
+            console.log(`Welcome email sent to ${user.email} - PaymentIntent flow`);
             
             // Mark email as sent
             await supabaseService
