@@ -163,10 +163,11 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
         }
       }
 
-      // For paid amounts
+      // For paid amounts - always pass the base amount (1900 pence = £19)
+      const baseAmount = 1900; // £19 in pence
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          amount,
+          amount: discountCode ? baseAmount : amount, // Use base amount for discount codes, actual amount otherwise
           email: user.email,
           discountCode: discountCode || "",
         },

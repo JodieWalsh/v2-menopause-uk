@@ -93,7 +93,7 @@ serve(async (req) => {
     }
 
     // If discount code provided, use Checkout Session for proper tracking
-    if (discountCode && discountCode !== "Applied from registration") {
+    if (discountCode && discountCode.trim() !== "" && discountCode !== "Applied from registration") {
       logStep("Creating Checkout Session with discount code", { discountCode });
       
       // Look up the promotion code
