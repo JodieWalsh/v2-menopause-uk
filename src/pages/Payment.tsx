@@ -4,11 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft, Percent } from "lucide-react";
+import { CreditCard, Shield, CheckCircle, ArrowLeft, Percent } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { StripePaymentForm } from "@/components/StripePaymentForm";
-
 
 const Payment = () => {
   const { toast } = useToast();
@@ -20,16 +19,22 @@ const Payment = () => {
   });
 
   const [showDiscountCode, setShowDiscountCode] = useState(false);
-  const [discountApplied, setDiscountApplied] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState(0);
+  const [discountInfo, setDiscountInfo] = useState<{
+    applied: boolean;
+    amount: number;
+    finalPrice: number;
+    code: string;
+  }>({
+    applied: false,
+    amount: 0,
+    finalPrice: 19,
+    code: ""
+  });
   const [isLoading, setIsLoading] = useState(false);
-  // Removed showPaymentForm state since we're integrating the form directly
-  const basePrice = 19;
-  // When discount code is applied, show original price - Stripe will apply discount at checkout
-  // For free access scenarios, we'll check the amount in the payment form logic
-  const finalPrice = basePrice;
 
-  // Auto-fill email from authenticated user and check for discount from URL or database
+  const basePrice = 19;
+
+  // Load user email and check for discount from URL parameters
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -38,32 +43,26 @@ const Payment = () => {
           ...prev,
           email: user.email || ""
         }));
+      }
 
-        // First check URL parameters for discount info from registration
-        const discountAppliedParam = searchParams.get('discount_applied');
-        const discountAmountParam = searchParams.get('discount_amount');
+      // Check URL parameters for discount info
+      const discountAppliedParam = searchParams.get('discount_applied');
+      const discountAmountParam = searchParams.get('discount_amount');
+      const finalAmountParam = searchParams.get('final_amount');
+      const originalAmountParam = searchParams.get('original_amount');
+
+      if (discountAppliedParam === 'true' && discountAmountParam && finalAmountParam) {
+        const discountAmount = parseFloat(discountAmountParam);
+        const finalPrice = parseFloat(finalAmountParam);
         
-        if (discountAppliedParam === 'true' && discountAmountParam) {
-          setDiscountApplied(true);
-          setDiscountAmount(parseFloat(discountAmountParam));
-          console.log(`Discount from URL: £${discountAmountParam}`);
-          return; // Use URL params, don't check database
-        }
-
-        // Fallback: Check if user has a subscription with discount info
-        const { data: subscription } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (subscription && subscription.amount_paid !== null && subscription.amount_paid < 19) {
-          // User has a discounted amount from registration
-          const discountFromRegistration = 19 - (subscription.amount_paid || 0);
-          setDiscountApplied(true);
-          setDiscountAmount(discountFromRegistration);
-          console.log(`Discount from DB: £${discountFromRegistration}`);
-        }
+        setDiscountInfo({
+          applied: true,
+          amount: discountAmount,
+          finalPrice: finalPrice,
+          code: "Applied from registration"
+        });
+        
+        console.log(`Discount loaded from URL: £${discountAmount} off, final price: £${finalPrice}`);
       }
     };
     getUser();
@@ -77,11 +76,7 @@ const Payment = () => {
   };
 
   const handleDiscountCode = async () => {
-    console.log("=== DISCOUNT VALIDATION STARTED ===");
-    console.log("Discount code entered:", paymentData.discountCode);
-    
     if (!paymentData.discountCode.trim()) {
-      console.log("Empty discount code");
       toast({
         title: "Discount Code Required",
         description: "Please enter a discount code to apply.",
@@ -90,7 +85,6 @@ const Payment = () => {
       return;
     }
 
-    console.log("Setting loading to true");
     setIsLoading(true);
 
     try {
@@ -103,30 +97,31 @@ const Payment = () => {
 
       if (error) throw error;
 
-      console.log("Discount validation response:", data);
-      
       if (data.valid) {
-        // Only mark as applied for UI purposes - don't calculate final price here
-        // Stripe will handle the actual discount application
-        setDiscountApplied(true);
-        setDiscountAmount(data.discountAmount); // For display only
+        setDiscountInfo({
+          applied: true,
+          amount: data.discountAmount,
+          finalPrice: data.finalAmount,
+          code: paymentData.discountCode.trim()
+        });
+        
         toast({
           title: "Discount Code Valid!",
-          description: `Discount will be applied at checkout`,
+          description: `You saved £${data.discountAmount.toFixed(2)}! Final price: £${data.finalAmount.toFixed(2)}`,
         });
-        console.log("Valid discount code - will be applied by Stripe");
       } else {
-        setDiscountApplied(false);
-        setDiscountAmount(0);
-        // Clear the discount code field when invalid
+        setDiscountInfo({
+          applied: false,
+          amount: 0,
+          finalPrice: basePrice,
+          code: ""
+        });
         setPaymentData(prev => ({ ...prev, discountCode: "" }));
         toast({
           title: "❌ Invalid Discount Code", 
           description: data.error || "This discount code is not valid. Please check and try again.",
           variant: "destructive",
-          duration: 5000, // Show for 5 seconds
         });
-        console.log("Invalid discount code:", data.error);
       }
     } catch (error) {
       console.error("Discount validation error:", error);
@@ -140,46 +135,8 @@ const Payment = () => {
     }
   };
 
-
-  // Remove the intermediate screen logic since we're integrating payment form directly
-
-  const handleFreeAccess = async () => {
-    try {
-      setIsLoading(true);
-      
-      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-        body: {
-          amount: 0, // Free access - amount is already in pence
-          email: paymentData.email,
-          discountCode: paymentData.discountCode || "",
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.free_access) {
-        toast({
-          title: "Free Access Granted!",
-          description: "You have been granted free access. Redirecting to your assessment...",
-        });
-        setTimeout(() => {
-          navigate('/welcome');
-        }, 1500);
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to grant free access",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handlePaymentSuccess = () => {
-    // Payment success is handled in StripePaymentForm
-    console.log("Payment successful - redirecting to welcome page");
+    console.log("Payment successful - redirecting handled by payment form");
   };
 
   return (
@@ -223,17 +180,17 @@ const Payment = () => {
                     <span className="font-medium">£{basePrice.toFixed(2)} GBP</span>
                   </div>
                   
-                   {discountApplied && (
-                     <div className="flex justify-between items-center text-green-600">
-                       <span>Discount Code Applied</span>
-                       <span>Discount at checkout</span>
-                     </div>
-                   )}
+                  {discountInfo.applied && (
+                    <div className="flex justify-between items-center text-green-600">
+                      <span>Discount Applied</span>
+                      <span>-£{discountInfo.amount.toFixed(2)} GBP</span>
+                    </div>
+                  )}
                   
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center text-lg font-semibold">
                       <span>Total</span>
-                      <span>£{finalPrice.toFixed(2)} GBP</span>
+                      <span>£{discountInfo.finalPrice.toFixed(2)} GBP</span>
                     </div>
                   </div>
                 </div>
@@ -300,58 +257,66 @@ const Payment = () => {
                   />
                 </div>
                 
-                {/* Discount Code Section */}
-                <div className="pt-4 border-t">
-                  {!showDiscountCode ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowDiscountCode(true)}
-                      className="w-full"
-                    >
-                      <Percent className="mr-2 h-4 w-4" />
-                      Have a discount code?
-                    </Button>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="discountCode">Discount Code</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="discountCode"
-                            name="discountCode"
-                            type="text"
-                            placeholder="Enter discount code"
-                            value={paymentData.discountCode}
-                            onChange={handleInputChange}
-                            className="transition-smooth focus:ring-primary"
-                          />
-                          <Button
-                            type="button"
-                            onClick={handleDiscountCode}
-                            disabled={isLoading || !paymentData.discountCode.trim()}
-                            variant="outline"
-                          >
-                            {isLoading ? "Checking..." : "Apply"}
-                          </Button>
+                {/* Discount Code Section - Only show if no discount already applied */}
+                {!discountInfo.applied && (
+                  <div className="pt-4 border-t">
+                    {!showDiscountCode ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowDiscountCode(true)}
+                        className="w-full"
+                      >
+                        <Percent className="mr-2 h-4 w-4" />
+                        Have a discount code?
+                      </Button>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="discountCode">Discount Code</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="discountCode"
+                              name="discountCode"
+                              type="text"
+                              placeholder="Enter discount code"
+                              value={paymentData.discountCode}
+                              onChange={handleInputChange}
+                              className="transition-smooth focus:ring-primary"
+                            />
+                            <Button
+                              type="button"
+                              onClick={handleDiscountCode}
+                              disabled={isLoading || !paymentData.discountCode.trim()}
+                              variant="outline"
+                            >
+                              {isLoading ? "Checking..." : "Apply"}
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                      
-                      {discountApplied && (
-                        <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
-                          ✅ Valid discount code! Discount will be applied at checkout.
-                        </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Show applied discount info */}
+                {discountInfo.applied && (
+                  <div className="pt-4 border-t">
+                    <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
+                      ✅ Discount applied! You saved £{discountInfo.amount.toFixed(2)} GBP
+                      {discountInfo.code !== "Applied from registration" && (
+                        <div className="text-xs text-green-500 mt-1">Code: {discountInfo.code}</div>
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Payment Form - Integrated */}
+                {/* Payment Form */}
                 {paymentData.email && (
                   <div className="pt-4 border-t">
                     <StripePaymentForm 
-                      amount={Math.round(basePrice * 100)} // Always send base price - Stripe applies discount
-                      discountCode={discountApplied ? paymentData.discountCode : ""}
+                      amount={Math.round(discountInfo.finalPrice * 100)} // Amount in pence
+                      discountCode={discountInfo.applied ? discountInfo.code : ""}
                       onSuccess={handlePaymentSuccess}
                     />
                   </div>

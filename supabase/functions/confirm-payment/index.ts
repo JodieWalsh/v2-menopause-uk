@@ -58,38 +58,33 @@ serve(async (req) => {
       const { data: existingSub } = await supabaseService
         .from('user_subscriptions')
         .select('*')
-        .or(`stripe_session_id.eq.${payment_intent_id},user_id.eq.${user.id}`)
+        .eq('user_id', user.id)
         .single();
 
       if (!existingSub) {
-        // Create or update subscription
+        // Create subscription
         const { error: subError } = await supabaseService
           .from("user_subscriptions")
-          .upsert({
+          .insert({
             user_id: user.id,
             subscription_type: "paid",
             status: "active",
             stripe_customer_id: paymentIntent.customer as string,
             stripe_session_id: payment_intent_id, // Store PaymentIntent ID
-            amount_paid: paymentIntent.amount,
+            amount_paid: paymentIntent.amount / 100, // Convert from pence to pounds
             currency: paymentIntent.currency,
             expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
             welcome_email_sent: false,
-          }, {
-            onConflict: 'user_id'
           });
 
         if (subError) {
-          console.error('Error creating/updating subscription:', subError);
+          console.error('Error creating subscription:', subError);
           throw new Error('Failed to create subscription');
         }
 
-        console.log(`Subscription created/updated for user ${user.id}`);
+        console.log(`Subscription created for user ${user.id}`);
 
-        // Only send welcome email for PaymentIntent payments (not checkout sessions)
-        // Checkout sessions are handled by verify-checkout-session function
-        console.log(`Subscription created/updated for user ${user.id} - PaymentIntent flow`);
-        
+        // Send welcome email ONLY after subscription is created
         try {
           const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email', {
             body: {
@@ -102,7 +97,7 @@ serve(async (req) => {
           if (emailError) {
             console.error('Failed to send welcome email:', emailError);
           } else {
-            console.log(`Welcome email sent to ${user.email} - PaymentIntent flow`);
+            console.log(`Welcome email sent to ${user.email}`);
             
             // Mark email as sent
             await supabaseService

@@ -72,20 +72,20 @@ serve(async (req) => {
       const { data: existingSub } = await supabaseService
         .from('user_subscriptions')
         .select('*')
-        .or(`stripe_session_id.eq.${session_id},user_id.eq.${user.id}`)
+        .eq('user_id', user.id)
         .single();
 
       logStep("Checked for existing subscription", { exists: !!existingSub });
 
       if (!existingSub) {
-        // Create or update subscription record
+        // Create subscription record
         const subscriptionData = {
           user_id: user.id,
           subscription_type: "paid",
           status: "active",
           stripe_customer_id: session.customer as string,
           stripe_session_id: session_id,
-          amount_paid: session.amount_total || 0,
+          amount_paid: (session.amount_total || 0) / 100, // Convert from pence to pounds
           currency: session.currency || "gbp",
           expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
           welcome_email_sent: false,
@@ -94,16 +94,16 @@ serve(async (req) => {
 
         const { error: subError } = await supabaseService
           .from("user_subscriptions")
-          .upsert(subscriptionData, { onConflict: 'user_id' });
+          .insert(subscriptionData);
 
         if (subError) {
           logStep("ERROR creating subscription", { error: subError.message });
           throw new Error(`Failed to create subscription: ${subError.message}`);
         }
 
-        logStep("Subscription created/updated", { user_id: user.id });
+        logStep("Subscription created", { user_id: user.id });
 
-        // Send welcome email only if payment is confirmed and email not already sent
+        // Send welcome email ONLY after subscription is created
         try {
           const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email', {
             body: {

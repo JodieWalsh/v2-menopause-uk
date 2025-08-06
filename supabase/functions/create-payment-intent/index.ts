@@ -51,7 +51,7 @@ serve(async (req) => {
           currency: "gbp",
           subscription_type: "free",
           status: "active",
-          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
+          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
           welcome_email_sent: false,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
@@ -92,8 +92,8 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
 
-    // If discount code provided, use Checkout Session for proper redemption tracking
-    if (discountCode) {
+    // If discount code provided, use Checkout Session for proper tracking
+    if (discountCode && discountCode !== "Applied from registration") {
       logStep("Creating Checkout Session with discount code", { discountCode });
       
       // Look up the promotion code
@@ -114,12 +114,8 @@ serve(async (req) => {
       const promotionCode = promotionCodes.data[0];
       logStep("Found valid promotion code", { promotionCodeId: promotionCode.id });
 
-      // Create Checkout Session with promotion code
-      // Always use the base price (19 GBP = 1900 pence) regardless of frontend calculations
-      // Stripe will apply the discount automatically through the promotion code
-      const basePriceInPence = 1900; // £19 base price - always consistent
-      
-      logStep("Creating session with base price", { basePriceInPence, frontendAmount: amount });
+      // For discount codes, always use the base price and let Stripe apply the discount
+      const basePriceInPence = 1900; // £19 base price
       
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
@@ -131,7 +127,7 @@ serve(async (req) => {
                 name: "Menopause Assessment Tool",
                 description: "12 months access with guided assessment and personalized report"
               },
-              unit_amount: basePriceInPence, // Always use base price - Stripe applies discount
+              unit_amount: basePriceInPence,
             },
             quantity: 1,
           },
@@ -160,20 +156,19 @@ serve(async (req) => {
       });
     }
 
-    // No discount code - use PaymentIntent as before
-    logStep("Creating PaymentIntent without discount", { amount });
+    // No discount code - use PaymentIntent for direct payment
+    logStep("Creating PaymentIntent", { amount });
 
-    const paymentIntentParams: any = {
-      amount: amount, // Amount already in pence from frontend
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount, // Amount in pence from frontend
       currency: "gbp",
       customer: customerId,
       metadata: {
         user_id: user.id,
         user_email: user.email,
       },
-    };
+    });
 
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
     logStep("PaymentIntent created", { paymentIntentId: paymentIntent.id, amount });
 
     return new Response(JSON.stringify({

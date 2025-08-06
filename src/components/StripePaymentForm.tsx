@@ -8,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-// Initialize Stripe with your live publishable key
 const stripePromise = loadStripe("pk_live_51RlQthATHqCGypnRfAeJWQpjmMYpyjfqSvaad1SJadYKtWIrBsPyY4h0CFJ3E2K9YO3WSitqNn8jThNxsBqPnKcU00hQc5hKAU");
 
 interface PaymentFormProps {
@@ -21,7 +20,6 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [isLoading, setIsLoading] = useState(false);
-  const [hasConfirmed, setHasConfirmed] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -35,7 +33,6 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
     setIsLoading(true);
 
     try {
-      // Confirm the payment with Stripe
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         redirect: 'if_required',
@@ -48,36 +45,17 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
           description: error.message || "An error occurred during payment",
           variant: "destructive",
         });
-      } else if (paymentIntent && paymentIntent.status === 'succeeded' && !hasConfirmed) {
-        setHasConfirmed(true); // Prevent double confirmation
+      } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log("Payment succeeded:", paymentIntent.id);
         
-        // Only confirm payment on our backend - this will handle subscription creation and welcome email
-        const { data, error: confirmError } = await supabase.functions.invoke('confirm-payment', {
-          body: { payment_intent_id: paymentIntent.id }
+        toast({
+          title: "Payment Successful!",
+          description: "Redirecting to your assessment...",
         });
-
-        if (confirmError) {
-          console.error("Payment confirmation error:", confirmError);
-          setHasConfirmed(false); // Allow retry on error
-          toast({
-            title: "Payment Verification Failed",
-            description: "Payment succeeded but verification failed. Please contact support.",
-            variant: "destructive",
-          });
-        } else if (data?.verified) {
-          console.log("Payment successful - redirecting to welcome page");
-          toast({
-            title: "Payment Successful!",
-            description: "Your subscription has been activated. Redirecting to your assessment...",
-          });
-          
-          // Small delay to let the user see the success message
-          setTimeout(() => {
-            navigate('/welcome');
-            onSuccess();
-          }, 1500);
-        }
+        
+        // Redirect with payment intent ID for verification
+        navigate(`/payment-success?payment_intent=${paymentIntent.id}`);
+        onSuccess();
       }
     } catch (error) {
       console.error("Payment error:", error);
@@ -162,17 +140,30 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
 
       // Handle free access
       if (amount === 0) {
-        toast({
-          title: "Free Access Granted!",
-          description: "You have been granted free access. Redirecting to your assessment...",
+        const { data, error } = await supabase.functions.invoke('create-payment-intent', {
+          body: {
+            amount: 0,
+            email: user.email,
+            discountCode: discountCode || "",
+          },
         });
-        setTimeout(() => {
-          navigate('/welcome');
-          onSuccess();
-        }, 1500);
-        return;
+
+        if (error) throw error;
+
+        if (data?.free_access) {
+          toast({
+            title: "Free Access Granted!",
+            description: "Redirecting to your assessment...",
+          });
+          setTimeout(() => {
+            navigate('/welcome');
+            onSuccess();
+          }, 1500);
+          return;
+        }
       }
 
+      // For paid amounts
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
           amount,
@@ -183,31 +174,19 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
 
       if (error) throw error;
 
-      if (data?.free_access) {
-        toast({
-          title: "Free Access Granted!",
-          description: "You have been granted free access. Redirecting to your assessment...",
-        });
-        setTimeout(() => {
-          navigate('/welcome');
-          onSuccess();
-        }, 1500);
-        return;
-      }
-
-      // If using Checkout Session (discount codes)
+      // If using Checkout Session (for discount codes)
       if (data?.checkout_session && data?.url) {
         toast({
           title: "Redirecting to Payment",
           description: "Opening secure payment window...",
         });
         
-        // Open Stripe checkout in new tab - Stripe will handle redirect back to success page
-        window.open(data.url, '_blank');
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
         return;
       }
 
-      // PaymentIntent flow (no discount)
+      // PaymentIntent flow (no discount or regular payment)
       if (data?.client_secret) {
         setClientSecret(data.client_secret);
       } else {
@@ -287,7 +266,7 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
         <Elements stripe={stripePromise} options={stripeOptions}>
           <PaymentForm 
             clientSecret={clientSecret} 
-            amount={amount} // Amount in pounds, will be converted to pence for display
+            amount={amount}
             onSuccess={onSuccess}
           />
         </Elements>
