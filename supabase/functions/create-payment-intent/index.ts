@@ -7,159 +7,176 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CREATE-PAYMENT-INTENT] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
+
   try {
+    logStep("Function started");
+
     const { amount, email, discountCode } = await req.json();
-    console.log(`Creating PaymentIntent for ${amount} GBP for ${email}`);
+    logStep("Request parsed", { amount, email, discountCode });
 
-    // Create Supabase client using service role for database operations
-    const supabaseService = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
 
-    // Get authenticated user
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
-
-    const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
-    const user = data.user;
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError) throw new Error(`Authentication error: ${userError.message}`);
+    const user = userData.user;
+    if (!user?.email) throw new Error("User not authenticated or email not available");
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
-
-    // Handle free access (amount = 0) or amounts below Stripe's minimum threshold
-    if (amount === 0 || amount < 0.50) {
-      console.log(`Granting free access to user ${user.id} with amount: ${amount}`);
+    // Check for free access (amount < 50 pence or 0)
+    if (amount < 50) {
+      logStep("Free access granted", { amount });
       
-      // Create a free subscription record
-      const { error: subError } = await supabaseService
-        .from('user_subscriptions')
+      const { error: subError } = await supabaseClient
+        .from("user_subscriptions")
         .upsert({
           user_id: user.id,
-          subscription_type: 'free',
-          status: 'active',
           amount_paid: 0,
-          currency: 'gbp',
-          expires_at: null, // Free access doesn't expire
-          stripe_customer_id: null,
-          stripe_session_id: null
-        }, {
-          onConflict: 'user_id'
-        });
+          currency: "gbp",
+          subscription_type: "free",
+          status: "active",
+          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
+          welcome_email_sent: false,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
 
       if (subError) {
-        console.error('Error creating free subscription:', subError);
-        throw new Error('Failed to create free subscription');
+        logStep("ERROR creating free subscription", { error: subError.message });
+        throw new Error(`Failed to create free subscription: ${subError.message}`);
       }
-      
+
+      logStep("Free subscription created successfully");
       return new Response(JSON.stringify({ 
-        client_secret: null,
-        free_access: true
+        free_access: true,
+        message: "Free access granted" 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("stripesecret") || "", {
-      apiVersion: "2023-10-16",
-    });
+    const stripeKey = Deno.env.get("stripesecret");
+    if (!stripeKey) throw new Error("Stripe secret key not configured");
+    logStep("Stripe key verified");
 
-    // Check if customer exists
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+
+    // Get or create Stripe customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+      logStep("Found existing customer", { customerId });
     } else {
-      // Create new customer
-      const customer = await stripe.customers.create({
+      const newCustomer = await stripe.customers.create({ 
         email: user.email,
-        name: `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim(),
-        metadata: {
-          user_id: user.id,
-        }
+        metadata: { user_id: user.id }
       });
-      customerId = customer.id;
+      customerId = newCustomer.id;
+      logStep("Created new customer", { customerId });
     }
 
-    // Handle discount code by finding the Stripe promotion code
-    let promotionCodeId = null;
-    const originalAmountInPence = Math.round(amount * 100);
-    
+    // If discount code provided, use Checkout Session for proper redemption tracking
     if (discountCode) {
-      console.log(`Looking for promotion code: ${discountCode}`);
-      try {
-        // Find the promotion code in Stripe
-        const promotionCodes = await stripe.promotionCodes.list({
-          code: discountCode,
-          active: true,
-          limit: 1
+      logStep("Creating Checkout Session with discount code", { discountCode });
+      
+      // Look up the promotion code
+      const promotionCodes = await stripe.promotionCodes.list({
+        code: discountCode,
+        active: true,
+        limit: 1,
+      });
+
+      if (promotionCodes.data.length === 0) {
+        logStep("Invalid discount code", { discountCode });
+        return new Response(JSON.stringify({ error: "Invalid discount code" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
         });
-        
-        if (promotionCodes.data.length > 0) {
-          promotionCodeId = promotionCodes.data[0].id;
-          console.log(`Found promotion code ID: ${promotionCodeId} for code: ${discountCode}`);
-        } else {
-          console.log(`Promotion code ${discountCode} not found or inactive`);
-        }
-      } catch (promoError) {
-        console.error('Error looking up promotion code:', promoError);
-        // Continue without discount if there's an error
       }
+
+      const promotionCode = promotionCodes.data[0];
+      logStep("Found valid promotion code", { promotionCodeId: promotionCode.id });
+
+      // Create Checkout Session with promotion code
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        line_items: [
+          {
+            price_data: {
+              currency: "gbp",
+              product_data: { name: "Premium Access" },
+              unit_amount: amount * 100, // Convert to pence
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        discounts: [{ promotion_code: promotionCode.id }],
+        success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.headers.get("origin")}/payment`,
+        metadata: {
+          user_id: user.id,
+          original_amount: (amount * 100).toString(),
+          discount_code: discountCode,
+        },
+      });
+
+      logStep("Checkout Session created", { sessionId: session.id, url: session.url });
+
+      return new Response(JSON.stringify({
+        checkout_session: true,
+        session_id: session.id,
+        url: session.url,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
-    
-    // Create PaymentIntent - let Stripe calculate the final amount when promotion code is applied
+
+    // No discount code - use PaymentIntent as before
+    logStep("Creating PaymentIntent without discount", { amount });
+
     const paymentIntentParams: any = {
-      amount: originalAmountInPence, // Always use original amount - Stripe will apply discount
+      amount: amount * 100, // Convert to pence
       currency: "gbp",
       customer: customerId,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-      description: "Menopause Doctors Visit UK - 12 months access",
       metadata: {
         user_id: user.id,
         user_email: user.email,
-        discount_code: discountCode || "",
       },
     };
-    
-    // Apply promotion code if found - this ensures Stripe tracks the redemption properly
-    if (promotionCodeId) {
-      paymentIntentParams.discounts = [{ promotion_code: promotionCodeId }];
-      // Also add to metadata to ensure Stripe tracks the specific promotion code redemption
-      paymentIntentParams.metadata.promotion_code_id = promotionCodeId;
-      paymentIntentParams.metadata.original_discount_code = discountCode;
-      console.log(`Applying promotion code ${promotionCodeId} to PaymentIntent - Stripe will calculate final amount and track redemption`);
-    }
-    
+
     const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+    logStep("PaymentIntent created", { paymentIntentId: paymentIntent.id, amount });
 
-    console.log(`PaymentIntent created: ${paymentIntent.id} with final amount: ${paymentIntent.amount} pence`);
-
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       client_secret: paymentIntent.client_secret,
-      amount: paymentIntent.amount / 100, // Return the final amount from Stripe (after discount)
-      currency: "gbp"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
+
   } catch (error) {
-    console.error("Payment Intent creation error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logStep("ERROR in create-payment-intent", { message: errorMessage });
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

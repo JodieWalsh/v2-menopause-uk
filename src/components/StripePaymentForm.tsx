@@ -195,6 +195,45 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
         return;
       }
 
+      // If using Checkout Session (discount codes)
+      if (data?.checkout_session && data?.url) {
+        toast({
+          title: "Redirecting to Payment",
+          description: "Opening secure payment window...",
+        });
+        
+        // Open Stripe checkout in new tab and handle completion
+        window.open(data.url, '_blank');
+        
+        // Start polling for session completion
+        const pollInterval = setInterval(async () => {
+          try {
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-checkout-session', {
+              body: { session_id: data.session_id },
+            });
+
+            if (verifyData?.success) {
+              clearInterval(pollInterval);
+              toast({
+                title: "Payment Successful!",
+                description: "Your subscription has been activated. Redirecting...",
+              });
+              setTimeout(() => {
+                navigate('/welcome');
+                onSuccess();
+              }, 1500);
+            }
+          } catch (err) {
+            console.error("Error verifying session:", err);
+          }
+        }, 3000);
+
+        // Stop polling after 5 minutes
+        setTimeout(() => clearInterval(pollInterval), 300000);
+        return;
+      }
+
+      // PaymentIntent flow (no discount)
       if (data?.client_secret) {
         setClientSecret(data.client_secret);
       } else {

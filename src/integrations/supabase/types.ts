@@ -90,6 +90,7 @@ export type Database = {
           subscription_type: string
           updated_at: string
           user_id: string
+          welcome_email_sent: boolean
         }
         Insert: {
           amount_paid?: number | null
@@ -103,6 +104,7 @@ export type Database = {
           subscription_type?: string
           updated_at?: string
           user_id: string
+          welcome_email_sent?: boolean
         }
         Update: {
           amount_paid?: number | null
@@ -116,6 +118,7 @@ export type Database = {
           subscription_type?: string
           updated_at?: string
           user_id?: string
+          welcome_email_sent?: boolean
         }
         Relationships: []
       }

@@ -74,6 +74,7 @@ serve(async (req) => {
             amount_paid: paymentIntent.amount,
             currency: paymentIntent.currency,
             expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+            welcome_email_sent: false,
           }, {
             onConflict: 'user_id'
           });
@@ -85,22 +86,38 @@ serve(async (req) => {
 
         console.log(`Subscription created/updated for user ${user.id}`);
 
-        // Send welcome email after successful payment
-        try {
-          await supabaseService.functions.invoke('send-welcome-email', {
-            body: {
-              email: user.email,
-              firstName: user.user_metadata?.first_name,
-              isPaid: true
-            }
-          });
-          console.log(`Welcome email sent to ${user.email}`);
-        } catch (emailError) {
-          console.error('Failed to send welcome email:', emailError);
-          // Don't fail the payment confirmation if email fails
+        // Send welcome email only if not already sent
+        const { data: subscription } = await supabaseService
+          .from('user_subscriptions')
+          .select('welcome_email_sent')
+          .eq('user_id', user.id)
+          .single();
+
+        if (subscription && !subscription.welcome_email_sent) {
+          try {
+            await supabaseService.functions.invoke('send-welcome-email', {
+              body: {
+                email: user.email,
+                firstName: user.user_metadata?.first_name,
+                isPaid: true
+              }
+            });
+            console.log(`Welcome email sent to ${user.email}`);
+            
+            // Mark email as sent
+            await supabaseService
+              .from("user_subscriptions")
+              .update({ welcome_email_sent: true })
+              .eq('user_id', user.id);
+          } catch (emailError) {
+            console.error('Failed to send welcome email:', emailError);
+            // Don't fail the payment confirmation if email fails
+          }
+        } else {
+          console.log(`Welcome email already sent for user ${user.id}, skipping`);
         }
       } else {
-        console.log(`Subscription already exists for user ${user.id}, skipping welcome email to prevent duplicates`);
+        console.log(`Subscription already exists for user ${user.id}, skipping duplicate`);
       }
 
       return new Response(JSON.stringify({ 
