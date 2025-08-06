@@ -96,7 +96,7 @@ serve(async (req) => {
 
     // Handle discount code by finding the Stripe promotion code
     let promotionCodeId = null;
-    let finalAmountInPence = Math.round(amount * 100);
+    const originalAmountInPence = Math.round(amount * 100);
     
     if (discountCode) {
       console.log(`Looking for promotion code: ${discountCode}`);
@@ -110,16 +110,7 @@ serve(async (req) => {
         
         if (promotionCodes.data.length > 0) {
           promotionCodeId = promotionCodes.data[0].id;
-          console.log(`Found promotion code ID: ${promotionCodeId}`);
-          
-          // Calculate the discounted amount for display purposes
-          const coupon = promotionCodes.data[0].coupon;
-          if (coupon.percent_off) {
-            finalAmountInPence = Math.round(amount * (100 - coupon.percent_off) / 100 * 100);
-          } else if (coupon.amount_off) {
-            finalAmountInPence = Math.max(0, Math.round(amount * 100) - coupon.amount_off);
-          }
-          console.log(`Discounted amount: ${finalAmountInPence} pence`);
+          console.log(`Found promotion code ID: ${promotionCodeId} for code: ${discountCode}`);
         } else {
           console.log(`Promotion code ${discountCode} not found or inactive`);
         }
@@ -129,9 +120,9 @@ serve(async (req) => {
       }
     }
     
-    // Create PaymentIntent with promotion code if available
+    // Create PaymentIntent - let Stripe calculate the final amount when promotion code is applied
     const paymentIntentParams: any = {
-      amount: finalAmountInPence,
+      amount: originalAmountInPence, // Always use original amount - Stripe will apply discount
       currency: "gbp",
       customer: customerId,
       automatic_payment_methods: {
@@ -145,19 +136,19 @@ serve(async (req) => {
       },
     };
     
-    // Apply promotion code if found - this ensures Stripe tracks the redemption
+    // Apply promotion code if found - this ensures Stripe tracks the redemption properly
     if (promotionCodeId) {
       paymentIntentParams.discounts = [{ promotion_code: promotionCodeId }];
-      console.log(`Applying promotion code ${promotionCodeId} to PaymentIntent`);
+      console.log(`Applying promotion code ${promotionCodeId} to PaymentIntent - Stripe will calculate final amount and track redemption`);
     }
     
     const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
-    console.log(`PaymentIntent created: ${paymentIntent.id}`);
+    console.log(`PaymentIntent created: ${paymentIntent.id} with final amount: ${paymentIntent.amount} pence`);
 
     return new Response(JSON.stringify({ 
       client_secret: paymentIntent.client_secret,
-      amount: finalAmountInPence,
+      amount: paymentIntent.amount / 100, // Return the final amount from Stripe (after discount)
       currency: "gbp"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

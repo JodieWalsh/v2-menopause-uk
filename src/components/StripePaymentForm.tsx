@@ -50,7 +50,7 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log("Payment succeeded:", paymentIntent.id);
         
-        // Confirm payment on our backend
+        // Only confirm payment on our backend - this will handle subscription creation and welcome email
         const { data, error: confirmError } = await supabase.functions.invoke('confirm-payment', {
           body: { payment_intent_id: paymentIntent.id }
         });
@@ -63,6 +63,7 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
             variant: "destructive",
           });
         } else if (data?.verified) {
+          console.log("Payment successful - redirecting to welcome page");
           toast({
             title: "Payment Successful!",
             description: "Your subscription has been activated. Redirecting to your assessment...",
