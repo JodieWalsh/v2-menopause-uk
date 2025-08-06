@@ -16,6 +16,7 @@ const PaymentSuccess = () => {
   useEffect(() => {
     const verifyPayment = async () => {
       const sessionId = searchParams.get('session_id');
+      const paymentIntentId = searchParams.get('payment_intent');
       const freeAccess = searchParams.get('free_access');
       
       // Handle free access case
@@ -35,9 +36,10 @@ const PaymentSuccess = () => {
         return;
       }
       
+      // Handle Stripe Checkout Session (used with discount codes)
       if (sessionId) {
         try {
-          const { data, error } = await supabase.functions.invoke('verify-payment', {
+          const { data, error } = await supabase.functions.invoke('verify-checkout-session', {
             body: { session_id: sessionId }
           });
 
@@ -62,7 +64,43 @@ const PaymentSuccess = () => {
             });
           }
         } catch (error) {
-          console.error('Payment verification error:', error);
+          console.error('Checkout session verification error:', error);
+          toast({
+            title: "Verification Error",
+            description: "Unable to verify payment. Please contact support.",
+            variant: "destructive",
+          });
+        }
+      }
+      // Handle Payment Intent (direct payment without discount)
+      else if (paymentIntentId) {
+        try {
+          const { data, error } = await supabase.functions.invoke('confirm-payment', {
+            body: { payment_intent_id: paymentIntentId }
+          });
+
+          if (error) throw error;
+
+          if (data?.verified) {
+            setVerified(true);
+            toast({
+              title: "Payment Verified!",
+              description: "Redirecting to your assessment...",
+            });
+            
+            // Auto-redirect to welcome page after 2 seconds
+            setTimeout(() => {
+              navigate('/welcome');
+            }, 2000);
+          } else {
+            toast({
+              title: "Payment Verification Failed",
+              description: "Please contact support if payment was completed.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Payment intent verification error:', error);
           toast({
             title: "Verification Error",
             description: "Unable to verify payment. Please contact support.",
