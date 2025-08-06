@@ -76,20 +76,8 @@ serve(async (req) => {
           onConflict: 'user_id'
         });
 
-        // Send welcome email only for new subscriptions
-        try {
-          await supabaseService.functions.invoke('send-welcome-email', {
-            body: {
-              email: user.email,
-              firstName: user.user_metadata?.first_name,
-              isPaid: true
-            }
-          });
-          console.log(`Welcome email sent to ${user.email}`);
-        } catch (emailError) {
-          console.error('Failed to send welcome email:', emailError);
-          // Don't fail the payment verification if email fails
-        }
+        // Welcome email will be sent by confirm-payment function to avoid duplicates
+        console.log(`Subscription created/updated for user ${user.id}, welcome email will be sent by confirm-payment`);
       } else {
         console.log(`Subscription already exists for user ${user.id}, skipping welcome email`);
       }

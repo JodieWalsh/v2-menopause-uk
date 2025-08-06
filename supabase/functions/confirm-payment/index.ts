@@ -100,7 +100,7 @@ serve(async (req) => {
           // Don't fail the payment confirmation if email fails
         }
       } else {
-        console.log(`Subscription already exists for user ${user.id}`);
+        console.log(`Subscription already exists for user ${user.id}, skipping welcome email to prevent duplicates`);
       }
 
       return new Response(JSON.stringify({ 
