@@ -156,7 +156,7 @@ serve(async (req) => {
 
           logStep("Subscription created via webhook", { userId: user.id });
 
-          // Send welcome email using centralized function
+          // Webhook is BACKUP path - only send email if not already sent
           try {
             const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
               body: {
@@ -168,15 +168,15 @@ serve(async (req) => {
             });
 
             if (emailError) {
-              logStep("ERROR sending welcome email via webhook", { error: emailError });
+              logStep("ERROR sending backup welcome email via webhook", { error: emailError });
             } else {
-              logStep("Welcome email processed via webhook", { 
+              logStep("Backup welcome email processed via webhook", { 
                 email: user.email, 
                 skipped: emailData?.skipped 
               });
             }
           } catch (emailError) {
-            logStep("ERROR in welcome email process via webhook", { error: emailError });
+            logStep("ERROR in backup welcome email process via webhook", { error: emailError });
           }
         } else {
           logStep("Subscription already exists via webhook", { userId: user.id });

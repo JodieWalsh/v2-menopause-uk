@@ -156,7 +156,7 @@ serve(async (req) => {
         });
       }
 
-      // For discount codes, always use the base price and let Stripe apply the discount
+      // Use base price and let Stripe handle discount automatically
       const basePriceInPence = 1900; // £19 base price
       
       const session = await stripe.checkout.sessions.create({
@@ -175,17 +175,20 @@ serve(async (req) => {
           },
         ],
         mode: "payment",
+        // Stripe automatically applies and tracks the promotion code
         discounts: [{ promotion_code: promotionCode.id }],
         success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${req.headers.get("origin")}/payment`,
+        // Minimal metadata - Stripe handles coupon tracking automatically
         metadata: {
           user_id: user.id,
-          original_amount: basePriceInPence.toString(),
-          discount_code: discountCode,
-          promotion_code_id: promotionCode.id,
-          coupon_id: promotionCode.coupon.id,
-          coupon_tracking: 'enabled'
+          discount_applied: discountCode
         },
+        // Enable automatic tax and invoice generation for better tracking
+        automatic_tax: { enabled: false },
+        customer_update: {
+          shipping: 'auto'
+        }
       });
 
       logStep("Checkout Session created", { sessionId: session.id, url: session.url });

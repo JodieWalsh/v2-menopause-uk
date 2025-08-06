@@ -103,7 +103,7 @@ serve(async (req) => {
 
         logStep("Subscription created", { user_id: user.id });
 
-        // Send welcome email using centralized idempotent function
+        // Send welcome email - this is the PRIMARY path for checkout sessions
         try {
           const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
             body: {
@@ -117,7 +117,7 @@ serve(async (req) => {
           if (emailError) {
             logStep("ERROR sending welcome email", { error: emailError });
           } else {
-            logStep("Welcome email processed successfully", { 
+            logStep("Welcome email sent successfully", { 
               email: user.email, 
               skipped: emailData?.skipped 
             });

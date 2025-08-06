@@ -84,26 +84,9 @@ serve(async (req) => {
 
         console.log(`Subscription created for user ${user.id}`);
 
-        // Send welcome email using centralized idempotent function
-        try {
-          const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-            body: {
-              user_id: user.id,
-              email: user.email,
-              firstName: user.user_metadata?.first_name,
-              isPaid: true
-            }
-          });
-
-          if (emailError) {
-            console.error('Failed to send welcome email:', emailError);
-          } else {
-            console.log(`Welcome email processed for ${user.email}`, { skipped: emailData?.skipped });
-          }
-        } catch (emailError) {
-          console.error('Failed to send welcome email:', emailError);
-          // Don't fail the payment confirmation if email fails
-        }
+        // Email will be sent by webhook or verify-checkout-session
+        // Only update the flag here to indicate subscription is ready for email
+        console.log(`Subscription created for user ${user.id} - email will be handled by primary flow`);
       } else {
         console.log(`Subscription already exists for user ${user.id}, skipping duplicate`);
       }
