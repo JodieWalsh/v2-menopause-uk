@@ -134,7 +134,27 @@ serve(async (req) => {
       }
 
       const promotionCode = promotionCodes.data[0];
-      logStep("Found valid promotion code", { promotionCodeId: promotionCode.id });
+      logStep("Found valid promotion code", { 
+        promotionCodeId: promotionCode.id,
+        couponId: promotionCode.coupon.id,
+        couponValid: promotionCode.coupon.valid,
+        maxRedemptions: promotionCode.coupon.max_redemptions,
+        timesRedeemed: promotionCode.coupon.times_redeemed,
+        redemptionLimit: promotionCode.max_redemptions,
+        isActive: promotionCode.active
+      });
+
+      // Check redemption limits
+      if (promotionCode.coupon.max_redemptions && promotionCode.coupon.times_redeemed >= promotionCode.coupon.max_redemptions) {
+        logStep("Coupon redemption limit exceeded", { 
+          maxRedemptions: promotionCode.coupon.max_redemptions,
+          timesRedeemed: promotionCode.coupon.times_redeemed 
+        });
+        return new Response(JSON.stringify({ error: "Discount code has reached its usage limit" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
 
       // For discount codes, always use the base price and let Stripe apply the discount
       const basePriceInPence = 1900; // £19 base price
@@ -163,6 +183,8 @@ serve(async (req) => {
           original_amount: basePriceInPence.toString(),
           discount_code: discountCode,
           promotion_code_id: promotionCode.id,
+          coupon_id: promotionCode.coupon.id,
+          coupon_tracking: 'enabled'
         },
       });
 
