@@ -48,10 +48,10 @@ const handler = async (req: Request): Promise<Response> => {
               We're excited to support you on your personalized menopause wellness journey.
             </p>
             
-            <div style="background: linear-gradient(135deg, #9ec0b7 0%, #7ba49e 100%); padding: 25px; border-radius: 8px; margin: 25px 0;">
-              <h2 style="color: white; margin-top: 0; margin-bottom: 15px; font-size: 22px;">What's Next?</h2>
-              <ul style="line-height: 1.8; color: white; margin: 0; padding-left: 20px;">
-                <li>Complete your comprehensive menopause assessment</li>
+            <div style="background: linear-gradient(135deg, #9ec0b7 0%, #7ba49e 100%); padding: 20px 15px; border-radius: 8px; margin: 20px 0; width: 100%; box-sizing: border-box;">
+              <h2 style="color: white; margin-top: 0; margin-bottom: 15px; font-size: 20px; line-height: 1.4;">What's Next?</h2>
+              <ul style="line-height: 1.6; color: white; margin: 0; padding-left: 20px; font-size: 15px;">
+                <li style="margin-bottom: 8px;">Complete your comprehensive menopause assessment</li>
                 <li>Receive your personalised "doctor ready" document to bring to your appointment</li>
               </ul>
             </div>
