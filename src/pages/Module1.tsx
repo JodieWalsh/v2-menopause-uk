@@ -173,9 +173,9 @@ export default function Module1() {
       question: "Have you been suffering from any new muscle pains which are not the result of an injury or easily explained?",
       options: [
         "No, I have not been suffering from any new muscle pains",
-        "I have been experiencing some new mild joint pains",
-        "I have been experiencing some new joint pains which are having a moderate impact on my life",
-        "I have been experiencing some joint pains which are having a severe impact on my life"
+        "I have been experiencing some new mild muscle pains",
+        "I have been experiencing some new muscle pains which are having a moderate impact on my life",
+        "I have been experiencing some muscle pains which are having a severe impact on my life"
       ]
     },
     {
