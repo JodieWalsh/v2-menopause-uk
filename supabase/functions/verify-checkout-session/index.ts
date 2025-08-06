@@ -72,7 +72,7 @@ serve(async (req) => {
       const { data: existingSub } = await supabaseService
         .from('user_subscriptions')
         .select('*')
-        .eq('stripe_session_id', session_id)
+        .or(`stripe_session_id.eq.${session_id},user_id.eq.${user.id}`)
         .single();
 
       logStep("Checked for existing subscription", { exists: !!existingSub });

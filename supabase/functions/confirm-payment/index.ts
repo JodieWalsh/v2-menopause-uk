@@ -58,7 +58,7 @@ serve(async (req) => {
       const { data: existingSub } = await supabaseService
         .from('user_subscriptions')
         .select('*')
-        .eq('stripe_session_id', payment_intent_id)
+        .or(`stripe_session_id.eq.${payment_intent_id},user_id.eq.${user.id}`)
         .single();
 
       if (!existingSub) {

@@ -45,7 +45,7 @@ const PaymentSuccess = () => {
 
           if (error) throw error;
 
-          if (data?.verified) {
+          if (data?.success) {
             setVerified(true);
             toast({
               title: "Payment Verified!",
@@ -81,7 +81,7 @@ const PaymentSuccess = () => {
 
           if (error) throw error;
 
-          if (data?.verified) {
+          if (data?.success) {
             setVerified(true);
             toast({
               title: "Payment Verified!",
