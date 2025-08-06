@@ -233,20 +233,20 @@ const Payment = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Menopause Assessment Tool</span>
-                    <span className="font-medium">£{basePrice} GBP</span>
+                    <span className="font-medium">£{basePrice.toFixed(2)} GBP</span>
                   </div>
                   
                   {discountApplied && (
                     <div className="flex justify-between items-center text-green-600">
                       <span>Discount Applied</span>
-                      <span>-£{discountAmount} GBP</span>
+                      <span>-£{discountAmount.toFixed(2)} GBP</span>
                     </div>
                   )}
                   
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center text-lg font-semibold">
                       <span>Total</span>
-                      <span>£{finalPrice} GBP</span>
+                      <span>£{finalPrice.toFixed(2)} GBP</span>
                     </div>
                   </div>
                 </div>
@@ -372,7 +372,7 @@ const Payment = () => {
                     ) : finalPrice === 0 ? (
                       "Start Free Assessment"
                     ) : (
-                      `Continue to Payment - £${finalPrice} GBP`
+                      `Continue to Payment - £${finalPrice.toFixed(2)} GBP`
                     )}
                   </Button>
                 </CardContent>
