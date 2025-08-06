@@ -84,10 +84,11 @@ serve(async (req) => {
 
         console.log(`Subscription created for user ${user.id}`);
 
-        // Send welcome email ONLY after subscription is created
+        // Send welcome email using centralized idempotent function
         try {
-          const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email', {
+          const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
             body: {
+              user_id: user.id,
               email: user.email,
               firstName: user.user_metadata?.first_name,
               isPaid: true
@@ -97,13 +98,7 @@ serve(async (req) => {
           if (emailError) {
             console.error('Failed to send welcome email:', emailError);
           } else {
-            console.log(`Welcome email sent to ${user.email}`);
-            
-            // Mark email as sent
-            await supabaseService
-              .from("user_subscriptions")
-              .update({ welcome_email_sent: true })
-              .eq('user_id', user.id);
+            console.log(`Welcome email processed for ${user.email}`, { skipped: emailData?.skipped });
           }
         } catch (emailError) {
           console.error('Failed to send welcome email:', emailError);

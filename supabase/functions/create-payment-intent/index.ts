@@ -63,26 +63,24 @@ serve(async (req) => {
         throw new Error(`Failed to create free subscription: ${subError.message}`);
       }
 
-      // Send welcome email for free access
+      // Send welcome email for free access using centralized function
       try {
-        const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-welcome-email', {
+        const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-welcome-email-idempotent', {
           body: {
+            user_id: user.id,
             email: user.email,
             firstName: user.user_metadata?.first_name,
             isPaid: false
           }
         });
 
-        if (!emailError) {
-          // Mark email as sent
-          await supabaseClient
-            .from("user_subscriptions")
-            .update({ welcome_email_sent: true })
-            .eq('user_id', user.id);
-          logStep("Welcome email sent for free access");
+        if (emailError) {
+          logStep("ERROR sending welcome email for free access", { error: emailError });
+        } else {
+          logStep("Welcome email sent for free access", { skipped: emailData?.skipped });
         }
       } catch (emailError) {
-        logStep("ERROR sending welcome email for free access", { error: emailError });
+        logStep("ERROR in welcome email process for free access", { error: emailError });
       }
 
       logStep("Free subscription created successfully");
