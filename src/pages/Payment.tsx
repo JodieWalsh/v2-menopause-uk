@@ -23,7 +23,7 @@ const Payment = () => {
   const [discountApplied, setDiscountApplied] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  // Removed showPaymentForm state since we're integrating the form directly
   const basePrice = 19;
   const finalPrice = Math.round((discountApplied ? basePrice - discountAmount : basePrice) * 100) / 100;
 
@@ -137,24 +137,7 @@ const Payment = () => {
   };
 
 
-  const handleProceedToPayment = () => {
-    if (!paymentData.email) {
-      toast({
-        title: "Email Required",
-        description: "Please enter your email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // If final price is 0, create free subscription and redirect
-    if (finalPrice === 0) {
-      handleFreeAccess();
-      return;
-    }
-
-    setShowPaymentForm(true);
-  };
+  // Remove the intermediate screen logic since we're integrating payment form directly
 
   const handleFreeAccess = async () => {
     try {
@@ -287,103 +270,101 @@ const Payment = () => {
 
           {/* Payment Form */}
           <div className="order-1 lg:order-2">
-            {!showPaymentForm ? (
-              <Card className="card-gradient">
-                <CardHeader>
-                  <CardTitle className="font-serif flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Payment Details
-                  </CardTitle>
-                  <CardDescription>
-                    Enter your email address to continue
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Email Address */}
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={paymentData.email}
-                      onChange={handleInputChange}
-                      required
-                      className="transition-smooth focus:ring-primary"
-                    />
-                  </div>
-                  
-                  {/* Discount Code Section */}
+            <Card className="card-gradient">
+              <CardHeader>
+                <CardTitle className="font-serif flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Payment Details
+                </CardTitle>
+                <CardDescription>
+                  Complete your purchase securely
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Email Address */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={paymentData.email}
+                    onChange={handleInputChange}
+                    required
+                    className="transition-smooth focus:ring-primary"
+                  />
+                </div>
+                
+                {/* Discount Code Section */}
+                <div className="pt-4 border-t">
+                  {!showDiscountCode ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowDiscountCode(true)}
+                      className="w-full"
+                    >
+                      <Percent className="mr-2 h-4 w-4" />
+                      Have a discount code?
+                    </Button>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="discountCode">Discount Code</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="discountCode"
+                            name="discountCode"
+                            type="text"
+                            placeholder="Enter discount code"
+                            value={paymentData.discountCode}
+                            onChange={handleInputChange}
+                            className="transition-smooth focus:ring-primary"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleDiscountCode}
+                            disabled={isLoading || !paymentData.discountCode.trim()}
+                            variant="outline"
+                          >
+                            {isLoading ? "Checking..." : "Apply"}
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {discountApplied && (
+                        <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
+                          ✅ Discount applied! You saved £{discountAmount.toFixed(2)} GBP
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment Form - Integrated */}
+                {paymentData.email && (
                   <div className="pt-4 border-t">
-                    {!showDiscountCode ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowDiscountCode(true)}
-                        className="w-full"
+                    {finalPrice === 0 ? (
+                      <Button 
+                        onClick={handleFreeAccess}
+                        className="w-full" 
+                        size="lg" 
+                        disabled={isLoading}
                       >
-                        <Percent className="mr-2 h-4 w-4" />
-                        Have a discount code?
+                        {isLoading ? "Processing..." : "Start Free Assessment"}
                       </Button>
                     ) : (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="discountCode">Discount Code</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              id="discountCode"
-                              name="discountCode"
-                              type="text"
-                              placeholder="Enter discount code"
-                              value={paymentData.discountCode}
-                              onChange={handleInputChange}
-                              className="transition-smooth focus:ring-primary"
-                            />
-                            <Button
-                              type="button"
-                              onClick={handleDiscountCode}
-                              disabled={isLoading || !paymentData.discountCode.trim()}
-                              variant="outline"
-                            >
-                              {isLoading ? "Checking..." : "Apply"}
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        {discountApplied && (
-                          <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
-                            ✅ Discount applied! You saved £{discountAmount} GBP
-                          </div>
-                        )}
-                      </div>
+                      <StripePaymentForm 
+                        amount={Math.round(finalPrice * 100)} // Send amount in pence
+                        discountCode={paymentData.discountCode}
+                        onSuccess={handlePaymentSuccess}
+                      />
                     )}
                   </div>
-
-                  {/* Proceed Button */}
-                  <Button 
-                    onClick={handleProceedToPayment}
-                    className="w-full" 
-                    size="lg" 
-                    disabled={isLoading || !paymentData.email}
-                  >
-                    {isLoading ? (
-                      "Processing..."
-                    ) : finalPrice === 0 ? (
-                      "Start Free Assessment"
-                    ) : (
-                      `Continue to Payment - £${finalPrice.toFixed(2)} GBP`
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <StripePaymentForm 
-                amount={Math.round(finalPrice * 100)} // Send amount in pence
-                discountCode={paymentData.discountCode}
-                onSuccess={handlePaymentSuccess}
-              />
-            )}
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

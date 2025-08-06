@@ -117,7 +117,7 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
           ) : (
             <>
               <CreditCard className="mr-2 h-4 w-4" />
-              Pay £{amount.toFixed(2)} GBP
+              Pay £{(amount / 100).toFixed(2)} GBP
             </>
           )}
         </Button>
