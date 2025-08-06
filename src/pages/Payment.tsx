@@ -379,7 +379,7 @@ const Payment = () => {
               </Card>
             ) : (
               <StripePaymentForm 
-                amount={finalPrice}
+                amount={finalPrice} // Send amount in pounds, backend converts to pence
                 discountCode={paymentData.discountCode}
                 onSuccess={handlePaymentSuccess}
               />

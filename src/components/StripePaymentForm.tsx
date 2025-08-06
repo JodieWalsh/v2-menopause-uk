@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
-// Initialize Stripe - you'll need to add your publishable key here
+// Initialize Stripe - using test publishable key
 const stripePromise = loadStripe("pk_test_51QXdOJJ0gKUqO3raBRLRZb5eQjQcnobvhDnBt1QUjRAZPnX7Ij45YZ8cjHCOEWdQyRBrsZUjRJwQNNh50DQYp2Ni007aCJcV3K");
 
 interface PaymentFormProps {
@@ -113,7 +113,7 @@ function PaymentForm({ clientSecret, amount, onSuccess }: PaymentFormProps) {
           ) : (
             <>
               <CreditCard className="mr-2 h-4 w-4" />
-              Pay £{(amount / 100).toFixed(2)} GBP
+              Pay £{amount.toFixed(2)} GBP
             </>
           )}
         </Button>
@@ -270,7 +270,7 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
         <Elements stripe={stripePromise} options={stripeOptions}>
           <PaymentForm 
             clientSecret={clientSecret} 
-            amount={amount * 100} // Convert to pence
+            amount={amount} // Amount in pounds, will be converted to pence for display
             onSuccess={onSuccess}
           />
         </Elements>
