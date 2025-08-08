@@ -12,6 +12,10 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CREATE-PAYMENT-INTENT] ${step}${detailsStr}`);
 };
 
+// Your actual Stripe Product and Price IDs
+const STRIPE_PRODUCT_ID = "prod_SnDJCDMZWdUQGl";
+const STRIPE_PRICE_ID = "price_1RrcsPATHqCGypnRMPr4nbKE";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -19,15 +23,15 @@ serve(async (req) => {
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     { auth: { persistSession: false } }
   );
 
   try {
     logStep("Function started");
 
-    const { amount, email, discountCode } = await req.json();
-    logStep("Request parsed", { amount, email, discountCode });
+    const { discountCode } = await req.json();
+    logStep("Request parsed", { discountCode });
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -38,60 +42,6 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
-
-    // Check for free access (amount is 0 or less than 1 pence)
-    if (amount <= 0) {
-      logStep("Free access granted", { amount });
-      
-      // For truly free access (100% discount), create subscription immediately
-      // This only happens when discount codes make the total 0
-      const { error: subError } = await supabaseClient
-        .from("user_subscriptions")
-        .upsert({
-          user_id: user.id,
-          amount_paid: 0,
-          currency: "gbp",
-          subscription_type: "free",
-          status: "active",
-          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-          welcome_email_sent: false,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-
-      if (subError) {
-        logStep("ERROR creating free subscription", { error: subError.message });
-        throw new Error(`Failed to create free subscription: ${subError.message}`);
-      }
-
-      // Send welcome email for free access using centralized function
-      try {
-        const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-welcome-email-idempotent', {
-          body: {
-            user_id: user.id,
-            email: user.email,
-            firstName: user.user_metadata?.first_name,
-            isPaid: false
-          }
-        });
-
-        if (emailError) {
-          logStep("ERROR sending welcome email for free access", { error: emailError });
-        } else {
-          logStep("Welcome email sent for free access", { skipped: emailData?.skipped });
-        }
-      } catch (emailError) {
-        logStep("ERROR in welcome email process for free access", { error: emailError });
-      }
-
-      logStep("Free subscription created successfully");
-      return new Response(JSON.stringify({ 
-        free_access: true,
-        message: "Free access granted" 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
 
     const stripeKey = Deno.env.get("stripesecret");
     if (!stripeKey) throw new Error("Stripe secret key not configured");
@@ -114,11 +64,11 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
 
-    // If discount code provided, use Checkout Session for proper tracking
+    // Look up promotion code if provided
+    let promotionCodeId = null;
     if (discountCode && discountCode.trim() !== "" && discountCode !== "Applied from registration") {
-      logStep("Creating Checkout Session with discount code", { discountCode });
+      logStep("Looking up promotion code", { discountCode });
       
-      // Look up the promotion code
       const promotionCodes = await stripe.promotionCodes.list({
         code: discountCode,
         active: true,
@@ -134,14 +84,13 @@ serve(async (req) => {
       }
 
       const promotionCode = promotionCodes.data[0];
+      promotionCodeId = promotionCode.id;
       logStep("Found valid promotion code", { 
         promotionCodeId: promotionCode.id,
         couponId: promotionCode.coupon.id,
         couponValid: promotionCode.coupon.valid,
         maxRedemptions: promotionCode.coupon.max_redemptions,
-        timesRedeemed: promotionCode.coupon.times_redeemed,
-        redemptionLimit: promotionCode.max_redemptions,
-        isActive: promotionCode.active
+        timesRedeemed: promotionCode.coupon.times_redeemed
       });
 
       // Check redemption limits
@@ -155,71 +104,58 @@ serve(async (req) => {
           status: 400,
         });
       }
-
-      // Use base price and let Stripe handle discount automatically
-      const basePriceInPence = 1900; // £19 base price
-      
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        line_items: [
-          {
-            price_data: {
-              currency: "gbp",
-              product_data: { 
-                name: "Menopause Assessment Tool",
-                description: "12 months access with guided assessment and personalized report"
-              },
-              unit_amount: basePriceInPence,
-            },
-            quantity: 1,
-          },
-        ],
-        mode: "payment",
-        // Stripe automatically applies and tracks the promotion code
-        discounts: [{ promotion_code: promotionCode.id }],
-        success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${req.headers.get("origin")}/payment`,
-        // Minimal metadata - Stripe handles coupon tracking automatically
-        metadata: {
-          user_id: user.id,
-          discount_applied: discountCode
-        },
-        // Enable automatic tax and invoice generation for better tracking
-        automatic_tax: { enabled: false },
-        customer_update: {
-          shipping: 'auto'
-        }
-      });
-
-      logStep("Checkout Session created", { sessionId: session.id, url: session.url });
-
-      return new Response(JSON.stringify({
-        checkout_session: true,
-        session_id: session.id,
-        url: session.url,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
     }
 
-    // No discount code - use PaymentIntent for direct payment
-    logStep("Creating PaymentIntent", { amount });
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount, // Amount in pence from frontend
-      currency: "gbp",
+    // Create Checkout Session using actual Stripe Product/Price IDs
+    logStep("Creating Checkout Session with Product ID", { productId: STRIPE_PRODUCT_ID, priceId: STRIPE_PRICE_ID, promotionCodeId });
+    
+    const sessionConfig: any = {
       customer: customerId,
+      line_items: [
+        {
+          price: STRIPE_PRICE_ID, // Use actual Price ID from Stripe
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get("origin")}/payment`,
       metadata: {
         user_id: user.id,
-        user_email: user.email,
+        product_id: STRIPE_PRODUCT_ID,
+        price_id: STRIPE_PRICE_ID,
+        discount_code_applied: discountCode || "none"
       },
+      payment_intent_data: {
+        metadata: {
+          user_id: user.id,
+          product_id: STRIPE_PRODUCT_ID
+        }
+      },
+      // Enable if_required for 100% discount codes (no payment method needed for £0.00)
+      payment_method_collection: "if_required"
+    };
+
+    // Apply promotion code if valid
+    if (promotionCodeId) {
+      sessionConfig.discounts = [{ promotion_code: promotionCodeId }];
+      logStep("Applied promotion code to session", { promotionCodeId });
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    logStep("Checkout Session created", { 
+      sessionId: session.id, 
+      url: session.url,
+      amountTotal: session.amount_total,
+      currency: session.currency,
+      paymentStatus: session.payment_status
     });
 
-    logStep("PaymentIntent created", { paymentIntentId: paymentIntent.id, amount });
-
     return new Response(JSON.stringify({
-      client_secret: paymentIntent.client_secret,
+      checkout_session: true,
+      session_id: session.id,
+      url: session.url,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

@@ -21,13 +21,9 @@ const Payment = () => {
   const [showDiscountCode, setShowDiscountCode] = useState(false);
   const [discountInfo, setDiscountInfo] = useState<{
     applied: boolean;
-    amount: number;
-    finalPrice: number;
     code: string;
   }>({
     applied: false,
-    amount: 0,
-    finalPrice: 19,
     code: ""
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -47,22 +43,15 @@ const Payment = () => {
 
       // Check URL parameters for discount info
       const discountAppliedParam = searchParams.get('discount_applied');
-      const discountAmountParam = searchParams.get('discount_amount');
-      const finalAmountParam = searchParams.get('final_amount');
-      const originalAmountParam = searchParams.get('original_amount');
+      const discountCodeParam = searchParams.get('discount_code');
 
-      if (discountAppliedParam === 'true' && discountAmountParam && finalAmountParam) {
-        const discountAmount = parseFloat(discountAmountParam);
-        const finalPrice = parseFloat(finalAmountParam);
-        
+      if (discountAppliedParam === 'true' && discountCodeParam) {
         setDiscountInfo({
           applied: true,
-          amount: discountAmount,
-          finalPrice: finalPrice,
-          code: "Applied from registration"
+          code: discountCodeParam
         });
         
-        console.log(`Discount loaded from URL: £${discountAmount} off, final price: £${finalPrice}`);
+        console.log(`Discount code loaded from URL: ${discountCodeParam}`);
       }
     };
     getUser();
@@ -85,54 +74,16 @@ const Payment = () => {
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('validate-discount', {
-        body: {
-          discountCode: paymentData.discountCode.trim(),
-          amount: basePrice,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.valid) {
-        setDiscountInfo({
-          applied: true,
-          amount: data.discountAmount,
-          finalPrice: data.finalAmount,
-          code: paymentData.discountCode.trim()
-        });
-        
-        toast({
-          title: "Discount Code Valid!",
-          description: `You saved £${data.discountAmount.toFixed(2)}! Final price: £${data.finalAmount.toFixed(2)}`,
-        });
-      } else {
-        setDiscountInfo({
-          applied: false,
-          amount: 0,
-          finalPrice: basePrice,
-          code: ""
-        });
-        setPaymentData(prev => ({ ...prev, discountCode: "" }));
-        toast({
-          title: "❌ Invalid Discount Code", 
-          description: data.error || "This discount code is not valid. Please check and try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Discount validation error:", error);
-      toast({
-        title: "Error",
-        description: "There was an error validating your discount code. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    // Simple validation - let Stripe handle the actual discount calculation
+    setDiscountInfo({
+      applied: true,
+      code: paymentData.discountCode.trim()
+    });
+    
+    toast({
+      title: "Discount Code Applied!",
+      description: "Your discount will be calculated during checkout.",
+    });
   };
 
   const handlePaymentSuccess = () => {
@@ -174,23 +125,23 @@ const Payment = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
+                  <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Menopause Assessment Tool</span>
+                    <span className="text-muted-foreground">The Empowered Patient - Menopause Patient Empowerment UK</span>
                     <span className="font-medium">£{basePrice.toFixed(2)} GBP</span>
                   </div>
                   
                   {discountInfo.applied && (
                     <div className="flex justify-between items-center text-green-600">
-                      <span>Discount Applied</span>
-                      <span>-£{discountInfo.amount.toFixed(2)} GBP</span>
+                      <span>Discount Code Applied</span>
+                      <span>Will be calculated at checkout</span>
                     </div>
                   )}
                   
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center text-lg font-semibold">
                       <span>Total</span>
-                      <span>£{discountInfo.finalPrice.toFixed(2)} GBP</span>
+                      <span>{discountInfo.applied ? "Calculated at checkout" : `£${basePrice.toFixed(2)} GBP`}</span>
                     </div>
                   </div>
                 </div>
@@ -303,10 +254,8 @@ const Payment = () => {
                 {discountInfo.applied && (
                   <div className="pt-4 border-t">
                     <div className="text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
-                      ✅ Discount applied! You saved £{discountInfo.amount.toFixed(2)} GBP
-                      {discountInfo.code !== "Applied from registration" && (
-                        <div className="text-xs text-green-500 mt-1">Code: {discountInfo.code}</div>
-                      )}
+                      ✅ Discount code applied! Final amount will be calculated at checkout.
+                      <div className="text-xs text-green-500 mt-1">Code: {discountInfo.code}</div>
                     </div>
                   </div>
                 )}
@@ -315,7 +264,7 @@ const Payment = () => {
                 {paymentData.email && (
                   <div className="pt-4 border-t">
                     <StripePaymentForm 
-                      amount={Math.round(discountInfo.finalPrice * 100)} // Amount in pence
+                      amount={basePrice * 100} // Always use base price - Stripe handles discounts
                       discountCode={discountInfo.applied ? discountInfo.code : ""}
                       onSuccess={handlePaymentSuccess}
                     />

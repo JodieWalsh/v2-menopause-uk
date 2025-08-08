@@ -156,27 +156,28 @@ serve(async (req) => {
 
           logStep("Subscription created via webhook", { userId: user.id });
 
-          // Webhook is BACKUP path - only send email if not already sent
+          // PRIMARY PATH: Send welcome email after successful payment
           try {
             const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
               body: {
                 user_id: user.id,
                 email: user.email!,
                 firstName: user.user_metadata?.first_name,
-                isPaid: true
+                isPaid: session.amount_total > 0 // True for paid, false for £0.00 payments
               }
             });
 
             if (emailError) {
-              logStep("ERROR sending backup welcome email via webhook", { error: emailError });
+              logStep("ERROR sending welcome email via webhook", { error: emailError });
             } else {
-              logStep("Backup welcome email processed via webhook", { 
+              logStep("Welcome email sent via webhook", { 
                 email: user.email, 
+                amountPaid: session.amount_total,
                 skipped: emailData?.skipped 
               });
             }
           } catch (emailError) {
-            logStep("ERROR in backup welcome email process via webhook", { error: emailError });
+            logStep("ERROR in welcome email process via webhook", { error: emailError });
           }
         } else {
           logStep("Subscription already exists via webhook", { userId: user.id });

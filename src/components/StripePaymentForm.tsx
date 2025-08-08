@@ -138,44 +138,16 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
         throw new Error("User not authenticated");
       }
 
-      // Handle free access
-      if (amount === 0) {
-        const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-          body: {
-            amount: 0,
-            email: user.email,
-            discountCode: discountCode || "",
-          },
-        });
-
-        if (error) throw error;
-
-        if (data?.free_access) {
-          toast({
-            title: "Free Access Granted!",
-            description: "Redirecting to your assessment...",
-          });
-          setTimeout(() => {
-            navigate('/welcome');
-            onSuccess();
-          }, 1500);
-          return;
-        }
-      }
-
-      // For paid amounts - always pass the base amount (1900 pence = £19)
-      const baseAmount = 1900; // £19 in pence
+      // Always use Stripe Checkout for consistent experience
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
-          amount: discountCode ? baseAmount : amount, // Use base amount for discount codes, actual amount otherwise
-          email: user.email,
           discountCode: discountCode || "",
         },
       });
 
       if (error) throw error;
 
-      // If using Checkout Session (for discount codes)
+      // All payments go through Stripe Checkout (including £0.00)
       if (data?.checkout_session && data?.url) {
         toast({
           title: "Redirecting to Payment",
@@ -187,12 +159,7 @@ export function StripePaymentForm({ amount, discountCode, onSuccess }: StripePay
         return;
       }
 
-      // PaymentIntent flow (no discount or regular payment)
-      if (data?.client_secret) {
-        setClientSecret(data.client_secret);
-      } else {
-        throw new Error("No client secret received");
-      }
+      throw new Error("Failed to create checkout session");
     } catch (error: any) {
       console.error("Error creating payment intent:", error);
       setError(error.message || "Failed to initialize payment");
