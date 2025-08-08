@@ -205,36 +205,23 @@
         logStep("Subscription created successfully");
       }
 
-      // Handle free access (send welcome email immediately)
-      if (finalAmount === 0 && isValidDiscount) {
-        try {
-          await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-            body: {
-              user_id: newUser.id,
-              email: email,
-              firstName: firstName,
-              isPaid: false
-            }
-          });
-          logStep("Welcome email sent for free access user");
-        } catch (emailError) {
-          logStep("Error sending welcome email", { error: emailError });
-        }
+     // Return appropriate response - welcome email will be sent by webhook after payment
+  if (finalAmount === 0 && isValidDiscount) {
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Account created successfully! Your discount code gave you free access.",
+      userId: newUser.id,
+      redirectTo: "/welcome",
+      freeAccess: true,
+      discountApplied: true,
+      originalAmount: 19,
+      discountAmount: discountAmount
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+  } else {
 
-        return new Response(JSON.stringify({
-          success: true,
-          message: "Account created successfully! Your discount code gave you free access.",
-          userId: newUser.id,
-          redirectTo: "/welcome",
-          freeAccess: true,
-          discountApplied: true,
-          originalAmount: 19,
-          discountAmount: discountAmount
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      } else {
         // Paid access - redirect to payment (welcome email sent after payment via webhook)
         return new Response(JSON.stringify({
           success: true,
