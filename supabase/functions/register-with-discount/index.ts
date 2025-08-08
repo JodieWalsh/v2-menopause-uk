@@ -131,20 +131,7 @@
 
               if (!subError) {
                 // Send welcome email for existing user with free access
-                try {
-                  await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-                    body: {
-                      user_id: existingUser.id,
-                      email: email,
-                      firstName: firstName,
-                      isPaid: false
-                    }
-                  });
-                  logStep("Welcome email sent to existing user with free access");
-                } catch (emailError) {
-                  logStep("Error sending welcome email to existing user", { error: emailError });
-                }
-
+                
                 return new Response(JSON.stringify({
                   success: true,
                   message: "Account updated with free access! Check your email for a welcome message. Please sign
@@ -205,23 +192,23 @@
         logStep("Subscription created successfully");
       }
 
-     // Return appropriate response - welcome email will be sent by webhook after payment
-  if (finalAmount === 0 && isValidDiscount) {
-    return new Response(JSON.stringify({
-      success: true,
-      message: "Account created successfully! Your discount code gave you free access.",
-      userId: newUser.id,
-      redirectTo: "/welcome",
-      freeAccess: true,
-      discountApplied: true,
-      originalAmount: 19,
-      discountAmount: discountAmount
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
-  } else {
-
+      // Handle free access (send welcome email immediately)
+      if (finalAmount === 0 && isValidDiscount) {
+       
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Account created successfully! Your discount code gave you free access.",
+          userId: newUser.id,
+          redirectTo: "/welcome",
+          freeAccess: true,
+          discountApplied: true,
+          originalAmount: 19,
+          discountAmount: discountAmount
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      } else {
         // Paid access - redirect to payment (welcome email sent after payment via webhook)
         return new Response(JSON.stringify({
           success: true,
