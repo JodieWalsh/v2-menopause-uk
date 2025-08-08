@@ -131,7 +131,7 @@
 
               if (!subError) {
                 // Send welcome email for existing user with free access
-               
+                
 
                 return new Response(JSON.stringify({
                   success: true,
@@ -195,7 +195,7 @@
 
       // Handle free access (send welcome email immediately)
       if (finalAmount === 0 && isValidDiscount) {
-       
+        
 
         return new Response(JSON.stringify({
           success: true,
