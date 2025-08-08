@@ -36,40 +36,64 @@ const PaymentSuccess = () => {
         return;
       }
       
-      // Handle Stripe Checkout Session (used with discount codes)
+      // Handle Stripe Checkout Session - wait for webhook processing
       if (sessionId) {
         try {
-          const { data, error } = await supabase.functions.invoke('verify-checkout-session', {
-            body: { session_id: sessionId }
-          });
-
-          if (error) throw error;
-
-          if (data?.success) {
-            setVerified(true);
-            toast({
-              title: "Payment Verified!",
-              description: "Redirecting to your assessment...",
-            });
+          // Poll for subscription status instead of relying on verify-checkout-session
+          let attempts = 0;
+          const maxAttempts = 30; // 30 seconds max wait
+          
+          const pollForSubscription = async (): Promise<boolean> => {
+            const { data: subscription } = await supabase
+              .from('user_subscriptions')
+              .select('*')
+              .eq('stripe_session_id', sessionId)
+              .single();
+              
+            return !!subscription;
+          };
+          
+          while (attempts < maxAttempts) {
+            const hasSubscription = await pollForSubscription();
             
-            // Auto-redirect to welcome page after 2 seconds
+            if (hasSubscription) {
+              setVerified(true);
+              toast({
+                title: "Payment Processed!",
+                description: "Redirecting to your assessment...",
+              });
+              
+              // Auto-redirect to welcome page after 2 seconds
+              setTimeout(() => {
+                navigate('/welcome');
+              }, 2000);
+              break;
+            }
+            
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+          }
+          
+          if (attempts >= maxAttempts) {
+            toast({
+              title: "Processing Payment",
+              description: "Payment is being processed. You can proceed to your assessment.",
+            });
+            setVerified(true);
             setTimeout(() => {
               navigate('/welcome');
             }, 2000);
-          } else {
-            toast({
-              title: "Payment Verification Failed",
-              description: "Please contact support if payment was completed.",
-              variant: "destructive",
-            });
           }
         } catch (error) {
-          console.error('Checkout session verification error:', error);
+          console.error('Payment processing error:', error);
           toast({
-            title: "Verification Error",
-            description: "Unable to verify payment. Please contact support.",
-            variant: "destructive",
+            title: "Payment Processing",
+            description: "Your payment is being processed. You can proceed to your assessment.",
           });
+          setVerified(true);
+          setTimeout(() => {
+            navigate('/welcome');
+          }, 2000);
         }
       }
       // Handle Payment Intent (direct payment without discount)

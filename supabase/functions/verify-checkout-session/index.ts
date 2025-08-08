@@ -78,56 +78,13 @@ serve(async (req) => {
       logStep("Checked for existing subscription", { exists: !!existingSub });
 
       if (!existingSub) {
-        // Create subscription record
-        const subscriptionData = {
-          user_id: user.id,
-          subscription_type: "paid",
-          status: "active",
-          stripe_customer_id: session.customer as string,
-          stripe_session_id: session_id,
-          amount_paid: (session.amount_total || 0) / 100, // Convert from pence to pounds
-          currency: session.currency || "gbp",
-          expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
-          welcome_email_sent: false,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { error: subError } = await supabaseService
-          .from("user_subscriptions")
-          .insert(subscriptionData);
-
-        if (subError) {
-          logStep("ERROR creating subscription", { error: subError.message });
-          throw new Error(`Failed to create subscription: ${subError.message}`);
-        }
-
-        logStep("Subscription created", { user_id: user.id });
-
-        // Send welcome email - this is the PRIMARY path for checkout sessions
-        try {
-          const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-            body: {
-              user_id: user.id,
-              email: user.email,
-              firstName: user.user_metadata?.first_name,
-              isPaid: true
-            }
-          });
-
-          if (emailError) {
-            logStep("ERROR sending welcome email", { error: emailError });
-          } else {
-            logStep("Welcome email sent successfully", { 
-              email: user.email, 
-              skipped: emailData?.skipped 
-            });
-          }
-        } catch (emailError) {
-          logStep("ERROR in welcome email process", { error: emailError });
-          // Don't fail the payment confirmation if email fails
-        }
+        logStep("Payment verified but subscription creation deferred to webhook", { 
+          session_id,
+          payment_status: session.payment_status,
+          amount_total: session.amount_total 
+        });
       } else {
-        logStep("Subscription already exists, skipping duplicate");
+        logStep("Subscription already exists, payment already processed");
       }
 
       return new Response(JSON.stringify({ 
