@@ -132,8 +132,8 @@ serve(async (req) => {
           product_id: STRIPE_PRODUCT_ID
         }
       },
-      // Enable if_required for 100% discount codes (no payment method needed for £0.00)
-      payment_method_collection: "if_required"
+      // For one-time payments, Stripe automatically handles £0.00 payments without requiring payment method collection
+      automatic_tax: { enabled: false }
     };
 
     // Apply promotion code if valid
