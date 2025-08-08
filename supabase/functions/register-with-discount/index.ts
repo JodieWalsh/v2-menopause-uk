@@ -1,269 +1,269 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+  import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+  import Stripe from "https://esm.sh/stripe@14.21.0";
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
 
-  try {
-    const { email, password, firstName, lastName, discountCode } = await req.json();
+  const logStep = (step: string, details?: any) => {
+    const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+    console.log(`[REGISTER-WITH-DISCOUNT] ${step}${detailsStr}`);
+  };
 
-    // Create Supabase client using service role for database operations
-    const supabaseService = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    );
-
-    // First, validate the discount code if provided
-    let isValidDiscount = false;
-    let discountAmount = 0;
-    let finalAmount = 19; // Base price
-
-    if (discountCode && discountCode.trim()) {
-      const stripe = new Stripe(Deno.env.get("stripesecret") || "", {
-        apiVersion: "2023-10-16",
-      });
-
-      try {
-        const promotionCodes = await stripe.promotionCodes.list({
-          code: discountCode.trim(),
-          active: true,
-          limit: 1,
-        });
-
-        if (promotionCodes.data.length > 0) {
-          const promotionCodeData = promotionCodes.data[0];
-          const coupon = promotionCodeData.coupon;
-          
-          if (coupon.percent_off) {
-            discountAmount = Math.round((finalAmount * coupon.percent_off)) / 100;
-          } else if (coupon.amount_off) {
-            discountAmount = coupon.amount_off / 100; // Convert from cents to pounds
-          }
-          
-          finalAmount = Math.max(0, Math.round((finalAmount - discountAmount) * 100) / 100);
-          isValidDiscount = true;
-        } else {
-          // Invalid discount code - return error with 200 status so Supabase parses the response
-          console.log(`Invalid discount code: ${discountCode.trim()}`);
-          return new Response(
-            JSON.stringify({ 
-              success: false,
-              error: `Invalid discount code "${discountCode.trim()}". Please check the code and try again.`
-            }), 
-            { 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 200 
-            }
-          );
-        }
-      } catch (stripeError) {
-        console.error("Stripe discount validation error:", stripeError);
-        // Continue with registration even if discount validation fails
-      }
+  serve(async (req) => {
+    if (req.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
     }
 
-    // Register the user with Supabase Auth
-    const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: {
-        first_name: firstName,
-        last_name: lastName,
-      },
-      email_confirm: true, // Auto-confirm the email
-    });
+    try {
+      logStep("Function started");
 
-    if (authError) {
-      console.error("User creation error:", authError);
-      
-      // Handle case where user already exists
-      if (authError.message.includes('already been registered') || authError.code === 'email_exists') {
-        // If user exists and has a valid discount code for free access, update their subscription
-        if (isValidDiscount && finalAmount === 0) {
-          // Get the existing user
-          const { data: existingUsers } = await supabaseService.auth.admin.listUsers();
-          const existingUser = existingUsers.users.find(u => u.email === email);
-          
-          if (existingUser) {
-            // Update their subscription to free
-            const { error: subError } = await supabaseService
-              .from('user_subscriptions')
-              .upsert({
-                user_id: existingUser.id,
-                subscription_type: 'free',
-                status: 'active',
-                amount_paid: 0,
-                currency: 'gbp',
-                expires_at: null,
-                stripe_customer_id: null,
-                stripe_session_id: null
-              }, {
-                onConflict: 'user_id'
-              });
+      const body = await req.json();
+      const { email, password, firstName, lastName, discountCode } = body;
 
-            if (!subError) {
-              // Send welcome email for existing user with free access
-              try {
-                console.log(`Sending welcome email to existing user ${email}`);
-                const emailClient = createClient(
-                  Deno.env.get("SUPABASE_URL") ?? "",
-                  Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-                );
-                
-                await emailClient.functions.invoke('send-welcome-email', {
-                  body: {
-                    email: email,
-                    firstName: firstName,
-                    isPaid: false
-                  }
-                });
-                
-                console.log('Welcome email sent to existing user');
-              } catch (emailError) {
-                console.error('Error sending welcome email to existing user:', emailError);
-              }
-              
-              return new Response(JSON.stringify({ 
-                success: true,
-                message: "Account updated with free access! Check your email for a welcome message. Please sign in to continue.",
-                userExists: true,
-                freeAccess: true
-              }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 200,
-              });
-            }
-          }
-        }
-        
-        return new Response(JSON.stringify({ 
-          error: "An account with this email already exists. Please sign in instead." 
+      logStep("Request parsed", { email, firstName, lastName, hasDiscountCode: !!discountCode });
+
+      // Validate required fields
+      if (!email || !password || !firstName || !lastName) {
+        logStep("Missing required fields");
+        return new Response(JSON.stringify({
+          error: "Missing required fields: email, password, firstName, and lastName are required"
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,
         });
       }
-      
-      return new Response(JSON.stringify({ 
-        error: authError.message 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      });
-    }
 
-    const newUser = authData.user;
-    if (!newUser) {
-      throw new Error("Failed to create user");
-    }
+      // Create Supabase client using service role
+      const supabaseService = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      );
 
-    console.log(`Created user ${newUser.id} with email ${email}`);
+      // Validate discount code if provided
+      let isValidDiscount = false;
+      let discountAmount = 0;
+      let finalAmount = 19; // Base price
 
-    // Create subscription record based on discount
-    const subscriptionData = {
-      user_id: newUser.id,
-      subscription_type: finalAmount === 0 ? 'free' : 'pending',
-      status: finalAmount === 0 ? 'active' : 'pending',
-      amount_paid: finalAmount,
-      currency: 'gbp',
-      expires_at: null,
-      stripe_customer_id: null,
-      stripe_session_id: null
-    };
+      if (discountCode && discountCode.trim()) {
+        logStep("Validating discount code", { code: discountCode.trim() });
 
-    const { error: subError } = await supabaseService
-      .from('user_subscriptions')
-      .insert(subscriptionData);
+        try {
+          const stripe = new Stripe(Deno.env.get("stripesecret") || "", {
+            apiVersion: "2023-10-16",
+          });
 
-    if (subError) {
-      console.error('Error creating subscription record:', subError);
-      // Don't fail the registration, but log the error
-    }
+          const promotionCodes = await stripe.promotionCodes.list({
+            code: discountCode.trim(),
+            active: true,
+            limit: 1,
+          });
 
-    // Send welcome email
-    try {
-      console.log(`Attempting to send welcome email to ${email} with firstName: ${firstName}`);
-      
-      const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email', {
-        body: {
-          email: email,
-          firstName: firstName,
-          isPaid: finalAmount > 0
+          if (promotionCodes.data.length > 0) {
+            const promotionCodeData = promotionCodes.data[0];
+            const coupon = promotionCodeData.coupon;
+
+            if (coupon.percent_off) {
+              discountAmount = Math.round((finalAmount * coupon.percent_off)) / 100;
+            } else if (coupon.amount_off) {
+              discountAmount = coupon.amount_off / 100;
+            }
+
+            finalAmount = Math.max(0, Math.round((finalAmount - discountAmount) * 100) / 100);
+            isValidDiscount = true;
+            logStep("Valid discount code applied", { discountAmount, finalAmount });
+          } else {
+            logStep("Invalid discount code", { code: discountCode.trim() });
+            return new Response(JSON.stringify({
+              success: false,
+              error: `Invalid discount code "${discountCode.trim()}". Please check the code and try again.`
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200
+            });
+          }
+        } catch (stripeError) {
+          logStep("Stripe discount validation error", { error: stripeError.message });
+          // Continue with registration even if discount validation fails
         }
-      });
-      
-      if (emailError) {
-        console.error('Welcome email error:', emailError);
-      } else {
-        console.log('Welcome email sent successfully:', emailData);
       }
-    } catch (emailError) {
-      console.error('Error sending welcome email:', emailError);
-      // Don't fail registration if email fails
-    }
 
-    // Return response based on whether it's free or paid
-    if (finalAmount === 0 && isValidDiscount) {
-      // Discount resulted in free access - direct to welcome
-      return new Response(JSON.stringify({ 
-        success: true,
-        message: "Account created successfully! Your discount code gave you free access. Check your email for a welcome message.",
-        userId: newUser.id,
-        redirectTo: "/welcome",
-        freeAccess: true,
-        discountApplied: true,
-        originalAmount: 19,
-        discountAmount: discountAmount
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+      // Create user with Supabase Auth
+      logStep("Creating user with Supabase Auth", { email });
+      const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
+        email,
+        password,
+        user_metadata: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+        email_confirm: true,
       });
-    } else if (finalAmount === 0) {
-      // Truly free access (no discount code)
-      return new Response(JSON.stringify({ 
-        success: true,
-        message: "Account created successfully with free access! Check your email for a welcome message.",
-        userId: newUser.id,
-        redirectTo: "/welcome",
-        freeAccess: true
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+
+      if (authError) {
+        logStep("User creation error", { error: authError.message });
+
+        if (authError.message.includes('already been registered') || authError.code === 'email_exists') {
+          // Handle existing user with free discount code
+          if (isValidDiscount && finalAmount === 0) {
+            const { data: existingUsers } = await supabaseService.auth.admin.listUsers();
+            const existingUser = existingUsers.users.find(u => u.email === email);
+
+            if (existingUser) {
+              // Update existing user subscription to free
+              const { error: subError } = await supabaseService
+                .from('user_subscriptions')
+                .upsert({
+                  user_id: existingUser.id,
+                  subscription_type: 'free',
+                  status: 'active',
+                  amount_paid: 0,
+                  currency: 'gbp',
+                  expires_at: null,
+                  welcome_email_sent: false,
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'user_id'
+                });
+
+              if (!subError) {
+                // Send welcome email for existing user with free access
+                try {
+                  await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+                    body: {
+                      user_id: existingUser.id,
+                      email: email,
+                      firstName: firstName,
+                      isPaid: false
+                    }
+                  });
+                  logStep("Welcome email sent to existing user with free access");
+                } catch (emailError) {
+                  logStep("Error sending welcome email to existing user", { error: emailError });
+                }
+
+                return new Response(JSON.stringify({
+                  success: true,
+                  message: "Account updated with free access! Check your email for a welcome message. Please sign
+  in to continue.",
+                  userExists: true,
+                  freeAccess: true
+                }), {
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  status: 200,
+                });
+              }
+            }
+          }
+
+          return new Response(JSON.stringify({
+            error: "An account with this email already exists. Please sign in instead."
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+
+        return new Response(JSON.stringify({
+          error: authError.message
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+
+      const newUser = authData.user;
+      if (!newUser) {
+        throw new Error("Failed to create user");
+      }
+
+      logStep("User created successfully", { userId: newUser.id });
+
+      // Create subscription record
+      const subscriptionData = {
+        user_id: newUser.id,
+        subscription_type: finalAmount === 0 ? 'free' : 'pending',
+        status: finalAmount === 0 ? 'active' : 'pending',
+        amount_paid: finalAmount,
+        currency: 'gbp',
+        expires_at: null,
+        welcome_email_sent: false,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: subError } = await supabaseService
+        .from('user_subscriptions')
+        .insert(subscriptionData);
+
+      if (subError) {
+        logStep("Subscription creation error", { error: subError.message });
+        // Don't fail the registration, but log the error
+      } else {
+        logStep("Subscription created successfully");
+      }
+
+      // Handle free access (send welcome email immediately)
+      if (finalAmount === 0 && isValidDiscount) {
+        try {
+          await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+            body: {
+              user_id: newUser.id,
+              email: email,
+              firstName: firstName,
+              isPaid: false
+            }
+          });
+          logStep("Welcome email sent for free access user");
+        } catch (emailError) {
+          logStep("Error sending welcome email", { error: emailError });
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Account created successfully! Your discount code gave you free access.",
+          userId: newUser.id,
+          redirectTo: "/welcome",
+          freeAccess: true,
+          discountApplied: true,
+          originalAmount: 19,
+          discountAmount: discountAmount
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      } else {
+        // Paid access - redirect to payment (welcome email sent after payment via webhook)
+        return new Response(JSON.stringify({
+          success: true,
+          message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to
+  £${finalAmount}.` : ''} Complete payment to get started.`,
+          userId: newUser.id,
+          redirectTo: "/payment",
+          freeAccess: false,
+          finalAmount,
+          discountApplied: isValidDiscount,
+          originalAmount: 19,
+          discountAmount: discountAmount
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+    } catch (error) {
+      logStep("ERROR in register-with-discount", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
       });
-    } else {
-      // Paid access - need to go to payment
-      return new Response(JSON.stringify({ 
-        success: true,
-        message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to £${finalAmount}.` : ''} Check your email for a welcome message.`,
-        userId: newUser.id,
-        redirectTo: "/payment",
-        freeAccess: false,
-        finalAmount,
-        discountApplied: isValidDiscount,
-        originalAmount: 19,
-        discountAmount: discountAmount
+      return new Response(JSON.stringify({
+        error: error.message || "Registration failed"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        status: 500,
       });
     }
-
-  } catch (error) {
-    console.error("Registration error:", error);
-    return new Response(JSON.stringify({ 
-      error: error.message || "Registration failed" 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
-  }
-});
+  });
