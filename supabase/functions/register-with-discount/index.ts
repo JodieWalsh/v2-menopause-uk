@@ -131,7 +131,8 @@
 
               if (!subError) {
                 // Send welcome email for existing user with free access
-                
+               
+
                 return new Response(JSON.stringify({
                   success: true,
                   message: "Account updated with free access! Check your email for a welcome message. Please sign
@@ -195,6 +196,7 @@
       // Handle free access (send welcome email immediately)
       if (finalAmount === 0 && isValidDiscount) {
        
+
         return new Response(JSON.stringify({
           success: true,
           message: "Account created successfully! Your discount code gave you free access.",
