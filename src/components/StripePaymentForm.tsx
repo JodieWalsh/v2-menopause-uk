@@ -53,10 +53,17 @@ import { useState, useEffect } from "react";
           });
 
           // Small delay to show the message, then redirect
-          setTimeout(() => {
-            window.location.href = data.url;
-          }, 1000);
 
+setTimeout(() => {
+    if (window.top && window.top !== window) {
+      // Running in iframe (Lovable.dev) - open in parent window
+      window.top.location.href = data.url;
+    } else {
+      // Running normally - redirect current window
+      window.location.href = data.url;
+    }
+  }, 1000);
+          
           return;
         }
 
