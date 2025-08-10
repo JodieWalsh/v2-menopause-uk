@@ -209,20 +209,8 @@ const Auth = () => {
         // Check if registration returned a direct Stripe URL
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
-          // For iframe environments (like Lovable.dev), open in new tab
-          try {
-            if (window.top && window.top !== window) {
-              // Running in iframe - open in new tab
-              window.open(data.redirectTo, '_blank');
-            } else {
-              // Running normally - redirect current window
-              window.location.href = data.redirectTo;
-            }
-          } catch (error) {
-            console.warn("Direct redirect failed, opening in new tab:", error);
-            // Fallback to new tab if redirect fails
-            window.open(data.redirectTo, '_blank');
-          }
+          // Always redirect in the same tab
+          window.location.href = data.redirectTo;
           return;
         }
 
