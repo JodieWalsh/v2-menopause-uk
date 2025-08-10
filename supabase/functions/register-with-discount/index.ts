@@ -117,15 +117,15 @@
               const { error: subError } = await supabaseService
                 .from('user_subscriptions')
                 .upsert({
-                  user_id: existingUser.id,
-                  subscription_type: 'free',
-                  status: 'active',
-                  amount_paid: 0,
-                  currency: 'gbp',
-                  expires_at: null,
-                  welcome_email_sent: false,
-                  updated_at: new Date().toISOString()
-                }, {
+                   user_id: existingUser.id,
+                   subscription_type: 'free',
+                   status: 'active',
+                   amount_paid: 0, // Already 0 for free access
+                   currency: 'gbp',
+                   expires_at: null,
+                   welcome_email_sent: false,
+                   updated_at: new Date().toISOString()
+                 }, {
                   onConflict: 'user_id'
                 });
 
@@ -175,7 +175,7 @@
         user_id: newUser.id,
         subscription_type: finalAmount === 0 ? 'free' : 'pending',
         status: finalAmount === 0 ? 'active' : 'pending',
-        amount_paid: finalAmount,
+        amount_paid: Math.round(finalAmount * 100), // Convert to pence for integer storage
         currency: 'gbp',
         expires_at: null,
         welcome_email_sent: false,
