@@ -99,6 +99,8 @@ const Auth = () => {
     }
 
     try {
+      console.log("Starting registration process...");
+      
       // Use new registration function that handles discount codes
       const { data, error } = await supabase.functions.invoke('register-with-discount', {
         body: {
@@ -109,6 +111,8 @@ const Auth = () => {
           discountCode: formData.discountCode
         }
       });
+
+      console.log("Registration response:", { data, error });
 
       if (error) {
         console.error("Registration function error:", error);
@@ -237,6 +241,7 @@ const Auth = () => {
       });
 
     } catch (error) {
+      console.error("Unexpected error during registration:", error);
       toast({
         title: "Sign Up Failed",
         description: "An unexpected error occurred. Please try again.",
