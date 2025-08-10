@@ -121,6 +121,8 @@
         success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${req.headers.get("origin")}/payment`,
         locale: "en", // Fix: Explicitly set locale to English
+          payment_method_types: ["card"],
+
         metadata: {
           user_id: user.id,
           product_id: STRIPE_PRODUCT_ID,
