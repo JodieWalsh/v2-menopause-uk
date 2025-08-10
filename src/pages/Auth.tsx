@@ -206,17 +206,25 @@ const Auth = () => {
         
         console.log("Paid user signed in successfully, navigating to payment");
 
-          // Check if registration returned a direct Stripe URL
-          if (data.stripeRedirect && data.redirectTo) {
-            console.log("Redirecting directly to Stripe:", data.redirectTo);
-            // Direct redirect to Stripe Checkout - break out of iframe for Lovable.dev
+        // Check if registration returned a direct Stripe URL
+        if (data.stripeRedirect && data.redirectTo) {
+          console.log("Redirecting directly to Stripe:", data.redirectTo);
+          // For iframe environments (like Lovable.dev), open in new tab
+          try {
             if (window.top && window.top !== window) {
-              window.top.location.href = data.redirectTo;
+              // Running in iframe - open in new tab
+              window.open(data.redirectTo, '_blank');
             } else {
+              // Running normally - redirect current window
               window.location.href = data.redirectTo;
             }
-            return;
+          } catch (error) {
+            console.warn("Direct redirect failed, opening in new tab:", error);
+            // Fallback to new tab if redirect fails
+            window.open(data.redirectTo, '_blank');
           }
+          return;
+        }
 
           // Fallback to payment page if direct redirect failed
           const params = new URLSearchParams();
