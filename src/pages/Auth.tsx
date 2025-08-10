@@ -120,13 +120,17 @@ const Auth = () => {
       }
 
       if (data.error) {
-        toast({
-          title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
+         // Check if it's the friendly "already exists" message
+    const isFriendlyMessage = data.error.includes("Congratulations");
+    toast({
+      title: isFriendlyMessage ? "Account Found" :
+             data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
+      description: data.error,
+      variant: isFriendlyMessage ? "default" : "destructive",
+    });
+    return;
+  }
+
 
       if (data.userExists) {
         // User already exists - show message and redirect to sign in
