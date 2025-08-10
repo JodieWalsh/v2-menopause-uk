@@ -135,7 +135,8 @@
 
                 return new Response(JSON.stringify({
                   success: true,
-                  message: "Account updated with free access! Check your email for a welcome message. Please sign in to continue.",
+                  message: "Account updated with free access! Check your email for a welcome message. Please sign
+  in to continue.",
                   userExists: true,
                   freeAccess: true
                 }), {
@@ -147,10 +148,10 @@
           }
 
           return new Response(JSON.stringify({
-            error: "Congratulations - You already have a valid account! Please just sign in to use your account."
+            error: "An account with this email already exists. Please sign in instead."
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
+            status: 400,
           });
         }
 
@@ -158,7 +159,7 @@
           error: authError.message
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
+          status: 400,
         });
       }
 
@@ -210,22 +211,94 @@
           status: 200,
         });
       } else {
-        // Paid access - redirect to payment (welcome email sent after payment via webhook)
-        return new Response(JSON.stringify({
-          success: true,
-          message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to £${finalAmount}.` : ''} Complete payment to get started.`,
-          userId: newUser.id,
-          redirectTo: "/payment",
-          freeAccess: false,
-          finalAmount,
-          discountApplied: isValidDiscount,
-          originalAmount: 19,
-          discountAmount: discountAmount
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
+        // Paid access - create Stripe Checkout session directly
+        try {
+          const stripe = new Stripe(Deno.env.get("stripesecret") || "", {
+            apiVersion: "2023-10-16",
+          });
+
+          // Get or create Stripe customer
+          const customers = await stripe.customers.list({ email, limit: 1 });
+          let customerId = customers.data[0]?.id;
+
+          if (!customerId) {
+            const customer = await stripe.customers.create({
+              email,
+              name: `${firstName} ${lastName}`,
+              metadata: { user_id: newUser.id }
+            });
+            customerId = customer.id;
+          }
+
+          // Find promotion code if discount was applied
+          let promotionCodeId;
+          if (isValidDiscount && discountCode) {
+            const promotionCodes = await stripe.promotionCodes.list({
+              code: discountCode.trim(),
+              active: true,
+              limit: 1,
+            });
+            if (promotionCodes.data.length > 0) {
+              promotionCodeId = promotionCodes.data[0].id;
+            }
+          }
+
+          // Create Stripe Checkout Session
+          const sessionConfig: any = {
+            customer: customerId,
+            line_items: [{ price: "price_1RrcsPATHqCGypnRMPr4nbKE", quantity: 1 }],
+            mode: "payment",
+            success_url: `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/auth`,
+            locale: "en",
+            payment_method_types: ["card"],
+            metadata: {
+              user_id: newUser.id,
+              discount_code_applied: discountCode || "none"
+            }
+          };
+
+          if (promotionCodeId) {
+            sessionConfig.discounts = [{ promotion_code: promotionCodeId }];
+          }
+
+          const session = await stripe.checkout.sessions.create(sessionConfig);
+
+          return new Response(JSON.stringify({
+            success: true,
+            message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to £${finalAmount}.` : ''} Redirecting to payment...`,
+            userId: newUser.id,
+            redirectTo: session.url,
+            freeAccess: false,
+            stripeRedirect: true,
+            finalAmount,
+            discountApplied: isValidDiscount,
+            originalAmount: 19,
+            discountAmount: discountAmount
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        } catch (stripeError) {
+          logStep("Stripe checkout creation failed", { error: stripeError.message });
+          // Fallback to payment page
+          return new Response(JSON.stringify({
+            success: true,
+            message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to £${finalAmount}.` : ''} Complete payment to get started.`,
+            userId: newUser.id,
+            redirectTo: "/payment",
+            freeAccess: false,
+            finalAmount,
+            discountApplied: isValidDiscount,
+            originalAmount: 19,
+            discountAmount: discountAmount
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
       }
+ 
 
     } catch (error) {
       logStep("ERROR in register-with-discount", {
