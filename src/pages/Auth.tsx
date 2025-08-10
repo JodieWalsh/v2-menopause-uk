@@ -111,6 +111,7 @@ const Auth = () => {
       });
 
       if (error) {
+        console.error("Registration function error:", error);
         toast({
           title: "Registration Failed",
           description: error.message || "An error occurred during registration.",
@@ -120,6 +121,19 @@ const Auth = () => {
       }
 
       if (data.error) {
+        // Handle specific error types
+        if (data.error.includes("already exists")) {
+          toast({
+            title: "Account Exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+          // Switch to sign-in tab
+          const signInTab = document.querySelector('[value="signin"]') as HTMLElement;
+          if (signInTab) signInTab.click();
+          return;
+        }
+        
         toast({
           title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
           description: data.error,
