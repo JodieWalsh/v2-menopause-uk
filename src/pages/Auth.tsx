@@ -120,17 +120,13 @@ const Auth = () => {
       }
 
       if (data.error) {
-         // Check if it's the friendly "already exists" message
-    const isFriendlyMessage = data.error.includes("Congratulations");
-    toast({
-      title: isFriendlyMessage ? "Account Found" :
-             data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
-      description: data.error,
-      variant: isFriendlyMessage ? "default" : "destructive",
-    });
-    return;
-  }
-
+        toast({
+          title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
 
       if (data.userExists) {
         // User already exists - show message and redirect to sign in
@@ -191,15 +187,29 @@ const Auth = () => {
         }
         
         console.log("Paid user signed in successfully, navigating to payment");
-        // Pass discount information via URL parameters
-        const params = new URLSearchParams();
-        if (data.discountApplied) {
-          params.set('discount_applied', 'true');
-          params.set('discount_amount', data.discountAmount.toString());
-          params.set('final_amount', data.finalAmount.toString());
-          params.set('original_amount', data.originalAmount.toString());
-        }
-        navigate(`/payment?${params.toString()}`);
+
+          // Check if registration returned a direct Stripe URL
+          if (data.stripeRedirect && data.redirectTo) {
+            console.log("Redirecting directly to Stripe:", data.redirectTo);
+            // Direct redirect to Stripe Checkout - break out of iframe for Lovable.dev
+            if (window.top && window.top !== window) {
+              window.top.location.href = data.redirectTo;
+            } else {
+              window.location.href = data.redirectTo;
+            }
+            return;
+          }
+
+          // Fallback to payment page if direct redirect failed
+          const params = new URLSearchParams();
+          if (data.discountApplied) {
+            params.set('discount_applied', 'true');
+            params.set('discount_amount', data.discountAmount.toString());
+            params.set('final_amount', data.finalAmount.toString());
+            params.set('original_amount', data.originalAmount.toString());
+          }
+          navigate(`/payment?${params.toString()}`);
+
       }
 
       // Clear form
