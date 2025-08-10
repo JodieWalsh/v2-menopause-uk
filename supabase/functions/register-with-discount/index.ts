@@ -135,8 +135,7 @@
 
                 return new Response(JSON.stringify({
                   success: true,
-                  message: "Account updated with free access! Check your email for a welcome message. Please sign
-  in to continue.",
+                  message: "Account updated with free access! Check your email for a welcome message. Please sign in to continue.",
                   userExists: true,
                   freeAccess: true
                 }), {
