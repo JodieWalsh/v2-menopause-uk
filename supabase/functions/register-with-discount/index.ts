@@ -135,7 +135,8 @@
 
                 return new Response(JSON.stringify({
                   success: true,
-                  message: "Account updated with free access! Please sign in to continue.",
+                  message: "Account updated with free access! Check your email for a welcome message. Please sign
+  in to continue.",
                   userExists: true,
                   freeAccess: true
                 }), {
@@ -147,10 +148,10 @@
           }
 
           return new Response(JSON.stringify({
-            error: "An account with this email already exists. Please sign in instead."
+            error: "Congratulations - You already have a valid account! Please just sign in to use your account."
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+            status: 200,
           });
         }
 
