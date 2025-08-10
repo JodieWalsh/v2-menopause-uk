@@ -75,7 +75,7 @@ export const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center justify-center flex-shrink-0">
             <img 
-              src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//facebook_header_logo.png" 
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos-tep//facebook_header_logo.png" 
               alt="The Empowered Patient Logo" 
               className="h-12 w-auto sm:h-16"
             />
