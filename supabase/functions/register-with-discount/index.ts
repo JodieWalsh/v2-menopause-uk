@@ -135,8 +135,7 @@
 
                 return new Response(JSON.stringify({
                   success: true,
-                  message: "Account updated with free access! Check your email for a welcome message. Please sign
-  in to continue.",
+                  message: "Account updated with free access! Check your email for a welcome message. Please sign in to continue.",
                   userExists: true,
                   freeAccess: true
                 }), {
@@ -214,8 +213,7 @@
         // Paid access - redirect to payment (welcome email sent after payment via webhook)
         return new Response(JSON.stringify({
           success: true,
-          message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to
-  £${finalAmount}.` : ''} Complete payment to get started.`,
+          message: `Account created successfully! ${isValidDiscount ? `Discount applied - reduced from £19 to £${finalAmount}.` : ''} Complete payment to get started.`,
           userId: newUser.id,
           redirectTo: "/payment",
           freeAccess: false,
