@@ -57,15 +57,25 @@ import { useState, useEffect } from "react";
             description: "Opening secure payment window...",
           });
 
-          // Handle iframe restrictions by opening in new tab if needed
+          // Smart redirect: same window unless blocked by iframe restrictions
           setTimeout(() => {
-            try {
-              // Try to redirect in the same window first
-              window.location.href = data.url;
-            } catch (error) {
-              console.log("Same-window redirect blocked, opening in new tab:", error);
-              // If blocked by iframe, open in new tab as fallback
+            // Check if we're in a restricted iframe environment
+            const isInRestrictedIframe = (() => {
+              try {
+                // Test if we can access parent window properties
+                return window.self !== window.top && !window.top.location.href;
+              } catch (e) {
+                // If accessing parent throws error, we're in a restricted iframe
+                return true;
+              }
+            })();
+
+            if (isInRestrictedIframe) {
+              console.log("Restricted iframe detected, opening in new tab");
               window.open(data.url, '_blank', 'noopener,noreferrer');
+            } else {
+              console.log("Redirecting in same window");
+              window.location.href = data.url;
             }
           }, 1000);
 

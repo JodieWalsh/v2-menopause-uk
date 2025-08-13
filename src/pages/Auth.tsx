@@ -228,12 +228,24 @@ const Auth = () => {
         // Check if registration returned a direct Stripe URL
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
-          // Handle iframe restrictions by opening in new tab if needed
-          try {
-            window.location.href = data.redirectTo;
-          } catch (error) {
-            console.log("Same-window redirect blocked, opening in new tab:", error);
+          
+          // Smart redirect: same window unless blocked by iframe restrictions
+          const isInRestrictedIframe = (() => {
+            try {
+              // Test if we can access parent window properties
+              return window.self !== window.top && !window.top.location.href;
+            } catch (e) {
+              // If accessing parent throws error, we're in a restricted iframe
+              return true;
+            }
+          })();
+
+          if (isInRestrictedIframe) {
+            console.log("Restricted iframe detected, opening in new tab");
             window.open(data.redirectTo, '_blank', 'noopener,noreferrer');
+          } else {
+            console.log("Redirecting in same window");
+            window.location.href = data.redirectTo;
           }
           return;
         }
