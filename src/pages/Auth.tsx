@@ -124,9 +124,9 @@ const Auth = () => {
         return;
       }
 
-      if (data.error) {
+      if (data.success === false || data.error) {
         // Handle specific error types
-        if (data.error.includes("already exists")) {
+        if (data.error && data.error.includes("already exists")) {
           toast({
             title: "Account Exists",
             description: "An account with this email already exists. Please sign in instead.",
@@ -141,6 +141,17 @@ const Auth = () => {
         toast({
           title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
           description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Only proceed if the function was successful
+      if (data.success !== true) {
+        console.error("Function did not return success:", data);
+        toast({
+          title: "Registration Failed",
+          description: data.error || "An unexpected error occurred during registration.",
           variant: "destructive",
         });
         return;
