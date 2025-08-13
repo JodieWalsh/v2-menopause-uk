@@ -147,18 +147,21 @@
           }
 
           return new Response(JSON.stringify({
-            error: "An account with this email already exists. Please sign in instead."
+            success: false,
+            error: "An account with this email already exists. Please sign in instead.",
+            userExists: true
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+            status: 200,
           });
         }
 
         return new Response(JSON.stringify({
+          success: false,
           error: authError.message
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
+          status: 200,
         });
       }
 
