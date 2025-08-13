@@ -225,40 +225,41 @@ const Auth = () => {
         
         console.log("Paid user signed in successfully, navigating to payment");
 
+        // Check if this is free access (no payment needed)
+        if (data.freeAccess && data.redirectTo) {
+          console.log("Free access granted, redirecting to:", data.redirectTo);
+          navigate(data.redirectTo);
+          return;
+        }
+
         // Check if registration returned a direct Stripe URL
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
           
-          // Smart redirect: same window unless blocked by iframe restrictions
-          const isInRestrictedIframe = (() => {
-            try {
-              // Test if we can access parent window properties
-              return window.self !== window.top && !window.top.location.href;
-            } catch (e) {
-              // If accessing parent throws error, we're in a restricted iframe
-              return true;
-            }
-          })();
-
-          if (isInRestrictedIframe) {
-            console.log("Restricted iframe detected, opening in new tab");
+          // Check if we're in an iframe
+          const isInIframe = window !== window.parent;
+          
+          if (isInIframe) {
+            // In iframe - open in new tab
+            console.log("In iframe, opening Stripe in new tab");
             window.open(data.redirectTo, '_blank', 'noopener,noreferrer');
           } else {
-            console.log("Redirecting in same window");
+            // Not in iframe - redirect in same tab
+            console.log("Not in iframe, redirecting in same tab");
             window.location.href = data.redirectTo;
           }
           return;
         }
 
-          // Fallback to payment page if direct redirect failed
-          const params = new URLSearchParams();
-          if (data.discountApplied) {
-            params.set('discount_applied', 'true');
-            params.set('discount_amount', data.discountAmount.toString());
-            params.set('final_amount', data.finalAmount.toString());
-            params.set('original_amount', data.originalAmount.toString());
-          }
-          navigate(`/payment?${params.toString()}`);
+        // Fallback to payment page if direct redirect failed
+        const params = new URLSearchParams();
+        if (data.discountApplied) {
+          params.set('discount_applied', 'true');
+          params.set('discount_amount', data.discountAmount.toString());
+          params.set('final_amount', data.finalAmount.toString());
+          params.set('original_amount', data.originalAmount.toString());
+        }
+        navigate(`/payment?${params.toString()}`);
 
       }
 
@@ -274,21 +275,11 @@ const Auth = () => {
 
     } catch (error) {
       console.error("Unexpected error during registration:", error);
-      
-      // Handle specific SecurityError for iframe restrictions
-      if (error instanceof Error && error.name === 'SecurityError') {
-        toast({
-          title: "Redirect Restricted",
-          description: "Payment redirect was blocked. Please try opening the payment page manually.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Sign Up Failed",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Sign Up Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
