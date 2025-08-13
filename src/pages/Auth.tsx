@@ -228,8 +228,12 @@ const Auth = () => {
         // Check if registration returned a direct Stripe URL
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
-          // Always redirect in the same tab
-          window.location.href = data.redirectTo;
+          // Force redirect at top level to avoid iframe issues
+          if (window.top) {
+            window.top.location.href = data.redirectTo;
+          } else {
+            window.location.href = data.redirectTo;
+          }
           return;
         }
 

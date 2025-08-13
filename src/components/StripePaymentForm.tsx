@@ -57,9 +57,13 @@ import { useState, useEffect } from "react";
             description: "Opening secure payment window...",
           });
 
-          // Redirect in the same window for professional experience
+          // Force redirect at top level to avoid iframe issues
           setTimeout(() => {
-            window.location.href = data.url;
+            if (window.top) {
+              window.top.location.href = data.url;
+            } else {
+              window.location.href = data.url;
+            }
           }, 1000);
 
           return;
