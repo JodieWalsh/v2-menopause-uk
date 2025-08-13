@@ -173,12 +173,40 @@
 
       logStep("User created successfully", { userId: newUser.id });
 
+      // Get or create Stripe customer for paid subscriptions
+      let customerId = null;
+      if (finalAmount > 0) {
+        try {
+          const stripe = new Stripe(Deno.env.get("stripesecret") || "", {
+            apiVersion: "2023-10-16",
+          });
+
+          const customers = await stripe.customers.list({ email, limit: 1 });
+          customerId = customers.data[0]?.id;
+
+          if (!customerId) {
+            const customer = await stripe.customers.create({
+              email,
+              name: `${firstName} ${lastName}`,
+              metadata: { user_id: newUser.id }
+            });
+            customerId = customer.id;
+            logStep("Stripe customer created", { customerId });
+          } else {
+            logStep("Existing Stripe customer found", { customerId });
+          }
+        } catch (stripeCustomerError) {
+          logStep("Stripe customer creation failed", { error: stripeCustomerError.message });
+          // Continue without customer ID - webhook will have issues but registration won't fail
+        }
+      }
+
       // Create subscription record
       const subscriptionData = {
         user_id: newUser.id,
         subscription_type: finalAmount === 0 ? 'free' : 'pending',
         status: finalAmount === 0 ? 'active' : 'pending',
-        stripe_customer_id: finalAmount === 0 ? null : customerId, // Include Stripe customer ID for paid subscriptions
+        stripe_customer_id: customerId, // Will be null for free access or if Stripe customer creation failed
         amount_paid: Math.round(finalAmount * 100), // Convert to pence for integer storage
         currency: 'gbp',
         expires_at: null,
@@ -235,17 +263,9 @@
             apiVersion: "2023-10-16",
           });
 
-          // Get or create Stripe customer
-          const customers = await stripe.customers.list({ email, limit: 1 });
-          let customerId = customers.data[0]?.id;
-
+          // Use the customer ID we created earlier
           if (!customerId) {
-            const customer = await stripe.customers.create({
-              email,
-              name: `${firstName} ${lastName}`,
-              metadata: { user_id: newUser.id }
-            });
-            customerId = customer.id;
+            throw new Error("Stripe customer ID not available for checkout session creation");
           }
 
           // Find promotion code if discount was applied
