@@ -57,19 +57,10 @@ import { useState, useEffect } from "react";
             description: "Opening secure payment window...",
           });
 
-          // Check if we're in an iframe
-          const isInIframe = window !== window.parent;
-          
+          // Beautiful single-window redirect (like it was a few days ago!)
           setTimeout(() => {
-            if (isInIframe) {
-              // In iframe - open in new tab
-              console.log("In iframe, opening Stripe in new tab");
-              window.open(data.url, '_blank', 'noopener,noreferrer');
-            } else {
-              // Not in iframe - redirect in same tab
-              console.log("Not in iframe, redirecting in same tab");
-              window.location.href = data.url;
-            }
+            console.log("Redirecting to Stripe in same window");
+            window.location.href = data.url;
           }, 1000);
 
           return;

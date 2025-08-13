@@ -236,18 +236,8 @@ const Auth = () => {
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
           
-          // Check if we're in an iframe
-          const isInIframe = window !== window.parent;
-          
-          if (isInIframe) {
-            // In iframe - open in new tab
-            console.log("In iframe, opening Stripe in new tab");
-            window.open(data.redirectTo, '_blank', 'noopener,noreferrer');
-          } else {
-            // Not in iframe - redirect in same tab
-            console.log("Not in iframe, redirecting in same tab");
-            window.location.href = data.redirectTo;
-          }
+          // Beautiful single-window redirect (like it was a few days ago!)
+          window.location.href = data.redirectTo;
           return;
         }
 
