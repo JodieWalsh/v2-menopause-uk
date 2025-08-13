@@ -73,6 +73,8 @@ const handler = async (req: Request): Promise<Response> => {
     const idempotencyKey = `welcome_${user_id}_${Date.now()}`;
 
     // Send email with idempotency
+    logStep("Attempting to send email via Resend", { email, idempotencyKey });
+    
     const emailResponse = await resend.emails.send({
       from: "The Empowered Patient <support@the-empowered-patient.org>",
       to: [email],
@@ -158,7 +160,28 @@ const handler = async (req: Request): Promise<Response> => {
       `
     });
 
-    logStep("Email sent successfully", { emailId: emailResponse.data?.id });
+    logStep("Resend API response received", { 
+      emailId: emailResponse.data?.id, 
+      error: emailResponse.error,
+      success: !emailResponse.error 
+    });
+
+    // Check if the email send failed
+    if (emailResponse.error) {
+      logStep("ERROR: Resend API failed to send email", { 
+        error: emailResponse.error,
+        email: email,
+        user_id: user_id 
+      });
+      throw new Error(`Failed to send email via Resend: ${JSON.stringify(emailResponse.error)}`);
+    }
+
+    if (!emailResponse.data?.id) {
+      logStep("ERROR: No email ID returned from Resend", { response: emailResponse });
+      throw new Error("Resend API did not return an email ID");
+    }
+
+    logStep("Email sent successfully", { emailId: emailResponse.data.id });
 
     // Atomically mark email as sent
     const { error: updateError } = await supabaseService
