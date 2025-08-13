@@ -228,11 +228,12 @@ const Auth = () => {
         // Check if registration returned a direct Stripe URL
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
-          // Force redirect at top level to avoid iframe issues
-          if (window.top) {
-            window.top.location.href = data.redirectTo;
-          } else {
+          // Handle iframe restrictions by opening in new tab if needed
+          try {
             window.location.href = data.redirectTo;
+          } catch (error) {
+            console.log("Same-window redirect blocked, opening in new tab:", error);
+            window.open(data.redirectTo, '_blank', 'noopener,noreferrer');
           }
           return;
         }
@@ -261,11 +262,21 @@ const Auth = () => {
 
     } catch (error) {
       console.error("Unexpected error during registration:", error);
-      toast({
-        title: "Sign Up Failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Handle specific SecurityError for iframe restrictions
+      if (error instanceof Error && error.name === 'SecurityError') {
+        toast({
+          title: "Redirect Restricted",
+          description: "Payment redirect was blocked. Please try opening the payment page manually.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sign Up Failed",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

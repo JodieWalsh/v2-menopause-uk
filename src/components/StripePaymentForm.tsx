@@ -57,12 +57,15 @@ import { useState, useEffect } from "react";
             description: "Opening secure payment window...",
           });
 
-          // Force redirect at top level to avoid iframe issues
+          // Handle iframe restrictions by opening in new tab if needed
           setTimeout(() => {
-            if (window.top) {
-              window.top.location.href = data.url;
-            } else {
+            try {
+              // Try to redirect in the same window first
               window.location.href = data.url;
+            } catch (error) {
+              console.log("Same-window redirect blocked, opening in new tab:", error);
+              // If blocked by iframe, open in new tab as fallback
+              window.open(data.url, '_blank', 'noopener,noreferrer');
             }
           }, 1000);
 
