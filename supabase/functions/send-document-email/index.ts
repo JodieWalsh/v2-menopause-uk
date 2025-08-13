@@ -29,34 +29,14 @@ serve(async (req) => {
       to: [email],
       subject: "Your Menopause Consultation Document",
       html: `
-        <div style="font-family: 'Open Sans', Arial, sans-serif; max-width: 750px; margin: 0 auto; padding: 20px; background: #FFFFFF; width: 100%; box-sizing: border-box;">
-          <style>
-            @media only screen and (max-width: 480px) {
-              .email-container { 
-                max-width: 100% !important; 
-                padding: 15px !important; 
-              }
-              .email-content { 
-                padding: 20px !important; 
-              }
-              .email-header { 
-                padding: 25px 20px !important; 
-              }
-            }
-            @media only screen and (max-width: 600px) {
-              .email-container { 
-                max-width: 95% !important; 
-                padding: 10px !important; 
-              }
-            }
-          </style>
-          <div class="email-header" style="text-align: center; margin-bottom: 30px; background: #F5F5F5; padding: 30px; border-radius: 8px; border: 1px solid #A8DADC;">
+        <div style="font-family: 'Open Sans', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #FFFFFF;">
+          <div style="text-align: center; margin-bottom: 30px; background: #F5F5F5; padding: 30px; border-radius: 8px; border: 1px solid #A8DADC;">
             <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="The Empowered Patient Logo" style="width: 120px; height: auto; margin-bottom: 20px;">
             <h1 style="color: #333333; font-size: 24px; margin-bottom: 10px; font-weight: 700;">The Empowered Patient</h1>
             <p style="color: #A0A0A0; font-size: 16px;">Your Menopause Consultation Document</p>
           </div>
           
-          <div class="email-content" style="background: #FFFFFF; padding: 25px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #A8DADC;">
+          <div style="background: #FFFFFF; padding: 25px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #A8DADC;">
             <h2 style="color: #333333; font-size: 20px; margin-bottom: 15px; font-weight: 600;">Hello ${userName || 'Patient'},</h2>
             <p style="color: #333333; line-height: 1.6; margin-bottom: 15px; font-size: 14px;">
               Thank you for completing your menopause consultation assessment. Your personalized document has been professionally formatted and is included below.
