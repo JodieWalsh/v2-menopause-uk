@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ const Auth = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -227,6 +228,12 @@ const Auth = () => {
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
           
+          // Store user credentials temporarily for session restoration after payment
+          // This is needed because opening Stripe in new window breaks session in Lovable
+          localStorage.setItem('payment_user_email', formData.email);
+          localStorage.setItem('payment_user_password', formData.password);
+          console.log("Stored credentials for session restoration after payment");
+          
           // Handle Stripe redirect - detect if we're in a sandboxed iframe
           try {
             // First try to detect if we're in a sandboxed iframe
@@ -248,6 +255,13 @@ const Auth = () => {
                 console.log("Opened Stripe in new window");
                 // Focus the new window
                 stripeWindow.focus();
+                
+                // Show instruction to user
+                toast({
+                  title: "Payment Window Opened",
+                  description: "Complete your payment in the new window. You'll be automatically logged in afterward.",
+                  variant: "default",
+                });
               } else {
                 console.error("Failed to open Stripe window - popup blocked?");
                 toast({

@@ -78,6 +78,25 @@ const Welcome = () => {
         
         console.log(`Welcome page attempt ${attempt}: user data:`, user, "error:", error);
         
+        // If we get a 403, try to refresh the session
+        if (error && (error.message?.includes('403') || error.message?.includes('Forbidden') || error.status === 403)) {
+          console.log(`Welcome page attempt ${attempt}: Got 403 error, trying session refresh...`);
+          try {
+            const { data: refreshResult, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshResult?.session?.user && !refreshError) {
+              console.log("Welcome page: Session refresh successful:", refreshResult.session.user.email);
+              setUser(refreshResult.session.user);
+              await loadProgress();
+              setLoading(false);
+              return;
+            } else {
+              console.log("Welcome page: Session refresh failed:", refreshError);
+            }
+          } catch (refreshErr) {
+            console.log("Welcome page: Session refresh error:", refreshErr);
+          }
+        }
+        
         if (user && !error && mounted) {
           console.log("Welcome page: User authenticated:", user.email);
           setUser(user);
@@ -95,6 +114,48 @@ const Welcome = () => {
       }
       
       if (mounted) {
+        // Try to restore session from stored credentials if we just came from payment
+        const storedEmail = localStorage.getItem('payment_user_email');
+        const storedPassword = localStorage.getItem('payment_user_password');
+        
+        if (storedEmail && storedPassword) {
+          console.log("Welcome page: Found stored credentials, attempting to restore session...");
+          try {
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: storedEmail,
+              password: storedPassword,
+            });
+            
+            if (signInData.user && !signInError) {
+              console.log("Welcome page: Session restored successfully:", signInData.user.email);
+              // Clear stored credentials for security
+              localStorage.removeItem('payment_user_email');
+              localStorage.removeItem('payment_user_password');
+              
+              setUser(signInData.user);
+              await loadProgress();
+              setLoading(false);
+              
+              toast({
+                title: "Payment Successful! 🎉",
+                description: "Welcome back! You can now start your assessment.",
+                variant: "default",
+              });
+              return;
+            } else {
+              console.log("Welcome page: Session restoration failed:", signInError);
+              // Clear invalid credentials
+              localStorage.removeItem('payment_user_email');
+              localStorage.removeItem('payment_user_password');
+            }
+          } catch (restoreError) {
+            console.log("Welcome page: Session restoration error:", restoreError);
+            // Clear credentials on error
+            localStorage.removeItem('payment_user_email');
+            localStorage.removeItem('payment_user_password');
+          }
+        }
+        
         console.log("Welcome page: No authenticated user after retries, redirecting to auth");
         navigate('/auth');
       }

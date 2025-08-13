@@ -22,7 +22,11 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Webhook received");
+    logStep("Webhook received", { 
+      method: req.method,
+      headers: Object.fromEntries(req.headers.entries()),
+      url: req.url
+    });
 
     const stripeKey = Deno.env.get("stripesecret");
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
