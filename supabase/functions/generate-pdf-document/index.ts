@@ -6,6 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[GENERATE-PDF-DOCUMENT] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -13,8 +18,9 @@ serve(async (req) => {
   }
 
   try {
+    logStep("Function started");
     const { htmlContent, userName, userEmail } = await req.json();
-    console.log("Received PDF generation request for user:", userEmail);
+    logStep("Received PDF generation request", { userName, userEmail, hasHtmlContent: !!htmlContent });
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -29,10 +35,11 @@ serve(async (req) => {
       // We'll use the HTMLPDFapi service
       const apiKey = Deno.env.get("HTMLPDF_API_KEY");
       if (!apiKey) {
+        logStep("ERROR: HTMLPDF_API_KEY not configured");
         throw new Error("HTMLPDF_API_KEY not configured");
       }
 
-      console.log("Converting HTML to PDF...");
+      logStep("Converting HTML to PDF using HTMLPDFapi");
       
       const pdfResponse = await fetch('https://api.htmlpdfapi.com/v1/generate', {
         method: 'POST',
@@ -57,16 +64,18 @@ serve(async (req) => {
       });
 
       if (!pdfResponse.ok) {
+        logStep("ERROR: PDF API request failed", { status: pdfResponse.status, statusText: pdfResponse.statusText });
         throw new Error(`PDF API error: ${pdfResponse.status} ${pdfResponse.statusText}`);
       }
 
       const pdfBuffer = await pdfResponse.arrayBuffer();
       const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
-      console.log("PDF generated successfully, size:", pdfBuffer.byteLength);
+      logStep("PDF generated successfully", { size: pdfBuffer.byteLength });
 
       // Send the PDF via email
-      const { error: emailError } = await supabaseClient.functions.invoke('send-document-email', {
+      logStep("Attempting to send PDF email");
+      const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-document-email', {
         body: {
           email: userEmail,
           documentContent: pdfBase64,
@@ -76,11 +85,11 @@ serve(async (req) => {
       });
 
       if (emailError) {
-        console.error('Email sending failed:', emailError);
-        throw new Error(`Failed to send email: ${emailError.message}`);
+        logStep("ERROR: PDF email sending failed", { error: emailError });
+        throw new Error(`Failed to send email: ${emailError.message || JSON.stringify(emailError)}`);
       }
 
-      console.log("PDF email sent successfully");
+      logStep("PDF email sent successfully", { emailData });
 
       return new Response(JSON.stringify({ 
         success: true,
@@ -92,12 +101,12 @@ serve(async (req) => {
       });
 
     } catch (pdfError) {
-      console.error("PDF generation failed:", pdfError);
+      logStep("PDF generation failed, falling back to HTML email", { error: pdfError.message });
       
       // Fallback to HTML email if PDF generation fails
-      console.log("Falling back to HTML email...");
+      logStep("Attempting to send HTML email fallback");
       
-      const { error: emailError } = await supabaseClient.functions.invoke('send-document-email', {
+      const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-document-email', {
         body: {
           email: userEmail,
           documentContent: htmlContent,
@@ -107,8 +116,11 @@ serve(async (req) => {
       });
 
       if (emailError) {
-        throw new Error(`Fallback HTML email also failed: ${emailError.message}`);
+        logStep("ERROR: Fallback HTML email also failed", { error: emailError });
+        throw new Error(`Fallback HTML email also failed: ${emailError.message || JSON.stringify(emailError)}`);
       }
+
+      logStep("HTML email fallback sent successfully", { emailData });
 
       return new Response(JSON.stringify({ 
         success: true,
@@ -121,6 +133,7 @@ serve(async (req) => {
     }
 
   } catch (error) {
+    logStep("ERROR in generate-pdf-document", { error: error.message });
     console.error("Document generation error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

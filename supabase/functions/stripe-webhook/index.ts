@@ -151,7 +151,7 @@ serve(async (req) => {
               amount_paid: session.amount_total || 0, // Keep in pence as integer
               currency: session.currency || "gbp",
               expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-              welcome_email_sent: false,
+              welcome_email_sent: false, // Will be set to true by email function after successful send
               updated_at: new Date().toISOString(),
             });
 
@@ -206,7 +206,7 @@ serve(async (req) => {
         } else {
           logStep("Subscription already exists, updating to active status", { userId: user.id, existingStatus: existingSub.status });
           
-          // Update existing subscription to active status
+          // Update existing subscription to active status and reset email flag for email function
           const { error: updateError } = await supabaseService
             .from("user_subscriptions")
             .update({
@@ -218,6 +218,7 @@ serve(async (req) => {
               currency: session.currency || "gbp",
               expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               updated_at: new Date().toISOString(),
+              welcome_email_sent: false, // Reset to false so email function can send email
             })
             .eq('user_id', user.id);
 

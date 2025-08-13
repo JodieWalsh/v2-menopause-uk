@@ -8,6 +8,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[SEND-DOCUMENT-EMAIL] ${step}${detailsStr}`);
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -15,10 +20,12 @@ serve(async (req) => {
   }
 
   try {
+    logStep("Function started");
     const { email, documentContent, userName, isBase64PDF } = await req.json();
+    logStep("Request parsed", { email, userName, isBase64PDF, hasContent: !!documentContent });
 
     const emailData = {
-      from: "The Empowered Patient <support@the-empowered-patient.com.au>",
+      from: "The Empowered Patient <support@the-empowered-patient.org>",
       to: [email],
       subject: "Your Menopause Consultation Document",
       html: `
@@ -55,7 +62,7 @@ serve(async (req) => {
               You have 12 months access to this tool from your purchase date.
             </p>
             <p style="color: #A0A0A0; font-size: 12px;">
-              For support, contact us at: support@the-empowered-patient.com.au
+              For support, contact us at: support@the-empowered-patient.org
             </p>
           </div>
         </div>
@@ -75,7 +82,7 @@ What to do next:
 
 You have 12 months access to this tool from your purchase date.
 
-For support, contact us at: support@the-empowered-patient.com.au
+For support, contact us at: support@the-empowered-patient.org
 
 Best regards,
 The Empowered Patient Team
@@ -102,9 +109,34 @@ The Empowered Patient Team
       }];
     }
 
+    logStep("Attempting to send email via Resend", { 
+      to: email, 
+      from: emailData.from,
+      fromDomain: emailData.from.split('@')[1]?.split('>')[0] || 'unknown'
+    });
     const emailResponse = await resend.emails.send(emailData);
+    
+    logStep("Resend API response received", { 
+      emailId: emailResponse.data?.id, 
+      error: emailResponse.error,
+      success: !emailResponse.error 
+    });
 
-    console.log("Email sent successfully:", emailResponse);
+    // Check if the email send failed
+    if (emailResponse.error) {
+      logStep("ERROR: Resend API failed to send email", { 
+        error: emailResponse.error,
+        email: email
+      });
+      throw new Error(`Failed to send email via Resend: ${JSON.stringify(emailResponse.error)}`);
+    }
+
+    if (!emailResponse.data?.id) {
+      logStep("ERROR: No email ID returned from Resend", { response: emailResponse });
+      throw new Error("Resend API did not return an email ID");
+    }
+
+    logStep("Email sent successfully", { emailId: emailResponse.data.id });
 
     return new Response(JSON.stringify({ success: true, emailResponse }), {
       status: 200,
@@ -112,6 +144,7 @@ The Empowered Patient Team
     });
 
   } catch (error) {
+    logStep("ERROR in send-document-email", { error: error.message });
     console.error("Error sending email:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,

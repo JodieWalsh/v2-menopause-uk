@@ -42,33 +42,24 @@ serve(async (req) => {
     // The responses are already saved individually in user_responses table during the assessment
     // No need to save to a separate assessments table
 
-    // Try to generate and send PDF document
-    const { data: pdfData, error: pdfError } = await supabaseClient.functions.invoke('generate-pdf-document', {
+    // Send HTML email directly (PDF generation temporarily disabled due to missing API key)
+    console.log('Sending HTML document email directly (PDF generation disabled)');
+    
+    const { error: emailError } = await supabaseClient.functions.invoke('send-document-email', {
       body: {
-        htmlContent: htmlContent,
+        email: user.email,
+        documentContent: htmlContent,
         userName: userName,
-        userEmail: user.email
+        isBase64PDF: false
       }
     });
 
-    if (pdfError) {
-      console.error('PDF generation failed, falling back to HTML email:', pdfError);
-      
-      // Fallback to HTML email if PDF generation fails
-      const { error: emailError } = await supabaseClient.functions.invoke('send-document-email', {
-        body: {
-          email: user.email,
-          documentContent: htmlContent,
-          userName: userName,
-          isBase64PDF: false
-        }
-      });
-
-      if (emailError) {
-        console.error('HTML email fallback also failed:', emailError);
-        // Don't throw error - document generation succeeded
-      }
+    if (emailError) {
+      console.error('HTML email sending failed:', emailError);
+      throw new Error(`Failed to send document email: ${emailError.message || JSON.stringify(emailError)}`);
     }
+
+    console.log('HTML document email sent successfully');
 
     return new Response(JSON.stringify({ 
       success: true, 
