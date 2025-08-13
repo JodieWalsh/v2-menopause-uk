@@ -262,6 +262,76 @@ const Auth = () => {
                   description: "Complete your payment in the new window. You'll be automatically logged in afterward.",
                   variant: "default",
                 });
+
+                // Listen for messages from the payment window
+                const handlePaymentMessage = (event) => {
+                  if (event.origin !== window.location.origin) return;
+                  
+                  if (event.data.type === 'PAYMENT_SUCCESS') {
+                    console.log("Received payment success message from popup");
+                    
+                    // Close the popup
+                    if (stripeWindow && !stripeWindow.closed) {
+                      stripeWindow.close();
+                    }
+                    
+                    // Restore session and navigate to welcome
+                    const restoreSessionAndNavigate = async () => {
+                      try {
+                        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                          email: formData.email,
+                          password: formData.password,
+                        });
+                        
+                        if (signInData.user && !signInError) {
+                          console.log("Session restored in main window:", signInData.user.email);
+                          
+                          // Clear stored credentials
+                          localStorage.removeItem('payment_user_email');
+                          localStorage.removeItem('payment_user_password');
+                          
+                          toast({
+                            title: "Payment Successful! 🎉",
+                            description: "Welcome back! Redirecting to your assessment...",
+                            variant: "default",
+                          });
+                          
+                          // Navigate to welcome page
+                          setTimeout(() => {
+                            navigate('/welcome');
+                          }, 1500);
+                        } else {
+                          console.error("Failed to restore session:", signInError);
+                          toast({
+                            title: "Session Error",
+                            description: "Payment successful, but please sign in to continue.",
+                            variant: "destructive",
+                          });
+                        }
+                      } catch (error) {
+                        console.error("Error restoring session:", error);
+                      }
+                    };
+                    
+                    restoreSessionAndNavigate();
+                    
+                    // Clean up event listener
+                    window.removeEventListener('message', handlePaymentMessage);
+                  }
+                };
+                
+                // Add event listener for messages from popup
+                window.addEventListener('message', handlePaymentMessage);
+                
+                // Clean up if popup is closed manually
+                const checkClosed = setInterval(() => {
+                  if (stripeWindow.closed) {
+                    clearInterval(checkClosed);
+                    window.removeEventListener('message', handlePaymentMessage);
+                    console.log("Payment popup was closed");
+                  }
+                }, 1000);
+                
               } else {
                 console.error("Failed to open Stripe window - popup blocked?");
                 toast({

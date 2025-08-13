@@ -21,6 +21,27 @@ const Welcome = () => {
     const checkAuthWithRetry = async () => {
       console.log("Welcome page: checking authentication with retry...");
       
+      // Check if we're in a popup window (opened from payment)
+      if (window.opener && window.opener !== window) {
+        console.log("Welcome page: Detected popup window, sending payment success message to parent");
+        try {
+          // Send message to parent window that payment was successful
+          window.opener.postMessage({
+            type: 'PAYMENT_SUCCESS',
+            timestamp: Date.now()
+          }, window.location.origin);
+          
+          // Close this popup window
+          setTimeout(() => {
+            window.close();
+          }, 1000);
+          
+          return; // Don't continue with normal auth flow in popup
+        } catch (error) {
+          console.error("Error communicating with parent window:", error);
+        }
+      }
+      
       // Check if coming from payment success
       const urlParams = new URLSearchParams(window.location.search);
       const paymentVerified = urlParams.get('payment_verified');
