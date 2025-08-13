@@ -277,21 +277,7 @@
 
           const session = await stripe.checkout.sessions.create(sessionConfig);
 
-          // Send welcome email after successful Stripe session creation
-          try {
-            await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-              body: {
-                user_id: newUser.id,
-                email: email,
-                firstName: firstName,
-                isPaid: true
-              }
-            });
-            console.log("Welcome email sent successfully");
-          } catch (emailError) {
-            console.error("Failed to send welcome email:", emailError);
-            // Don't fail the registration if email fails
-          }
+          // Don't send welcome email here - it should be sent after successful payment via webhook
 
           return new Response(JSON.stringify({
             success: true,

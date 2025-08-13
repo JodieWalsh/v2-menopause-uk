@@ -149,10 +149,18 @@ const Auth = () => {
       if (data.userExists) {
         // User already exists - show message and redirect to sign in
         toast({
-          title: data.freeAccess ? "Account Updated!" : "Account Exists",
-          description: data.message,
+          title: data.freeAccess ? "Account Updated!" : "Account Already Exists",
+          description: data.freeAccess ? data.message : "An account with this email already exists. Please use the Sign In tab below to access your account.",
           variant: data.freeAccess ? "default" : "destructive",
         });
+        
+        // If not free access, automatically switch to sign-in tab for user convenience
+        if (!data.freeAccess) {
+          setTimeout(() => {
+            const signInTab = document.querySelector('[value="signin"]') as HTMLElement;
+            if (signInTab) signInTab.click();
+          }, 2000); // 2 second delay to let user read the message
+        }
         return;
       }
 
