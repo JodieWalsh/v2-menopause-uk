@@ -86,7 +86,9 @@ serve(async (req) => {
       logStep("Processing checkout.session.completed", { 
         sessionId: session.id, 
         customerId: session.customer,
-        paymentStatus: session.payment_status 
+        paymentStatus: session.payment_status,
+        amountTotal: session.amount_total,
+        currency: session.currency
       });
 
       if (session.payment_status === "paid" && session.customer) {
@@ -158,6 +160,13 @@ serve(async (req) => {
 
           // PRIMARY PATH: Send welcome email after successful payment
           try {
+            logStep("About to send welcome email", { 
+              userId: user.id, 
+              email: user.email, 
+              firstName: user.user_metadata?.first_name,
+              amountPaid: session.amount_total 
+            });
+
             const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
               body: {
                 user_id: user.id,
@@ -168,16 +177,27 @@ serve(async (req) => {
             });
 
             if (emailError) {
-              logStep("ERROR sending welcome email via webhook", { error: emailError });
+              logStep("ERROR sending welcome email via webhook", { 
+                error: emailError,
+                userId: user.id,
+                email: user.email 
+              });
             } else {
               logStep("Welcome email sent via webhook", { 
                 email: user.email, 
                 amountPaid: session.amount_total,
-                skipped: emailData?.skipped 
+                skipped: emailData?.skipped,
+                emailId: emailData?.id,
+                success: emailData?.success
               });
             }
           } catch (emailError) {
-            logStep("ERROR in welcome email process via webhook", { error: emailError });
+            logStep("ERROR in welcome email process via webhook", { 
+              error: emailError,
+              errorMessage: emailError?.message,
+              userId: user.id,
+              email: user.email 
+            });
           }
         } else {
           logStep("Subscription already exists via webhook", { userId: user.id });

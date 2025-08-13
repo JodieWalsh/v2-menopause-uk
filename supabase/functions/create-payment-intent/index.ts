@@ -124,7 +124,7 @@
           },
         ],
         mode: "payment",
-        success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        success_url: `${req.headers.get("origin")}/welcome`,
         cancel_url: `${req.headers.get("origin")}/payment`,
         locale: "en",
         payment_method_types: ["card"],
