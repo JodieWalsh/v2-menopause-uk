@@ -15,6 +15,11 @@ interface ContactEmailRequest {
   content: string;
 }
 
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[SEND-CONTACT-EMAIL] ${step}${detailsStr}`);
+};
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -22,14 +27,15 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    logStep("Function started");
     const { email, title, content }: ContactEmailRequest = await req.json();
-
-    console.log("Received contact form submission:", { email, title });
+    logStep("Contact form data received", { email, title, hasContent: !!content });
 
     // Send email to support
+    logStep("Attempting to send contact email via Resend");
     const emailResponse = await resend.emails.send({
-      from: "Contact Form <noreply@the-empowered-patient.com.au>",
-      to: ["support@the-empowered-patient.com.au"],
+      from: "Contact Form <noreply@the-empowered-patient.org>",
+      to: ["support@the-empowered-patient.org"],
       subject: `Contact Form: ${title}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -67,7 +73,22 @@ Please respond to this inquiry within 2 business days.
       `,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    logStep("Resend API response received", { 
+      emailId: emailResponse.data?.id, 
+      error: emailResponse.error,
+      success: !emailResponse.error 
+    });
+
+    // Check if the email send failed
+    if (emailResponse.error) {
+      logStep("ERROR: Resend API failed to send contact email", { 
+        error: emailResponse.error,
+        email: email
+      });
+      throw new Error(`Failed to send contact email via Resend: ${JSON.stringify(emailResponse.error)}`);
+    }
+
+    logStep("Contact email sent successfully", { emailId: emailResponse.data?.id });
 
     return new Response(JSON.stringify({ success: true, messageId: emailResponse.data?.id }), {
       status: 200,
@@ -77,6 +98,7 @@ Please respond to this inquiry within 2 business days.
       },
     });
   } catch (error: any) {
+    logStep("ERROR in send-contact-email", { error: error.message });
     console.error("Error in send-contact-email function:", error);
     return new Response(
       JSON.stringify({ 
