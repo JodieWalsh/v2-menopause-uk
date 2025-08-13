@@ -44,10 +44,10 @@ serve(async (req) => {
       throw new Error("Missing stripe-signature header");
     }
 
-    // Verify webhook signature
+    // Verify webhook signature (using async version for Supabase Edge Functions)
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
       logStep("Webhook signature verified", { type: event.type, id: event.id });
     } catch (err) {
       logStep("Webhook signature verification failed", { error: err.message });
