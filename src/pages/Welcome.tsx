@@ -331,7 +331,7 @@ const Welcome = () => {
 
         // TEMPORARY FIX: Also accept pending subscriptions that are recent (within last 10 minutes)
         // This handles the case where webhook hasn't processed the payment yet
-        const { data: recentPendingSub, error: pendingError } = await supabase
+        const { data: recentPendingSub, error: recentPendingError } = await supabase
           .from('user_subscriptions')
           .select('*')
           .eq('user_id', userId)
@@ -341,7 +341,7 @@ const Welcome = () => {
 
         console.log(`⏳ Recent pending subscription:`, recentPendingSub);
 
-        if (recentPendingSub && !pendingError) {
+        if (recentPendingSub && !recentPendingError) {
           console.log(`🎉 Recent pending subscription found on attempt ${attempt} - granting access:`, recentPendingSub);
           
           // Grant access but show a note about processing
