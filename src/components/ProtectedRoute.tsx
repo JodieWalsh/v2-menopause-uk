@@ -77,8 +77,33 @@ export function ProtectedRoute({ children, requiresSubscription = true }: Protec
               // Check if subscription is active and not expired
               const isActive = subscription.status === 'active';
               const isNotExpired = !subscription.expires_at || new Date(subscription.expires_at) > new Date();
-              console.log('Subscription check:', { isActive, isNotExpired, subscription });
-              setHasValidSubscription(isActive && isNotExpired);
+              
+              // TEMPORARY FIX: Also accept recent pending subscriptions (within last 10 minutes)
+              // This handles the case where webhook hasn't processed the payment yet
+              const isPendingRecent = subscription.status === 'pending' && 
+                subscription.created_at && 
+                new Date(subscription.created_at) > new Date(Date.now() - 10 * 60 * 1000);
+              
+              const hasValidAccess = (isActive || isPendingRecent) && isNotExpired;
+              
+              console.log('Subscription check:', { 
+                isActive, 
+                isPendingRecent, 
+                isNotExpired, 
+                hasValidAccess, 
+                subscription 
+              });
+              
+              setHasValidSubscription(hasValidAccess);
+              
+              // Show toast for pending subscriptions
+              if (isPendingRecent && !isActive) {
+                toast({
+                  title: "Payment Received! 🎉",
+                  description: "Your payment is being processed. You have full access to the assessment.",
+                  variant: "default",
+                });
+              }
             }
           }
         } else if (mounted) {
