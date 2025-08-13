@@ -178,6 +178,7 @@
         user_id: newUser.id,
         subscription_type: finalAmount === 0 ? 'free' : 'pending',
         status: finalAmount === 0 ? 'active' : 'pending',
+        stripe_customer_id: finalAmount === 0 ? null : customerId, // Include Stripe customer ID for paid subscriptions
         amount_paid: Math.round(finalAmount * 100), // Convert to pence for integer storage
         currency: 'gbp',
         expires_at: null,

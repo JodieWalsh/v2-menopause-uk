@@ -313,7 +313,7 @@ const Welcome = () => {
         console.log(`📊 All subscriptions for user ${userId}:`, allSubs);
         console.log(`❌ Query error (if any):`, allError);
 
-        // Now check specifically for active subscriptions
+        // Check for active subscriptions
         const { data: activeSub, error: activeError } = await supabase
           .from('user_subscriptions')
           .select('*')
@@ -325,8 +325,33 @@ const Welcome = () => {
         console.log(`❌ Active subscription error:`, activeError);
 
         if (activeSub && !activeError) {
-          console.log(`🎉 Subscription found on attempt ${attempt}:`, activeSub);
+          console.log(`🎉 Active subscription found on attempt ${attempt}:`, activeSub);
           return activeSub;
+        }
+
+        // TEMPORARY FIX: Also accept pending subscriptions that are recent (within last 10 minutes)
+        // This handles the case where webhook hasn't processed the payment yet
+        const { data: recentPendingSub, error: pendingError } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'pending')
+          .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString()) // Last 10 minutes
+          .single();
+
+        console.log(`⏳ Recent pending subscription:`, recentPendingSub);
+
+        if (recentPendingSub && !pendingError) {
+          console.log(`🎉 Recent pending subscription found on attempt ${attempt} - granting access:`, recentPendingSub);
+          
+          // Grant access but show a note about processing
+          toast({
+            title: "Payment Received! 🎉",
+            description: "Your payment is being processed. You have full access to the assessment.",
+            variant: "default",
+          });
+          
+          return recentPendingSub;
         }
 
         // Also check for pending subscriptions that might exist
