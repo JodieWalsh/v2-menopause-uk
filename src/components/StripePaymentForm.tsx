@@ -44,6 +44,11 @@ import { useState, useEffect } from "react";
 
         console.log("Payment session response:", data);
 
+        // Check for function-level errors first
+        if (data?.success === false || data?.error) {
+          throw new Error(data.error || "Payment session creation failed");
+        }
+
         if (data?.checkout_session && data?.url) {
           console.log("Redirecting to Stripe Checkout:", data.url);
 
@@ -56,7 +61,6 @@ import { useState, useEffect } from "react";
           setTimeout(() => {
             window.location.href = data.url;
           }, 1000);
-
 
           return;
         }

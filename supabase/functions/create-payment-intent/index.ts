@@ -77,9 +77,12 @@
 
         if (promotionCodes.data.length === 0) {
           logStep("Invalid discount code", { discountCode });
-          return new Response(JSON.stringify({ error: "Invalid discount code" }), {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: "Invalid discount code" 
+          }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+            status: 200,
           });
         }
 
@@ -99,9 +102,12 @@
             maxRedemptions: promotionCode.coupon.max_redemptions,
             timesRedeemed: promotionCode.coupon.times_redeemed
           });
-          return new Response(JSON.stringify({ error: "Discount code has reached its usage limit" }), {
+          return new Response(JSON.stringify({ 
+            success: false,
+            error: "Discount code has reached its usage limit" 
+          }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
+            status: 200,
           });
         }
       }
@@ -120,8 +126,8 @@
         mode: "payment",
         success_url: `${req.headers.get("origin")}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${req.headers.get("origin")}/payment`,
-        locale: "en", // Fix: Explicitly set locale to English
-          payment_method_types: ["card"],
+        locale: "en",
+        payment_method_types: ["card"],
 
         metadata: {
           user_id: user.id,
@@ -137,8 +143,7 @@
         },
         // For one-time payments, Stripe automatically handles £0.00 payments without requiring payment method collection
         automatic_tax: { enabled: false },
-        payment_method_types: ['card'], // Fix: Explicitly specify payment methods
-        billing_address_collection: 'auto' // Fix: Improve address collection
+        billing_address_collection: 'auto'
       };
 
       // Apply promotion code if valid - this will properly redeem the code and increment times_redeemed
@@ -158,6 +163,7 @@
       });
 
       return new Response(JSON.stringify({
+        success: true,
         checkout_session: true,
         session_id: session.id,
         url: session.url,
@@ -169,9 +175,12 @@
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logStep("ERROR in create-payment-intent", { message: errorMessage });
-      return new Response(JSON.stringify({ error: errorMessage }), {
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: errorMessage 
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+        status: 200,
       });
     }
   });
