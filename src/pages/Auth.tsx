@@ -146,16 +146,6 @@ const Auth = () => {
         return;
       }
 
-      // Only proceed if the function was successful
-      if (data.success !== true) {
-        console.error("Function did not return success:", data);
-        toast({
-          title: "Registration Failed",
-          description: data.error || "An unexpected error occurred during registration.",
-          variant: "destructive",
-        });
-        return;
-      }
 
       if (data.userExists) {
         // User already exists - show message and redirect to sign in

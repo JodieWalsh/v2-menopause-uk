@@ -30,10 +30,11 @@
       if (!email || !password || !firstName || !lastName) {
         logStep("Missing required fields");
         return new Response(JSON.stringify({
+          success: false,
           error: "Missing required fields: email, password, firstName, and lastName are required"
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
+          status: 200,
         });
       }
 
@@ -325,10 +326,11 @@
         name: error.name
       });
       return new Response(JSON.stringify({
+        success: false,
         error: error.message || "Registration failed"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
+        status: 200,
       });
     }
   });
