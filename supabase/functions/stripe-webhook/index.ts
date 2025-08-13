@@ -204,7 +204,71 @@ serve(async (req) => {
             });
           }
         } else {
-          logStep("Subscription already exists via webhook", { userId: user.id });
+          logStep("Subscription already exists, updating to active status", { userId: user.id, existingStatus: existingSub.status });
+          
+          // Update existing subscription to active status
+          const { error: updateError } = await supabaseService
+            .from("user_subscriptions")
+            .update({
+              subscription_type: "paid",
+              status: "active",
+              stripe_customer_id: session.customer as string,
+              stripe_session_id: session.id,
+              amount_paid: (session.amount_total || 0) / 100,
+              currency: session.currency || "gbp",
+              expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', user.id);
+
+          if (updateError) {
+            logStep("ERROR updating existing subscription", { error: updateError.message });
+            throw new Error(`Failed to update subscription: ${updateError.message}`);
+          }
+
+          logStep("Subscription updated to active via webhook", { userId: user.id });
+
+          // Send welcome email for updated subscription
+          try {
+            logStep("About to send welcome email for updated subscription", { 
+              userId: user.id, 
+              email: user.email, 
+              firstName: user.user_metadata?.first_name,
+              amountPaid: session.amount_total 
+            });
+
+            const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+              body: {
+                user_id: user.id,
+                email: user.email!,
+                firstName: user.user_metadata?.first_name,
+                isPaid: session.amount_total > 0
+              }
+            });
+
+            if (emailError) {
+              logStep("ERROR sending welcome email for updated subscription", { 
+                error: emailError,
+                userId: user.id,
+                email: user.email 
+              });
+            } else {
+              logStep("Welcome email sent for updated subscription", { 
+                email: user.email, 
+                amountPaid: session.amount_total,
+                skipped: emailData?.skipped,
+                emailId: emailData?.id,
+                success: emailData?.success
+              });
+            }
+          } catch (emailError) {
+            logStep("ERROR in welcome email process for updated subscription", { 
+              error: emailError,
+              errorMessage: emailError?.message,
+              userId: user.id,
+              email: user.email 
+            });
+          }
         }
       }
     }
