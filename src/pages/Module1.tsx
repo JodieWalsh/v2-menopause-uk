@@ -40,7 +40,7 @@ export default function Module1() {
       question: "Have you been experiencing any feelings of light headedness over the past months?",
       options: [
         "No, I have not been experiencing any new feeling of light headedness",
-        "Yes I have experience form mild new light headedness",
+        "Yes I have experienced some mild new light headedness",
         "I have been experiencing light headedness that is having a moderate impact on my life",
         "I have been experiencing new light headedness which is severe"
       ]
@@ -106,9 +106,9 @@ export default function Module1() {
       question: "Has your mood fluctuated more over the past few months than normal? Have you had more mood changes?",
       options: [
         "No, my mood fluctuates as normal",
-        "I am have a mild increase in mood fluctuations",
+        "I have a mild increase in mood fluctuations",
         "My mood is fluctuating quite a bit more than normal",
-        "I am having severe mood fluctuations compared with normally"
+        "I am having severe mood fluctuations compared to normal"
       ]
     },
     {
@@ -267,7 +267,7 @@ export default function Module1() {
       question: "Over the past months has there been an increase in brain fog?",
       options: [
         "No, I do not feel any more foggy than normal",
-        "I have had a mild increase in the incidence of brain fog",
+        "I have had a mild increase in brain fog",
         "My brain fog has increased moderately",
         "My brain fog has increased severely"
       ]
