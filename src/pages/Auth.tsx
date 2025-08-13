@@ -231,6 +231,13 @@ const Auth = () => {
           window.location.href = data.redirectTo;
           return;
         }
+        
+        // If no direct Stripe URL, log for debugging
+        console.log("No direct Stripe redirect, using fallback", {
+          stripeRedirect: data.stripeRedirect,
+          redirectTo: data.redirectTo,
+          freeAccess: data.freeAccess
+        });
 
         // Fallback to payment page if direct redirect failed
         const params = new URLSearchParams();
@@ -244,15 +251,17 @@ const Auth = () => {
 
       }
 
-      // Clear form
-      setFormData({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        firstName: '',
-        lastName: '',
-        discountCode: ''
-      });
+      // Clear form only for successful free access (don't clear for paid redirects)
+      if (data.freeAccess) {
+        setFormData({
+          email: '',
+          password: '',
+          confirmPassword: '',
+          firstName: '',
+          lastName: '',
+          discountCode: ''
+        });
+      }
 
     } catch (error) {
       console.error("Unexpected error during registration:", error);
