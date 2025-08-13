@@ -113,6 +113,14 @@ const Auth = () => {
       });
 
       console.log("Registration response:", { data, error });
+      console.log("Response fields:", {
+        success: data?.success,
+        userExists: data?.userExists,
+        freeAccess: data?.freeAccess,
+        stripeRedirect: data?.stripeRedirect,
+        redirectTo: data?.redirectTo,
+        message: data?.message
+      });
 
       if (error) {
         console.error("Registration function error:", error);
@@ -214,13 +222,6 @@ const Auth = () => {
         }
         
         console.log("Paid user signed in successfully, navigating to payment");
-
-        // Check if this is free access (no payment needed)
-        if (data.freeAccess && data.redirectTo) {
-          console.log("Free access granted, redirecting to:", data.redirectTo);
-          navigate(data.redirectTo);
-          return;
-        }
 
         // Check if registration returned a direct Stripe URL
         if (data.stripeRedirect && data.redirectTo) {
