@@ -117,15 +117,15 @@
               const { error: subError } = await supabaseService
                 .from('user_subscriptions')
                 .upsert({
-                  user_id: existingUser.id,
-                  subscription_type: 'free',
-                  status: 'active',
-                  amount_paid: 0,
-                  currency: 'gbp',
-                  expires_at: null,
-                  welcome_email_sent: false,
-                  updated_at: new Date().toISOString()
-                }, {
+                   user_id: existingUser.id,
+                   subscription_type: 'free',
+                   status: 'active',
+                   amount_paid: 0, // Already 0 for free access
+                   currency: 'gbp',
+                   expires_at: null,
+                   welcome_email_sent: false,
+                   updated_at: new Date().toISOString()
+                 }, {
                   onConflict: 'user_id'
                 });
 
@@ -135,8 +135,7 @@
 
                 return new Response(JSON.stringify({
                   success: true,
-                  message: "Account updated with free access! Check your email for a welcome message. Please sign
-  in to continue.",
+                  message: "Account updated with free access! Check your email for a welcome message. Please sign in to continue.",
                   userExists: true,
                   freeAccess: true
                 }), {
@@ -175,7 +174,7 @@
         user_id: newUser.id,
         subscription_type: finalAmount === 0 ? 'free' : 'pending',
         status: finalAmount === 0 ? 'active' : 'pending',
-        amount_paid: finalAmount,
+        amount_paid: Math.round(finalAmount * 100), // Convert to pence for integer storage
         currency: 'gbp',
         expires_at: null,
         welcome_email_sent: false,
@@ -195,7 +194,21 @@
 
       // Handle free access (send welcome email immediately)
       if (finalAmount === 0 && isValidDiscount) {
-        
+        // Send welcome email for free access
+        try {
+          await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+            body: {
+              user_id: newUser.id,
+              email: email,
+              firstName: firstName,
+              isPaid: false
+            }
+          });
+          console.log("Welcome email sent for free access");
+        } catch (emailError) {
+          console.error("Failed to send welcome email:", emailError);
+          // Don't fail the registration if email fails
+        }
 
         return new Response(JSON.stringify({
           success: true,
@@ -248,8 +261,8 @@
             customer: customerId,
             line_items: [{ price: "price_1RrcsPATHqCGypnRMPr4nbKE", quantity: 1 }],
             mode: "payment",
-            success_url: `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/auth`,
+            success_url: `${Deno.env.get('SITE_URL') || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/welcome`,
+            cancel_url: `${Deno.env.get('SITE_URL') || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/auth`,
             locale: "en",
             payment_method_types: ["card"],
             metadata: {
@@ -263,6 +276,22 @@
           }
 
           const session = await stripe.checkout.sessions.create(sessionConfig);
+
+          // Send welcome email after successful Stripe session creation
+          try {
+            await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+              body: {
+                user_id: newUser.id,
+                email: email,
+                firstName: firstName,
+                isPaid: true
+              }
+            });
+            console.log("Welcome email sent successfully");
+          } catch (emailError) {
+            console.error("Failed to send welcome email:", emailError);
+            // Don't fail the registration if email fails
+          }
 
           return new Response(JSON.stringify({
             success: true,

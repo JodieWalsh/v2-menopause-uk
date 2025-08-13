@@ -42,7 +42,7 @@ export function ModuleLayout({
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center h-16">
             <img 
-              src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//facebook_header_logo.png" 
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
               alt="The Empowered Patient Logo" 
               className="h-12 w-auto sm:h-16"
             />

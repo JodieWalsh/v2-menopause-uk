@@ -99,6 +99,8 @@ const Auth = () => {
     }
 
     try {
+      console.log("Starting registration process...");
+      
       // Use new registration function that handles discount codes
       const { data, error } = await supabase.functions.invoke('register-with-discount', {
         body: {
@@ -110,7 +112,10 @@ const Auth = () => {
         }
       });
 
+      console.log("Registration response:", { data, error });
+
       if (error) {
+        console.error("Registration function error:", error);
         toast({
           title: "Registration Failed",
           description: error.message || "An error occurred during registration.",
@@ -120,6 +125,19 @@ const Auth = () => {
       }
 
       if (data.error) {
+        // Handle specific error types
+        if (data.error.includes("already exists")) {
+          toast({
+            title: "Account Exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+          // Switch to sign-in tab
+          const signInTab = document.querySelector('[value="signin"]') as HTMLElement;
+          if (signInTab) signInTab.click();
+          return;
+        }
+        
         toast({
           title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
           description: data.error,
@@ -188,17 +206,13 @@ const Auth = () => {
         
         console.log("Paid user signed in successfully, navigating to payment");
 
-          // Check if registration returned a direct Stripe URL
-          if (data.stripeRedirect && data.redirectTo) {
-            console.log("Redirecting directly to Stripe:", data.redirectTo);
-            // Direct redirect to Stripe Checkout - break out of iframe for Lovable.dev
-            if (window.top && window.top !== window) {
-              window.top.location.href = data.redirectTo;
-            } else {
-              window.location.href = data.redirectTo;
-            }
-            return;
-          }
+        // Check if registration returned a direct Stripe URL
+        if (data.stripeRedirect && data.redirectTo) {
+          console.log("Redirecting directly to Stripe:", data.redirectTo);
+          // Always redirect in the same tab
+          window.location.href = data.redirectTo;
+          return;
+        }
 
           // Fallback to payment page if direct redirect failed
           const params = new URLSearchParams();
@@ -223,6 +237,7 @@ const Auth = () => {
       });
 
     } catch (error) {
+      console.error("Unexpected error during registration:", error);
       toast({
         title: "Sign Up Failed",
         description: "An unexpected error occurred. Please try again.",
@@ -240,7 +255,7 @@ const Auth = () => {
         <div className="text-center mb-6 sm:mb-8">
           <Link to="/" className="inline-flex items-center justify-center mb-4 sm:mb-6">
             <img 
-              src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" 
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
               alt="The Empowered Patient Logo" 
               className="h-12 w-auto sm:h-16 sm:w-auto"
             />

@@ -13,11 +13,11 @@ const Landing = () => {
   useResourcePreloader({
     resources: [
       {
-        href: 'https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//facebook_header_logo.png',
+        href: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png',
         as: 'image'
       },
       {
-        href: 'https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png',
+        href: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png',
         as: 'image'
       }
     ],

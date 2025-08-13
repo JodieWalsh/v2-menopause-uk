@@ -30,18 +30,14 @@ export const Footer = () => {
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center mb-4">
               <img 
-                src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//facebook_header_logo.png" 
+                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
                 alt="The Empowered Patient Logo" 
-                className="h-10 w-auto"
+                className="h-40 w-auto"
               />
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed mb-4">
               Empowering patients with comprehensive menopause health assessments and personalized guidance for informed healthcare decisions.
             </p>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <Heart className="h-4 w-4 text-primary" />
-              <span>Made with care for women's health</span>
-            </div>
           </div>
 
           {/* Product Links */}
