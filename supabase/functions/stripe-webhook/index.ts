@@ -148,7 +148,7 @@ serve(async (req) => {
               status: "active",
               stripe_customer_id: session.customer as string,
               stripe_session_id: session.id,
-              amount_paid: (session.amount_total || 0) / 100,
+              amount_paid: session.amount_total || 0, // Keep in pence as integer
               currency: session.currency || "gbp",
               expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               welcome_email_sent: false,
@@ -214,7 +214,7 @@ serve(async (req) => {
               status: "active",
               stripe_customer_id: session.customer as string,
               stripe_session_id: session.id,
-              amount_paid: (session.amount_total || 0) / 100,
+              amount_paid: session.amount_total || 0, // Keep in pence as integer
               currency: session.currency || "gbp",
               expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               updated_at: new Date().toISOString(),
