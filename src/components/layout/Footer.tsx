@@ -30,7 +30,7 @@ export const Footer = () => {
           <div className="lg:col-span-1">
             <Link to="/" className="flex items-center mb-4">
               <img 
-                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos-tep//facebook_header_logo.png" 
+                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
                 alt="The Empowered Patient Logo" 
                 className="h-10 w-auto"
               />
