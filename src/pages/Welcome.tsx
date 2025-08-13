@@ -134,10 +134,23 @@ const Welcome = () => {
         
         if (user && !error && mounted) {
           console.log("Welcome page: User authenticated:", user.email);
+          console.log("🆔 User ID for subscription check:", user.id);
           setUser(user);
-          await loadProgress();
-          setLoading(false);
-          return;
+          
+          // Check subscription even for normal authentication
+          console.log("Welcome page: Checking subscription for authenticated user...");
+          const subscription = await checkSubscriptionWithRetry(user.id, 3); // Fewer retries for normal auth
+          
+          if (subscription) {
+            console.log("Welcome page: Subscription confirmed for authenticated user");
+            await loadProgress();
+            setLoading(false);
+            return;
+          } else {
+            console.log("Welcome page: No subscription found for authenticated user");
+            setLoading(false);
+            return;
+          }
         }
         
         // Wait progressively longer between retries
@@ -285,44 +298,72 @@ const Welcome = () => {
   };
 
   const checkSubscriptionWithRetry = async (userId: string, maxAttempts: number = 10) => {
-    console.log(`Checking subscription for user ${userId}...`);
+    console.log(`🔍 Checking subscription for user: ${userId}`);
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const { data: subscription, error } = await supabase
+        console.log(`📋 Attempt ${attempt}: Querying user_subscriptions table...`);
+        
+        // First, let's check ALL subscriptions for this user (not just active ones)
+        const { data: allSubs, error: allError } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', userId);
+
+        console.log(`📊 All subscriptions for user ${userId}:`, allSubs);
+        console.log(`❌ Query error (if any):`, allError);
+
+        // Now check specifically for active subscriptions
+        const { data: activeSub, error: activeError } = await supabase
           .from('user_subscriptions')
           .select('*')
           .eq('user_id', userId)
           .eq('status', 'active')
           .single();
 
-        if (subscription && !error) {
-          console.log(`Subscription found on attempt ${attempt}:`, subscription);
-          return subscription;
+        console.log(`✅ Active subscription query result:`, activeSub);
+        console.log(`❌ Active subscription error:`, activeError);
+
+        if (activeSub && !activeError) {
+          console.log(`🎉 Subscription found on attempt ${attempt}:`, activeSub);
+          return activeSub;
         }
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error(`Subscription check error on attempt ${attempt}:`, error);
+        // Also check for pending subscriptions that might exist
+        const { data: pendingSub, error: pendingError } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'pending')
+          .single();
+
+        console.log(`⏳ Pending subscription:`, pendingSub);
+        if (pendingSub) {
+          console.log(`⏳ Found pending subscription, continuing to wait for activation...`);
+        }
+
+        if (activeError && activeError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error(`❌ Subscription check error on attempt ${attempt}:`, activeError);
         } else {
-          console.log(`No active subscription found on attempt ${attempt}`);
+          console.log(`🔍 No active subscription found on attempt ${attempt}`);
         }
 
         // Wait before retrying (progressive backoff)
         if (attempt < maxAttempts) {
           const waitTime = Math.min(attempt * 1000, 5000); // Max 5 seconds
-          console.log(`Waiting ${waitTime}ms before subscription retry ${attempt + 1}...`);
+          console.log(`⏰ Waiting ${waitTime}ms before subscription retry ${attempt + 1}...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
 
       } catch (error) {
-        console.error(`Subscription check failed on attempt ${attempt}:`, error);
+        console.error(`💥 Subscription check failed on attempt ${attempt}:`, error);
         if (attempt < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
     }
 
-    console.log(`No subscription found after ${maxAttempts} attempts`);
+    console.log(`❌ No subscription found after ${maxAttempts} attempts`);
     return null;
   };
 
