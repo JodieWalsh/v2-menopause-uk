@@ -57,21 +57,43 @@ import { useState, useEffect } from "react";
             description: "Opening secure payment window...",
           });
 
-          // Beautiful single-window redirect - break out of iframe for Stripe
+          // Handle Stripe redirect - detect if we're in a sandboxed iframe
           setTimeout(() => {
-            console.log("Redirecting to Stripe in same window");
+            console.log("Redirecting to Stripe");
             try {
-              if (window.top && window.top !== window) {
-                // We're in an iframe (like Lovable), break out to top level
+              // First try to detect if we're in a sandboxed iframe
+              const isInIframe = window.top !== window;
+              let isSandboxed = false;
+              
+              try {
+                // Test if we can access window.top.location
+                window.top.location.href;
+              } catch (sandboxError) {
+                isSandboxed = true;
+                console.log("Detected sandboxed iframe, will open Stripe in new window");
+              }
+              
+              if (isInIframe && isSandboxed) {
+                // We're in a sandboxed iframe (like Lovable), open in new window
+                const stripeWindow = window.open(data.url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                if (stripeWindow) {
+                  console.log("Opened Stripe in new window");
+                  stripeWindow.focus();
+                } else {
+                  console.error("Failed to open Stripe window - popup blocked?");
+                  setError("Please allow popups to complete payment");
+                }
+              } else if (isInIframe) {
+                // We're in an iframe but not sandboxed, try top navigation
                 window.top.location.href = data.url;
               } else {
                 // We're at top level, normal redirect
                 window.location.href = data.url;
               }
             } catch (e) {
-              // If accessing window.top throws an error, fallback to normal redirect
-              console.warn("Could not access window.top, using window.location:", e);
-              window.location.href = data.url;
+              console.warn("Error during Stripe redirect, falling back to new window:", e);
+              // Fallback: open in new window
+              window.open(data.url, '_blank');
             }
           }, 1000);
 

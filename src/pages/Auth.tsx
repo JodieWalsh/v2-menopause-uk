@@ -227,19 +227,46 @@ const Auth = () => {
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
           
-          // Beautiful single-window redirect - break out of iframe for Stripe
+          // Handle Stripe redirect - detect if we're in a sandboxed iframe
           try {
-            if (window.top && window.top !== window) {
-              // We're in an iframe (like Lovable), break out to top level
+            // First try to detect if we're in a sandboxed iframe
+            const isInIframe = window.top !== window;
+            let isSandboxed = false;
+            
+            try {
+              // Test if we can access window.top.location
+              window.top.location.href;
+            } catch (sandboxError) {
+              isSandboxed = true;
+              console.log("Detected sandboxed iframe, will open Stripe in new window");
+            }
+            
+            if (isInIframe && isSandboxed) {
+              // We're in a sandboxed iframe (like Lovable), open in new window
+              const stripeWindow = window.open(data.redirectTo, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+              if (stripeWindow) {
+                console.log("Opened Stripe in new window");
+                // Focus the new window
+                stripeWindow.focus();
+              } else {
+                console.error("Failed to open Stripe window - popup blocked?");
+                toast({
+                  title: "Popup Blocked",
+                  description: "Please allow popups and try again, or copy this link: " + data.redirectTo,
+                  variant: "destructive",
+                });
+              }
+            } else if (isInIframe) {
+              // We're in an iframe but not sandboxed, try top navigation
               window.top.location.href = data.redirectTo;
             } else {
               // We're at top level, normal redirect
               window.location.href = data.redirectTo;
             }
           } catch (e) {
-            // If accessing window.top throws an error, fallback to normal redirect
-            console.warn("Could not access window.top, using window.location:", e);
-            window.location.href = data.redirectTo;
+            console.warn("Error during Stripe redirect, falling back to new window:", e);
+            // Fallback: open in new window
+            window.open(data.redirectTo, '_blank');
           }
           return;
         }
