@@ -57,15 +57,18 @@ import { useState, useEffect } from "react";
             description: "Opening secure payment window...",
           });
 
-          // Handle iframe restrictions by opening in new tab if needed
+          // Check if we're in an iframe
+          const isInIframe = window !== window.parent;
+          
           setTimeout(() => {
-            try {
-              // Try to redirect in the same window first
-              window.location.href = data.url;
-            } catch (error) {
-              console.log("Same-window redirect blocked, opening in new tab:", error);
-              // If blocked by iframe, open in new tab as fallback
+            if (isInIframe) {
+              // In iframe - open in new tab
+              console.log("In iframe, opening Stripe in new tab");
               window.open(data.url, '_blank', 'noopener,noreferrer');
+            } else {
+              // Not in iframe - redirect in same tab
+              console.log("Not in iframe, redirecting in same tab");
+              window.location.href = data.url;
             }
           }, 1000);
 

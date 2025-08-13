@@ -264,8 +264,8 @@
             customer: customerId,
             line_items: [{ price: "price_1RrcsPATHqCGypnRMPr4nbKE", quantity: 1 }],
             mode: "payment",
-            success_url: `${Deno.env.get('SITE_URL') || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/welcome`,
-            cancel_url: `${Deno.env.get('SITE_URL') || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/auth`,
+            success_url: `${req.headers.get("origin") || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/welcome`,
+            cancel_url: `${req.headers.get("origin") || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/auth`,
             locale: "en",
             payment_method_types: ["card"],
             metadata: {
