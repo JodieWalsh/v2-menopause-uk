@@ -168,14 +168,31 @@ const Welcome = () => {
               localStorage.removeItem('payment_user_password');
               
               setUser(signInData.user);
-              await loadProgress();
-              setLoading(false);
               
-              toast({
-                title: "Payment Successful! 🎉",
-                description: "Welcome back! You can now start your assessment.",
-                variant: "default",
-              });
+              // Check for subscription with retry logic (payment just completed)
+              console.log("Welcome page: Checking for subscription after payment...");
+              const subscription = await checkSubscriptionWithRetry(signInData.user.id);
+              
+              if (subscription) {
+                console.log("Welcome page: Subscription confirmed, user has access");
+                await loadProgress();
+                setLoading(false);
+                
+                toast({
+                  title: "Payment Successful! 🎉",
+                  description: "Welcome back! You can now start your assessment.",
+                  variant: "default",
+                });
+              } else {
+                console.log("Welcome page: No subscription found after retries");
+                setLoading(false);
+                
+                toast({
+                  title: "Payment Processing",
+                  description: "Your payment is being processed. Please refresh in a moment or contact support if this persists.",
+                  variant: "default",
+                });
+              }
               return;
             } else {
               console.log("Welcome page: Session restoration failed:", signInError);
@@ -208,8 +225,33 @@ const Welcome = () => {
       } else if (event === 'SIGNED_IN' && session.user) {
         console.log("Welcome page: User signed in:", session.user.email);
         setUser(session.user);
-        await loadProgress();
-        setLoading(false);
+        
+        // Check if this might be a post-payment sign-in
+        const isPostPayment = localStorage.getItem('payment_user_email') === session.user.email;
+        
+        if (isPostPayment) {
+          console.log("Welcome page: Post-payment sign-in detected, checking subscription...");
+          const subscription = await checkSubscriptionWithRetry(session.user.id);
+          
+          if (subscription) {
+            console.log("Welcome page: Subscription confirmed for signed-in user");
+            await loadProgress();
+            setLoading(false);
+            
+            toast({
+              title: "Welcome! 🎉",
+              description: "Your subscription is active. You can start your assessment.",
+              variant: "default",
+            });
+          } else {
+            console.log("Welcome page: No subscription found for signed-in user");
+            setLoading(false);
+          }
+        } else {
+          // Normal sign-in, load progress normally
+          await loadProgress();
+          setLoading(false);
+        }
       } else if (event === 'TOKEN_REFRESHED' && session.user) {
         console.log("Welcome page: Token refreshed:", session.user.email);
         setUser(session.user);
@@ -240,6 +282,48 @@ const Welcome = () => {
     } catch (error) {
       console.error('Error loading progress:', error);
     }
+  };
+
+  const checkSubscriptionWithRetry = async (userId: string, maxAttempts: number = 10) => {
+    console.log(`Checking subscription for user ${userId}...`);
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const { data: subscription, error } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .single();
+
+        if (subscription && !error) {
+          console.log(`Subscription found on attempt ${attempt}:`, subscription);
+          return subscription;
+        }
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error(`Subscription check error on attempt ${attempt}:`, error);
+        } else {
+          console.log(`No active subscription found on attempt ${attempt}`);
+        }
+
+        // Wait before retrying (progressive backoff)
+        if (attempt < maxAttempts) {
+          const waitTime = Math.min(attempt * 1000, 5000); // Max 5 seconds
+          console.log(`Waiting ${waitTime}ms before subscription retry ${attempt + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+
+      } catch (error) {
+        console.error(`Subscription check failed on attempt ${attempt}:`, error);
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+    }
+
+    console.log(`No subscription found after ${maxAttempts} attempts`);
+    return null;
   };
 
   const handleStartConsultation = () => {
