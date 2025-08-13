@@ -23,6 +23,43 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Check if we're in a popup window (redirected here from /welcome after payment)
+  useEffect(() => {
+    if (window.opener && window.opener !== window) {
+      console.log("Auth page: Detected popup window, this is likely a post-payment redirect");
+      
+      // Send message to parent window that payment was successful
+      try {
+        window.opener.postMessage({
+          type: 'PAYMENT_SUCCESS',
+          timestamp: Date.now()
+        }, window.location.origin);
+        
+        console.log("Auth page: Sent PAYMENT_SUCCESS message to parent window");
+        
+        // Show brief message and close popup
+        toast({
+          title: "Payment Successful!",
+          description: "Closing window and logging you in...",
+          variant: "default",
+        });
+        
+        setTimeout(() => {
+          console.log("Auth page: Closing popup window");
+          window.close();
+        }, 2000);
+        
+      } catch (error) {
+        console.error("Error communicating with parent window:", error);
+        setTimeout(() => {
+          window.close();
+        }, 3000);
+      }
+      
+      return; // Don't render the normal auth form in popup
+    }
+  }, [toast]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({

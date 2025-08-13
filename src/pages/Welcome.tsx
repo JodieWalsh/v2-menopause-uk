@@ -22,8 +22,15 @@ const Welcome = () => {
       console.log("Welcome page: checking authentication with retry...");
       
       // Check if we're in a popup window (opened from payment)
+      // This needs to happen BEFORE any authentication checks
       if (window.opener && window.opener !== window) {
         console.log("Welcome page: Detected popup window, sending payment success message to parent");
+        
+        // Show a brief message in the popup
+        if (mounted) {
+          setLoading(false);
+        }
+        
         try {
           // Send message to parent window that payment was successful
           window.opener.postMessage({
@@ -31,14 +38,21 @@ const Welcome = () => {
             timestamp: Date.now()
           }, window.location.origin);
           
-          // Close this popup window
+          console.log("Welcome page: Sent PAYMENT_SUCCESS message to parent window");
+          
+          // Close this popup window after a short delay
           setTimeout(() => {
+            console.log("Welcome page: Closing popup window");
             window.close();
-          }, 1000);
+          }, 2000);
           
           return; // Don't continue with normal auth flow in popup
         } catch (error) {
           console.error("Error communicating with parent window:", error);
+          // Still try to close the popup even if messaging failed
+          setTimeout(() => {
+            window.close();
+          }, 3000);
         }
       }
       
