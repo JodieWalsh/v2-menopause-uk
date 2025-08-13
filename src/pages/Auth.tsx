@@ -227,8 +227,20 @@ const Auth = () => {
         if (data.stripeRedirect && data.redirectTo) {
           console.log("Redirecting directly to Stripe:", data.redirectTo);
           
-          // Beautiful single-window redirect (like it was a few days ago!)
-          window.location.href = data.redirectTo;
+          // Beautiful single-window redirect - break out of iframe for Stripe
+          try {
+            if (window.top && window.top !== window) {
+              // We're in an iframe (like Lovable), break out to top level
+              window.top.location.href = data.redirectTo;
+            } else {
+              // We're at top level, normal redirect
+              window.location.href = data.redirectTo;
+            }
+          } catch (e) {
+            // If accessing window.top throws an error, fallback to normal redirect
+            console.warn("Could not access window.top, using window.location:", e);
+            window.location.href = data.redirectTo;
+          }
           return;
         }
         

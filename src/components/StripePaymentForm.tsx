@@ -57,10 +57,22 @@ import { useState, useEffect } from "react";
             description: "Opening secure payment window...",
           });
 
-          // Beautiful single-window redirect (like it was a few days ago!)
+          // Beautiful single-window redirect - break out of iframe for Stripe
           setTimeout(() => {
             console.log("Redirecting to Stripe in same window");
-            window.location.href = data.url;
+            try {
+              if (window.top && window.top !== window) {
+                // We're in an iframe (like Lovable), break out to top level
+                window.top.location.href = data.url;
+              } else {
+                // We're at top level, normal redirect
+                window.location.href = data.url;
+              }
+            } catch (e) {
+              // If accessing window.top throws an error, fallback to normal redirect
+              console.warn("Could not access window.top, using window.location:", e);
+              window.location.href = data.url;
+            }
           }, 1000);
 
           return;
