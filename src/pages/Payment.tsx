@@ -101,7 +101,7 @@ const Payment = () => {
           </Link>
           <div className="flex items-center justify-center mb-6">
             <img 
-              src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" 
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
               alt="The Empowered Patient Logo" 
               className="h-16 w-auto"
             />

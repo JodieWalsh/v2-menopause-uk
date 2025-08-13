@@ -143,7 +143,7 @@ const ConsultationComplete = () => {
         <div className="text-center mb-4">
           <div className="flex items-center justify-center">
             <img 
-              src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//website_logo_transparent.png" 
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
               alt="The Empowered Patient Logo" 
               className="h-28 w-auto sm:h-32"
             />
