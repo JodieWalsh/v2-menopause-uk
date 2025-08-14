@@ -46,15 +46,7 @@ const handler = async (req: Request): Promise<Response> => {
       from: "Delivered <delivered@resend.dev>",
       to: ["support@the-empowered-patient.org"],
       subject: `Contact Form: ${title}`,
-      html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>New Contact Form Submission</h2>
-          <p><strong>From:</strong> ${email}</p>
-          <p><strong>Subject:</strong> ${title}</p>
-          <p><strong>Message:</strong></p>
-          <p>${content.replace(/\n/g, '<br>')}</p>
-        </div>
-      `,
+      html: `<h1>New Contact Form Submission</h1><p><strong>From:</strong> ${email}</p><p><strong>Subject:</strong> ${title}</p><p><strong>Message:</strong></p><p>${content.replace(/\n/g, '<br>')}</p>`,
       text: `New Contact Form Submission\n\nFrom: ${email}\nSubject: ${title}\n\nMessage:\n${content}`,
     });
     
