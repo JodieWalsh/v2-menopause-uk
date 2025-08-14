@@ -175,7 +175,9 @@ This email was sent from the contact form on The Empowered Patient website.`;
 
     console.log("Attempting to send email via Resend...");
     console.log("Email subject:", emailSubject);
-    console.log("Recipient: support@the-empowered-patient.org");
+    console.log("From:", "The Empowered Patient <support@the-empowered-patient.org>");
+    console.log("To:", "support@the-empowered-patient.org");
+    console.log("Reply-To:", email);
     
     // Send email
     const result = await resend.emails.send({
