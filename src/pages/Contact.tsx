@@ -82,6 +82,28 @@ const Contact = () => {
     }
   };
 
+  const testEmailFunction = async () => {
+    try {
+      console.log('Testing email function...');
+      const { data, error } = await supabase.functions.invoke('test-contact-email', {
+        body: { test: 'debugging data' }
+      });
+      console.log('Test result:', { data, error });
+      toast({
+        title: error ? "Test Failed" : "Test Result",
+        description: error ? `Error: ${error.message}` : `Success: ${JSON.stringify(data)}`,
+        variant: error ? "destructive" : "default",
+      });
+    } catch (error) {
+      console.error('Test error:', error);
+      toast({
+        title: "Test Error",
+        description: `Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isSubmitted) {
     return (
       <Layout>
@@ -215,6 +237,15 @@ const Contact = () => {
                       Send Message
                     </>
                   )}
+                </Button>
+                
+                <Button 
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-2" 
+                  onClick={testEmailFunction}
+                >
+                  Test Email Function (Debug)
                 </Button>
               </form>
             </Form>
