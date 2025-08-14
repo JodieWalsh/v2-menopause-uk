@@ -29,9 +29,44 @@ serve(async (req) => {
       )
     }
     
-    console.log("All checks passed - returning success")
+    console.log("Sending email via Resend API...")
+    
+    // Send email using Resend API
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({
+        from: 'The Empowered Patient <noreply@the-empowered-patient.org>',
+        to: ['support@the-empowered-patient.org'],
+        reply_to: email,
+        subject: `Contact Form: ${title}`,
+        html: `
+          <h2>New Contact Form Submission</h2>
+          <p><strong>From:</strong> ${email}</p>
+          <p><strong>Subject:</strong> ${title}</p>
+          <p><strong>Message:</strong></p>
+          <p>${content.replace(/\n/g, '<br>')}</p>
+        `,
+      }),
+    })
+
+    const result = await response.json()
+    console.log("Resend response:", { status: response.status, result })
+
+    if (!response.ok) {
+      console.error("Resend API error:", result)
+      return new Response(
+        JSON.stringify({ error: 'Failed to send email', details: result }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log("Email sent successfully!")
     return new Response(
-      JSON.stringify({ success: true, message: 'Test successful' }),
+      JSON.stringify({ success: true, messageId: result.id, message: 'Email sent successfully!' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
     
