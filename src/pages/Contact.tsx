@@ -22,8 +22,6 @@ const contactFormSchema = z.object({
 type ContactFormData = z.infer<typeof contactFormSchema>;
 
 const Contact = () => {
-  console.log('Contact page component is rendering...'); // Debug log
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { toast } = useToast();
@@ -39,43 +37,66 @@ const Contact = () => {
 
 
   const onSubmit = async (data: ContactFormData) => {
-    console.log('Form submission started with data:', data);
+    console.log('Form submission started');
     setIsSubmitting(true);
     
     try {
-      console.log('Calling Supabase function send-contact-email...');
+      console.log('Calling send-contact-email function...');
       const { data: result, error } = await supabase.functions.invoke('send-contact-email', {
         body: {
-          email: data.email,
-          title: data.title,
-          content: data.content,
+          email: data.email.trim(),
+          title: data.title.trim(),
+          content: data.content.trim(),
         },
       });
 
-      console.log('Supabase function response:', { result, error });
+      console.log('Function response:', { result, error });
 
       if (error) {
-        console.error('Error sending contact email:', error);
+        console.error('Function invocation error:', error);
+        
+        // Handle different types of errors
+        let errorMessage = "Failed to send your message. Please try again.";
+        
+        if (error.message?.includes("Edge Function returned a non-2xx status code")) {
+          errorMessage = "Email service is temporarily unavailable. Please try again later or contact us directly.";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
         toast({
-          title: "Error",
-          description: `Failed to send your message: ${error.message || 'Unknown error'}`,
+          title: "Error Sending Message",
+          description: errorMessage,
           variant: "destructive",
         });
         return;
       }
 
+      // Check if the function returned an error in the result
+      if (result?.error) {
+        console.error('Function returned error:', result.error);
+        toast({
+          title: "Error Sending Message",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Success!
       console.log('Email sent successfully:', result);
       setIsSubmitted(true);
       form.reset();
       toast({
-        title: "Message Sent!",
-        description: "Thank you for contacting us. We'll respond within 2 business days.",
+        title: "Message Sent Successfully!",
+        description: result?.message || "Thank you for contacting us. We'll respond within 2 business days.",
       });
+      
     } catch (error) {
-      console.error('Contact form error:', error);
+      console.error('Unexpected error:', error);
       toast({
-        title: "Error",
-        description: `Something went wrong: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        title: "Unexpected Error",
+        description: "Something went wrong. Please try again or contact us directly.",
         variant: "destructive",
       });
     } finally {
