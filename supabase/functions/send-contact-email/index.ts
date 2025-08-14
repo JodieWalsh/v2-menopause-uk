@@ -33,52 +33,33 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to support
     logStep("Attempting to send contact email via Resend");
+    
+    // Check if RESEND_API_KEY exists
+    const apiKey = Deno.env.get("RESEND_API_KEY");
+    if (!apiKey) {
+      logStep("ERROR: RESEND_API_KEY environment variable not found");
+      throw new Error("RESEND_API_KEY environment variable not found");
+    }
+    logStep("RESEND_API_KEY found", { keyLength: apiKey.length });
+    
     const emailResponse = await resend.emails.send({
-      from: "Website Contact <onboarding@resend.dev>",
+      from: "Delivered <delivered@resend.dev>",
       to: ["support@the-empowered-patient.org"],
       subject: `Contact Form: ${title}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-            New Contact Form Submission
-          </h2>
-          
-          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>From:</strong> ${email}</p>
-            <p><strong>Subject:</strong> ${title}</p>
-          </div>
-          
-          <div style="background-color: #ffffff; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <h3 style="color: #333; margin-top: 0;">Message:</h3>
-            <p style="line-height: 1.6; color: #555;">${content.replace(/\n/g, '<br>')}</p>
-          </div>
-          
-          <div style="margin-top: 20px; padding: 15px; background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
-            <p style="margin: 0; color: #1e40af; font-size: 14px;">
-              <strong>Response Required:</strong> Please respond to this inquiry within 2 business days.
-            </p>
-          </div>
+        <div style="font-family: Arial, sans-serif;">
+          <h2>New Contact Form Submission</h2>
+          <p><strong>From:</strong> ${email}</p>
+          <p><strong>Subject:</strong> ${title}</p>
+          <p><strong>Message:</strong></p>
+          <p>${content.replace(/\n/g, '<br>')}</p>
         </div>
       `,
-      text: `
-New Contact Form Submission
-
-From: ${email}
-Subject: ${title}
-
-Message:
-${content}
-
-Please respond to this inquiry within 2 business days.
-      `,
+      text: `New Contact Form Submission\n\nFrom: ${email}\nSubject: ${title}\n\nMessage:\n${content}`,
     });
-
-    logStep("Resend API response received", { 
-      emailId: emailResponse.data?.id, 
-      error: emailResponse.error,
-      success: !emailResponse.error 
-    });
-
+    
+    logStep("Raw Resend API response", emailResponse);
+    
     // Check if the email send failed
     if (emailResponse.error) {
       logStep("ERROR: Resend API failed to send contact email", { 
