@@ -34,7 +34,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to support
     logStep("Attempting to send contact email via Resend");
     const emailResponse = await resend.emails.send({
-      from: "Contact Form <support@the-empowered-patient.org>",
+      from: "Website contact <hello@resend.dev>",
       to: ["support@the-empowered-patient.org"],
       subject: `Contact Form: ${title}`,
       html: `
