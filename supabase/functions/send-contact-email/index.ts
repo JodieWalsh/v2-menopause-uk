@@ -179,7 +179,7 @@ This email was sent from the contact form on The Empowered Patient website.`;
     
     // Send email
     const result = await resend.emails.send({
-      from: "The Empowered Patient <contact@the-empowered-patient.org>",
+      from: "Test <jlralph@gmail.com>", // Temporarily using your verified email as sender
       to: ["support@the-empowered-patient.org"],
       replyTo: email, // Allow replying directly to the user
       subject: emailSubject,
