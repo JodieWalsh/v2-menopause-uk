@@ -16,6 +16,10 @@ serve(async (req) => {
   console.log("Method:", req.method);
   console.log("URL:", req.url);
   
+  // Check if API key is available immediately
+  const apiKeyCheck = Deno.env.get("RESEND_API_KEY");
+  console.log("API Key check:", apiKeyCheck ? `Found key starting with: ${apiKeyCheck.substring(0, 8)}...` : "NOT FOUND");
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     console.log("Handling CORS preflight request");
