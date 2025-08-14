@@ -37,28 +37,6 @@ const Contact = () => {
     },
   });
 
-  const testFunction = async () => {
-    try {
-      console.log('Testing edge function...');
-      const { data, error } = await supabase.functions.invoke('test-contact-email', {
-        body: { test: 'data' }
-      });
-      console.log('Test result:', { data, error });
-      
-      toast({
-        title: "Test Result",
-        description: `Function test ${data?.success ? 'successful' : 'failed'}. Check console for details.`,
-        variant: data?.success ? "default" : "destructive",
-      });
-    } catch (error) {
-      console.error('Test error:', error);
-      toast({
-        title: "Test Error",
-        description: `Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: "destructive",
-      });
-    }
-  };
 
   const onSubmit = async (data: ContactFormData) => {
     console.log('Form submission started with data:', data);
@@ -223,34 +201,23 @@ const Contact = () => {
                   )}
                 />
 
-                <div className="space-y-3">
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={testFunction}
-                  >
-                    Test Edge Function
-                  </Button>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-2" />
-                        Send Message
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      Send Message
+                    </>
+                  )}
+                </Button>
               </form>
             </Form>
           </CardContent>
