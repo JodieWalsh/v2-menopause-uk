@@ -177,6 +177,18 @@ This email was sent from the contact form on The Empowered Patient website.`;
     console.log("To:", "support@the-empowered-patient.org");
     console.log("Reply-To:", email);
     
+    // Prepare the email payload
+    const emailPayload = {
+      from: "The Empowered Patient <noreply@the-empowered-patient.org>",
+      to: ["support@the-empowered-patient.org"],
+      reply_to: email, // Allow replying directly to the user
+      subject: emailSubject,
+      html: emailHtml,
+      text: emailText
+    };
+    
+    console.log("Sending email with payload:", JSON.stringify(emailPayload, null, 2));
+    
     // Send email using direct API call instead of SDK
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -184,18 +196,16 @@ This email was sent from the contact form on The Empowered Patient website.`;
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${resendApiKey}`,
       },
-      body: JSON.stringify({
-        from: "The Empowered Patient <noreply@the-empowered-patient.org>",
-        to: ["support@the-empowered-patient.org"],
-        reply_to: email, // Allow replying directly to the user
-        subject: emailSubject,
-        html: emailHtml,
-        text: emailText
-      })
+      body: JSON.stringify(emailPayload)
     });
 
     const result = await response.json();
-    console.log("Resend API response:", { status: response.status, result });
+    console.log("Resend API full response:", { 
+      status: response.status, 
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      result 
+    });
 
     // Check for errors
     if (!response.ok || result.error) {
