@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,8 +109,7 @@ serve(async (req) => {
       );
     }
     
-    console.log("Resend API key found, initializing client...");
-    const resend = new Resend(resendApiKey);
+    console.log("Resend API key found, using direct API call...");
 
     // Prepare email content
     const emailSubject = `Contact Form: ${title}`;
@@ -179,31 +177,40 @@ This email was sent from the contact form on The Empowered Patient website.`;
     console.log("To:", "support@the-empowered-patient.org");
     console.log("Reply-To:", email);
     
-    // Send email
-    const result = await resend.emails.send({
-      from: "The Empowered Patient <noreply@the-empowered-patient.org>",
-      to: ["support@the-empowered-patient.org"], // Back to original recipient
-      replyTo: email, // Allow replying directly to the user
-      subject: emailSubject,
-      html: emailHtml,
-      text: emailText
+    // Send email using direct API call instead of SDK
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${resendApiKey}`,
+      },
+      body: JSON.stringify({
+        from: "The Empowered Patient <noreply@the-empowered-patient.org>",
+        to: ["support@the-empowered-patient.org"],
+        reply_to: email, // Allow replying directly to the user
+        subject: emailSubject,
+        html: emailHtml,
+        text: emailText
+      })
     });
 
-    console.log("Resend API response:", result);
+    const result = await response.json();
+    console.log("Resend API response:", { status: response.status, result });
 
     // Check for errors
-    if (result.error) {
-      console.error("Resend API error details:", result.error);
+    if (!response.ok || result.error) {
+      console.error("Resend API error details:", result);
       
       // Provide specific error messages for common issues
       let errorMessage = "Failed to send email";
-      if (result.error.message) {
-        if (result.error.message.includes("domain")) {
+      const errorMsg = result.error?.message || result.message;
+      if (errorMsg) {
+        if (errorMsg.includes("domain")) {
           errorMessage = "Email domain not verified. Please contact the administrator.";
-        } else if (result.error.message.includes("testing")) {
+        } else if (errorMsg.includes("testing")) {
           errorMessage = "Email service is in testing mode. Please contact the administrator.";
         } else {
-          errorMessage = result.error.message;
+          errorMessage = errorMsg;
         }
       }
       
@@ -216,13 +223,13 @@ This email was sent from the contact form on The Empowered Patient website.`;
       );
     }
 
-    console.log("Email sent successfully! Message ID:", result.data?.id);
+    console.log("Email sent successfully! Message ID:", result.id);
 
     // Return success response
     return new Response(
       JSON.stringify({ 
         success: true, 
-        messageId: result.data?.id,
+        messageId: result.id,
         message: "Your message has been sent successfully!"
       }),
       {
