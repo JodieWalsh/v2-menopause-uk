@@ -41,7 +41,7 @@ const Contact = () => {
     setIsSubmitting(true);
     
     try {
-      console.log('Calling send-contact-email function...');
+      console.log('Calling contact-email-v2 function...');
       const { data: result, error } = await supabase.functions.invoke('contact-email-v2', {
         body: {
           email: data.email.trim(),
