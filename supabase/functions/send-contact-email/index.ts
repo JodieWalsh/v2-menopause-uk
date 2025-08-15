@@ -40,7 +40,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'Contact Form <onboarding@resend.dev>',
-        to: ['jlralph@gmail.com'],
+        to: ['the.empowered.patient73@gmail.com'],
         reply_to: email,
         subject: `Contact Form: ${title}`,
         html: `
@@ -55,20 +55,11 @@ serve(async (req) => {
 
     const result = await response.json()
     console.log("Resend response:", { status: response.status, result })
-    console.log("Response headers:", Object.fromEntries(response.headers.entries()))
-    
+
     if (!response.ok) {
       console.error("Resend API error:", result)
       return new Response(
         JSON.stringify({ error: 'Failed to send email', details: result }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-    
-    if (!result.id) {
-      console.error("No message ID returned from Resend:", result)
-      return new Response(
-        JSON.stringify({ error: 'Email sending failed - no message ID', details: result }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
