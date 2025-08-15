@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log("=== FUNCTION STARTED ===")
+  console.log("=== FUNCTION STARTED V2 - FORCED REDEPLOY ===")
   
   if (req.method === 'OPTIONS') {
     console.log("CORS preflight")
@@ -29,7 +29,7 @@ serve(async (req) => {
       )
     }
     
-    console.log("Sending email via Resend API...")
+    console.log("Sending email via Resend API to the.empowered.patient73@gmail.com")
     
     // Send email using Resend API
     const response = await fetch('https://api.resend.com/emails', {
