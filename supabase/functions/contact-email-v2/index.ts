@@ -39,8 +39,8 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'Contact Form <onboarding@resend.dev>',
-        to: ['jlralph@gmail.com'], // Using authenticated user's email due to Resend testing restrictions
+        from: 'Contact Form <support@the-empowered-patient.org>',
+        to: ['support@the-empowered-patient.org'],
         reply_to: email,
         subject: `Contact Form: ${title}`,
         html: `
