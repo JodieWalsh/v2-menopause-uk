@@ -37,11 +37,11 @@ const Contact = () => {
 
 
   const onSubmit = async (data: ContactFormData) => {
-    console.log('Form submission started');
+    console.log('Form submission started with data:', data);
     setIsSubmitting(true);
     
     try {
-      console.log('Calling contact-email-v2 function...');
+      console.log('Calling Supabase function contact-email-v2...');
       const { data: result, error } = await supabase.functions.invoke('contact-email-v2', {
         body: {
           email: data.email.trim(),
