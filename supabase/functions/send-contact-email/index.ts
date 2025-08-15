@@ -29,7 +29,7 @@ serve(async (req) => {
       )
     }
     
-    console.log("Sending email via Resend API to:", ['support@the-empowered-patient.org', 'the.empowered.patient73@gmail.com'])
+    console.log("Sending email via Resend API...")
     
     // Send email using Resend API
     const response = await fetch('https://api.resend.com/emails', {
