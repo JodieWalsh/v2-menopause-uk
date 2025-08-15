@@ -42,7 +42,7 @@ const Contact = () => {
     
     try {
       console.log('Calling send-contact-email function...');
-      const { data: result, error } = await supabase.functions.invoke('send-contact-email', {
+      const { data: result, error } = await supabase.functions.invoke('contact-email-v2', {
         body: {
           email: data.email.trim(),
           title: data.title.trim(),
