@@ -40,7 +40,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         from: 'Contact Form <onboarding@resend.dev>',
-        to: ['the.empowered.patient73@gmail.com'],
+        to: ['jlralph@gmail.com'], // Using authenticated user's email due to Resend testing restrictions
         reply_to: email,
         subject: `Contact Form: ${title}`,
         html: `
