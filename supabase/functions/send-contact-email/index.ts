@@ -39,7 +39,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'The Empowered Patient <noreply@the-empowered-patient.org>',
+        from: 'Contact Form <onboarding@resend.dev>',
         to: ['jlralph@gmail.com'],
         reply_to: email,
         subject: `Contact Form: ${title}`,
