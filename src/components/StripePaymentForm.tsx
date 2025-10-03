@@ -54,7 +54,7 @@ import { useState, useEffect } from "react";
 
           toast({
             title: "Redirecting to Payment",
-            description: "Opening secure payment window...",
+            description: "Taking you to our secure payment window...",
           });
 
  // Professional redirect to Stripe Checkout
@@ -97,7 +97,7 @@ import { useState, useEffect } from "react";
               <p className="text-muted-foreground text-center">
                 Setting up secure payment...
                 <br />
-                <small className="text-xs">You'll be redirected to Stripe in a moment</small>
+                <small className="text-xs">You'll be redirected to our secure payment page</small>
               </p>
             </div>
           </CardContent>
