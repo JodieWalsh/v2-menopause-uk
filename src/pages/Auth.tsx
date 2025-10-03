@@ -157,9 +157,10 @@ const Auth = () => {
     try {
       console.log("Creating Stripe checkout session...");
       
-      // Try create-checkout-public first (users created ONLY after payment)
-      let data, error;
-      let usedFallback = false;
+      // Try create-checkout-public first, fallback to register-with-discount
+      console.log("Attempting create-checkout-public...");
+      
+      let data, error, usedFallback = false;
       
       try {
         const result = await supabase.functions.invoke('create-checkout-public', {
@@ -171,20 +172,20 @@ const Auth = () => {
             discountCode: formData.discountCode.trim() || undefined
           }
         });
+        
+        console.log("create-checkout-public result:", result);
         data = result.data;
         error = result.error;
         
-        // If create-checkout-public returns an error, try fallback
-        if (error || (result.status && result.status >= 400)) {
-          console.log("create-checkout-public failed, trying fallback to register-with-discount");
-          console.error("create-checkout-public error:", error);
+        // If there's an error or no data, try fallback
+        if (error || !data || !data.success) {
+          console.log("create-checkout-public failed, trying fallback");
           throw new Error("create-checkout-public failed");
         }
       } catch (functionError) {
-        console.log("Falling back to register-with-discount due to error:", functionError.message);
+        console.log("Falling back to register-with-discount");
         usedFallback = true;
         
-        // Fallback to register-with-discount
         const fallbackResult = await supabase.functions.invoke('register-with-discount', {
           body: {
             email: formData.email.trim(),
@@ -194,10 +195,12 @@ const Auth = () => {
             discountCode: formData.discountCode.trim() || undefined
           }
         });
+        
+        console.log("register-with-discount result:", fallbackResult);
         data = fallbackResult.data;
         error = fallbackResult.error;
         
-        // Adjust response format for compatibility
+        // Convert response format for compatibility
         if (data && data.redirectTo && !data.url) {
           data.url = data.redirectTo;
         }
