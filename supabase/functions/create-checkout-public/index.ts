@@ -99,117 +99,87 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
 
-    // Look up promotion code if provided
+    // For discount codes, let Stripe handle validation and application
+    // We only need to check for 100% free codes that should bypass payment entirely
+    let isFreeAccess = false;
     let promotionCodeId = null;
+    
     if (discountCode && discountCode.trim() !== "") {
-      logStep("Looking up promotion code", { discountCode });
-
-      const promotionCodes = await stripe.promotionCodes.list({
-        code: discountCode,
-        active: true,
-        limit: 1,
-      });
-
-      if (promotionCodes.data.length === 0) {
-        logStep("Invalid discount code, continuing without discount", { discountCode });
-        // Continue with normal pricing instead of failing
-        promotionCodeId = null;
-      } else {
-        const promotionCode = promotionCodes.data[0];
-        promotionCodeId = promotionCode.id;
-        logStep("Found valid promotion code", { promotionCodeId });
-
-        // Check redemption limits
-        if (promotionCode.coupon.max_redemptions && 
-            promotionCode.coupon.times_redeemed >= promotionCode.coupon.max_redemptions) {
-          logStep("Discount code reached usage limit, continuing without discount", { discountCode });
-          // Continue without discount instead of failing
-          promotionCodeId = null;
-        } else {
-          // Check if this is a 100% discount (free access)
-          const coupon = promotionCode.coupon;
-          
-          if (coupon.percent_off === 100) {
-            logStep("100% discount detected - providing free access", { discountCode });
-        
-        // For 100% discounts, we need to create the user immediately and give them access
-        const supabaseService = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        );
-
-        // Create user immediately for free access
-        const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
-          email,
-          password,
-          user_metadata: {
-            first_name: firstName,
-            last_name: lastName,
-          },
-          email_confirm: true,
+      logStep("Checking if discount code provides free access", { discountCode });
+      
+      try {
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: discountCode.trim(),
+          active: true,
+          limit: 1,
         });
 
-        if (authError) {
-          logStep("User creation error for free access", { error: authError.message });
+        if (promotionCodes.data.length > 0) {
+          const promotionCode = promotionCodes.data[0];
+          promotionCodeId = promotionCode.id;
           
-          if (authError.message.includes('already been registered') || authError.code === 'email_exists') {
-            return new Response(JSON.stringify({
-              success: false,
-              error: "An account with this email already exists. Please sign in instead."
-            }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
+          // Only handle 100% discounts specially (free access)
+          if (promotionCode.coupon.percent_off === 100) {
+            logStep("100% discount detected - providing free access", { discountCode });
+            isFreeAccess = true;
+            
+            // Create user immediately for free access
+            const supabaseService = createClient(
+              Deno.env.get("SUPABASE_URL") ?? "",
+              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+            );
+
+            const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
+              email,
+              password,
+              user_metadata: {
+                first_name: firstName,
+                last_name: lastName,
+              },
+              email_confirm: true,
             });
-          }
 
-          return new Response(JSON.stringify({
-            success: false,
-            error: authError.message
-          }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          });
-        }
-
-        const newUser = authData.user;
-        if (!newUser) {
-          throw new Error("Failed to create user for free access");
-        }
-
-        // Create subscription record for free access
-        const { error: subError } = await supabaseService
-          .from('user_subscriptions')
-          .insert({
-            user_id: newUser.id,
-            subscription_type: 'free',
-            status: 'active',
-            amount_paid: 0,
-            currency: 'gbp',
-            expires_at: null,
-            welcome_email_sent: false,
-            updated_at: new Date().toISOString(),
-          });
-
-        if (subError) {
-          logStep("Subscription creation error for free access", { error: subError.message });
-          // Don't fail the registration, but log the error
-        }
-
-        // Send welcome email for free access
-        try {
-          await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-            body: {
-              user_id: newUser.id,
-              email: email,
-              firstName: firstName,
-              isPaid: false
+            if (authError) {
+              if (authError.message.includes('already been registered')) {
+                return new Response(JSON.stringify({
+                  success: false,
+                  error: "An account with this email already exists. Please sign in instead."
+                }), {
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                  status: 400,
+                });
+              }
+              throw new Error(`Failed to create user: ${authError.message}`);
             }
-          });
-          logStep("Welcome email sent for free access");
-        } catch (emailError) {
-          logStep("Failed to send welcome email for free access", { error: emailError });
-          // Don't fail the registration if email fails
-        }
+
+            const newUser = authData.user;
+            if (!newUser) throw new Error("Failed to create user for free access");
+
+            // Create subscription for free access
+            await supabaseService.from('user_subscriptions').insert({
+              user_id: newUser.id,
+              subscription_type: 'free',
+              status: 'active',
+              amount_paid: 0,
+              currency: 'gbp',
+              expires_at: null,
+              welcome_email_sent: false,
+              updated_at: new Date().toISOString(),
+            });
+
+            // Send welcome email
+            try {
+              await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+                body: {
+                  user_id: newUser.id,
+                  email: email,
+                  firstName: firstName,
+                  isPaid: false
+                }
+              });
+            } catch (emailError) {
+              logStep("Failed to send welcome email", { error: emailError });
+            }
 
             return new Response(JSON.stringify({
               success: true,
@@ -221,16 +191,23 @@ serve(async (req) => {
               status: 200,
             });
           } else {
-            // For non-100% discounts, continue to Stripe checkout with discount applied
-            logStep("Partial discount detected, continuing to Stripe checkout", { 
+            logStep("Partial discount code - will be applied by Stripe", { 
               discountCode, 
-              percentOff: coupon.percent_off,
-              amountOff: coupon.amount_off 
+              percentOff: promotionCode.coupon.percent_off 
             });
           }
+        } else {
+          logStep("Discount code not found - Stripe will handle validation", { discountCode });
+          promotionCodeId = null;
         }
+      } catch (error) {
+        logStep("Error checking discount code - proceeding to Stripe", { error: error.message });
+        promotionCodeId = null;
       }
     }
+
+    // If free access was handled above, we've already returned
+    // Continue with normal Stripe checkout for all other cases
 
     // Create Checkout Session with user data in metadata
     const sessionConfig: any = {
@@ -246,6 +223,7 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/auth`,
       locale: "en",
       payment_method_types: ["card"],
+      allow_promotion_codes: true, // Let Stripe handle ALL discount code validation
       metadata: {
         email,
         first_name: firstName,
@@ -257,11 +235,16 @@ serve(async (req) => {
       billing_address_collection: 'auto'
     };
 
-    // Apply promotion code if valid
+    // If we have a specific promotion code (for partial discounts), apply it
     if (promotionCodeId) {
       sessionConfig.discounts = [{ promotion_code: promotionCodeId }];
-      logStep("Applied promotion code to session", { promotionCodeId });
+      logStep("Pre-applied promotion code to session", { promotionCodeId });
     }
+    
+    logStep("Session config", { 
+      allowPromotionCodes: sessionConfig.allow_promotion_codes,
+      hasPreAppliedDiscount: !!promotionCodeId 
+    });
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
