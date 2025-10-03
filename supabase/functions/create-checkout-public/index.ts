@@ -111,38 +111,27 @@ serve(async (req) => {
       });
 
       if (promotionCodes.data.length === 0) {
-        logStep("Invalid discount code", { discountCode });
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: "The discount code you entered is invalid or has expired. Please check and try again, or proceed without a discount code." 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
+        logStep("Invalid discount code, continuing without discount", { discountCode });
+        // Continue with normal pricing instead of failing
+        promotionCodeId = null;
+      } else {
+        const promotionCode = promotionCodes.data[0];
+        promotionCodeId = promotionCode.id;
+        logStep("Found valid promotion code", { promotionCodeId });
 
-      const promotionCode = promotionCodes.data[0];
-      promotionCodeId = promotionCode.id;
-      logStep("Found valid promotion code", { promotionCodeId });
+        // Check redemption limits
+        if (promotionCode.coupon.max_redemptions && 
+            promotionCode.coupon.times_redeemed >= promotionCode.coupon.max_redemptions) {
+          logStep("Discount code reached usage limit, continuing without discount", { discountCode });
+          // Continue without discount instead of failing
+          promotionCodeId = null;
+        } else {
+          // Check if this is a 100% discount (free access)
+          const coupon = promotionCode.coupon;
+          const baseAmount = 19; // £19 base price
+          let finalAmount = baseAmount;
 
-      // Check redemption limits
-      if (promotionCode.coupon.max_redemptions && 
-          promotionCode.coupon.times_redeemed >= promotionCode.coupon.max_redemptions) {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: "Discount code has reached its usage limit" 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-
-      // Check if this is a 100% discount (free access)
-      const coupon = promotionCode.coupon;
-      const baseAmount = 19; // £19 base price
-      let finalAmount = baseAmount;
-
-      if (coupon.percent_off === 100) {
+          if (coupon.percent_off === 100) {
         logStep("100% discount detected - providing free access", { discountCode });
         
         // For 100% discounts, we need to create the user immediately and give them access
@@ -224,15 +213,17 @@ serve(async (req) => {
           // Don't fail the registration if email fails
         }
 
-        return new Response(JSON.stringify({
-          success: true,
-          freeAccess: true,
-          message: "Account created successfully! Your discount code gave you free access.",
-          userId: newUser.id,
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
+            return new Response(JSON.stringify({
+              success: true,
+              freeAccess: true,
+              message: "Account created successfully! Your discount code gave you free access.",
+              userId: newUser.id,
+            }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200,
+            });
+          }
+        }
       }
     }
 

@@ -83,7 +83,7 @@ const Register = () => {
       // Use create-checkout-public ONLY (no fallback - we need to fix this function)
       console.log("Attempting create-checkout-public (no fallback)...");
       
-      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
+      const result = await supabase.functions.invoke('create-checkout-public', {
         body: {
           email: formData.email.trim(),
           firstName: formData.firstName.trim(),
@@ -93,7 +93,11 @@ const Register = () => {
         }
       });
       
-      console.log("create-checkout-public response:", { data, error });
+      console.log("create-checkout-public full result:", result);
+      console.log("create-checkout-public data:", result.data);
+      console.log("create-checkout-public error:", result.error);
+      
+      const { data, error } = result;
       let usedFallback = false;
 
       console.log(usedFallback ? "Used fallback function: register-with-discount" : "Used primary function: create-checkout-public");
