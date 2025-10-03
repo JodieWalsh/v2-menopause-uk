@@ -283,7 +283,7 @@
             customer: customerId,
             line_items: [{ price: "price_1RrcsPATHqCGypnRMPr4nbKE", quantity: 1 }],
             mode: "payment",
-            success_url: `${req.headers.get("origin") || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/welcome`,
+            success_url: `${req.headers.get("origin") || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${req.headers.get("origin") || 'https://671a2bb4-0907-4f3e-b5ff-2fd2d4380229.lovableproject.com'}/auth`,
             locale: "en",
             payment_method_types: ["card"],

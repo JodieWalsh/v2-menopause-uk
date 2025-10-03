@@ -214,6 +214,10 @@ const Auth = () => {
           description: "Taking you to our secure payment page...",
         });
 
+        // Store user data temporarily for post-payment authentication
+        localStorage.setItem('temp_user_email', formData.email.trim());
+        localStorage.setItem('temp_user_password', formData.password);
+        
         // Brief delay to show the toast
         setTimeout(() => {
           window.location.href = data.redirectTo;

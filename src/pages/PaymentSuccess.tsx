@@ -46,14 +46,17 @@ const PaymentSuccess = () => {
           let attempts = 0;
           const maxAttempts = 30; // 30 seconds max wait
           
-          const pollForSubscription = async (): Promise<boolean> => {
+          const pollForSubscription = async (): Promise<{hasSubscription: boolean, userId?: string}> => {
             const { data: subscription } = await supabase
               .from('user_subscriptions')
-              .select('*')
+              .select('user_id')
               .eq('stripe_session_id', sessionId)
               .single();
               
-            return !!subscription;
+            return {
+              hasSubscription: !!subscription,
+              userId: subscription?.user_id
+            };
           };
           
           console.log("Waiting for webhook to create subscription...");
@@ -61,9 +64,36 @@ const PaymentSuccess = () => {
           await new Promise(resolve => setTimeout(resolve, 3000));
           
           while (attempts < maxAttempts) {
-            const hasSubscription = await pollForSubscription();
+            const {hasSubscription, userId} = await pollForSubscription();
             
-            if (hasSubscription) {
+            if (hasSubscription && userId) {
+              // Try to get stored credentials from localStorage (from registration)
+              const storedEmail = localStorage.getItem('temp_user_email');
+              const storedPassword = localStorage.getItem('temp_user_password');
+              
+              if (storedEmail && storedPassword) {
+                console.log("PaymentSuccess: Found stored credentials, signing in user:", storedEmail);
+                
+                try {
+                  const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email: storedEmail,
+                    password: storedPassword,
+                  });
+                  
+                  if (!signInError) {
+                    console.log("PaymentSuccess: User signed in successfully");
+                    localStorage.removeItem('temp_user_email'); // Clean up
+                    localStorage.removeItem('temp_user_password'); // Clean up
+                  } else {
+                    console.error("PaymentSuccess: Sign in failed:", signInError.message);
+                  }
+                } catch (authError) {
+                  console.error("PaymentSuccess: Auth error:", authError);
+                }
+              } else {
+                console.log("PaymentSuccess: No stored credentials found, user will need to sign in manually");
+              }
+              
               setVerified(true);
               toast({
                 title: "Payment Processed!",
