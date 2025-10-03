@@ -77,14 +77,11 @@
             isValidDiscount = true;
             logStep("Valid discount code applied", { discountAmount, finalAmount });
           } else {
-            logStep("Invalid discount code", { code: discountCode.trim() });
-            return new Response(JSON.stringify({
-              success: false,
-              error: `Invalid discount code "${discountCode.trim()}". Please check the code and try again.`
-            }), {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 200
-            });
+            logStep("Invalid discount code, continuing without discount", { code: discountCode.trim() });
+            // Continue with normal pricing instead of failing
+            isValidDiscount = false;
+            discountAmount = 0;
+            finalAmount = 19; // Reset to base price
           }
         } catch (stripeError) {
           logStep("Stripe discount validation error", { error: stripeError.message });
