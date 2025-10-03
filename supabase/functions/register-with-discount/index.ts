@@ -48,6 +48,7 @@
       let isValidDiscount = false;
       let discountAmount = 0;
       let finalAmount = 19; // Base price
+      let validPromotionCode = null; // Store the valid promotion code for later use
 
       if (discountCode && discountCode.trim()) {
         logStep("Validating discount code", { code: discountCode.trim() });
@@ -66,6 +67,7 @@
           if (promotionCodes.data.length > 0) {
             const promotionCodeData = promotionCodes.data[0];
             const coupon = promotionCodeData.coupon;
+            validPromotionCode = promotionCodeData; // Store for later use
 
             if (coupon.percent_off) {
               discountAmount = Math.round((finalAmount * coupon.percent_off / 100) * 100) / 100;
@@ -75,7 +77,12 @@
 
             finalAmount = Math.max(0, Math.round((finalAmount - discountAmount) * 100) / 100);
             isValidDiscount = true;
-            logStep("Valid discount code applied", { discountAmount, finalAmount });
+            logStep("Valid discount code applied", { 
+              discountAmount, 
+              finalAmount, 
+              promotionCodeId: promotionCodeData.id,
+              couponId: coupon.id 
+            });
           } else {
             logStep("Invalid discount code, continuing without discount", { code: discountCode.trim() });
             // Continue with normal pricing instead of failing
@@ -265,19 +272,6 @@
             throw new Error("Stripe customer ID not available for checkout session creation");
           }
 
-          // Find promotion code if discount was applied
-          let promotionCodeId;
-          if (isValidDiscount && discountCode) {
-            const promotionCodes = await stripe.promotionCodes.list({
-              code: discountCode.trim(),
-              active: true,
-              limit: 1,
-            });
-            if (promotionCodes.data.length > 0) {
-              promotionCodeId = promotionCodes.data[0].id;
-            }
-          }
-
           // Create Stripe Checkout Session
           const sessionConfig: any = {
             customer: customerId,
@@ -293,8 +287,15 @@
             }
           };
 
-          if (promotionCodeId) {
-            sessionConfig.discounts = [{ promotion_code: promotionCodeId }];
+          // Apply discount if we have a valid promotion code
+          if (validPromotionCode) {
+            logStep("Applying discount to Stripe session", { 
+              promotionCodeId: validPromotionCode.id,
+              code: validPromotionCode.code 
+            });
+            sessionConfig.discounts = [{ promotion_code: validPromotionCode.id }];
+          } else if (isValidDiscount) {
+            logStep("Warning: Valid discount detected but no promotion code found for Stripe session");
           }
 
           const session = await stripe.checkout.sessions.create(sessionConfig);
