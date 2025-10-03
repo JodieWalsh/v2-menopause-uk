@@ -12,8 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -62,27 +60,12 @@ const Auth = () => {
     }
   }, [toast]);
 
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [e.target.name]: e.target.value
     }));
-
-    // Real-time password validation
-    if (name === "password" || name === "confirmPassword") {
-      const errors: string[] = [];
-      const passwordToCheck = name === "password" ? value : formData.password;
-      const confirmToCheck = name === "confirmPassword" ? value : formData.confirmPassword;
-
-      if (passwordToCheck.length > 0 && passwordToCheck.length < 6) {
-        errors.push("Password must be at least 6 characters");
-      }
-      if (confirmToCheck.length > 0 && passwordToCheck !== confirmToCheck) {
-        errors.push("Passwords do not match");
-      }
-      setPasswordErrors(errors);
-    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -131,122 +114,323 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Client-side validation
-    if (!formData.firstName.trim() || !formData.lastName.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide your first and last name",
-        variant: "destructive",
-      });
-      return;
-    }
+    setIsLoading(true);
 
-    if (!formData.email.trim() || !formData.email.includes("@")) {
+    if (formData.password !== formData.confirmPassword) {
       toast({
-        title: "Invalid Email",
-        description: "Please provide a valid email address",
+        title: "Password Mismatch",
+        description: "Please make sure your passwords match.",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
       toast({
-        title: "Weak Password",
-        description: "Password must be at least 6 characters long",
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long.",
         variant: "destructive",
       });
+      setIsLoading(false);
       return;
     }
-    
-    if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match. Please check and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
+
     try {
-      console.log("Creating Stripe checkout session...");
+      console.log("Starting registration process...");
       
-      // Invoke the create-checkout-public Edge Function
-      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
+      // Use new registration function that handles discount codes
+      const { data, error } = await supabase.functions.invoke('register-with-discount', {
         body: {
-          email: formData.email.trim(),
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
+          email: formData.email,
           password: formData.password,
-          discountCode: formData.discountCode.trim() || undefined
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          discountCode: formData.discountCode
         }
+      });
+
+      console.log("Registration response:", { data, error });
+      console.log("Response fields:", {
+        success: data?.success,
+        userExists: data?.userExists,
+        freeAccess: data?.freeAccess,
+        stripeRedirect: data?.stripeRedirect,
+        redirectTo: data?.redirectTo,
+        message: data?.message
       });
 
       if (error) {
-        console.error("Edge function error:", error);
-        const errorMessage = error.message || "Failed to create checkout session";
-        
-        // Provide user-friendly error messages
-        let friendlyMessage = errorMessage;
-        if (errorMessage.includes("email")) {
-          friendlyMessage = "There's an issue with the email address. Please check and try again.";
-        } else if (errorMessage.includes("discount")) {
-          friendlyMessage = "The discount code is invalid or has expired.";
+        console.error("Registration function error:", error);
+        toast({
+          title: "Registration Failed",
+          description: error.message || "An error occurred during registration.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.success === false || data.error) {
+        // Handle specific error types
+        if (data.error && data.error.includes("already exists")) {
+          toast({
+            title: "Account Exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+          // Switch to sign-in tab
+          const signInTab = document.querySelector('[value="signin"]') as HTMLElement;
+          if (signInTab) signInTab.click();
+          return;
         }
         
         toast({
-          title: "Unable to Process",
-          description: friendlyMessage,
+          title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
+          description: data.error,
           variant: "destructive",
         });
-        setIsLoading(false);
         return;
       }
 
-      if (!data || !data.success) {
-        console.error("Checkout creation failed:", data);
-        const errorMsg = data?.error || "Failed to create checkout session";
-        
+
+      if (data.userExists) {
+        // User already exists - show message and redirect to sign in
         toast({
-          title: "Unable to Process",
-          description: errorMsg.includes("already") 
-            ? "An account with this email already exists. Please sign in instead." 
-            : "Unable to process your request. Please try again.",
-          variant: "destructive",
+          title: data.freeAccess ? "Account Updated!" : "Account Already Exists",
+          description: data.freeAccess ? data.message : "An account with this email already exists. Please use the Sign In tab below to access your account.",
+          variant: data.freeAccess ? "default" : "destructive",
         });
-        setIsLoading(false);
+        
+        // If not free access, automatically switch to sign-in tab for user convenience
+        if (!data.freeAccess) {
+          setTimeout(() => {
+            const signInTab = document.querySelector('[value="signin"]') as HTMLElement;
+            if (signInTab) signInTab.click();
+          }, 2000); // 2 second delay to let user read the message
+        }
         return;
       }
 
-      console.log("Checkout session created, redirecting to Stripe:", data.url);
+      if (data.freeAccess) {
+        toast({
+          title: "Account Created Successfully!",
+          description: "Welcome! You have free access to the consultation tool.",
+        });
+        // Sign in the user automatically for free access
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (signInError) {
+          console.error("Auto sign-in error after free registration:", signInError);
+          toast({
+            title: "Sign In Error",
+            description: "Account created but couldn't sign you in automatically. Please sign in manually.",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
+        }
+        
+        console.log("Free access user signed in successfully, navigating to welcome");
+        navigate('/welcome');
+      } else {
+        toast({
+          title: "Account Created Successfully!",
+          description: data.discountApplied ? 
+            `Discount applied! Your total is £${data.finalAmount}.` : 
+            "Please complete your payment to get started.",
+        });
+        // Sign in the user and navigate to payment
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (signInError) {
+          console.error("Auto sign-in error after paid registration:", signInError);
+          toast({
+            title: "Sign In Error", 
+            description: "Account created but couldn't sign you in automatically. Please sign in manually.",
+            variant: "destructive",
+          });
+          navigate('/login');
+          return;
+        }
+        
+        console.log("Paid user signed in successfully, navigating to payment");
 
-      // Store pending authentication details
-      sessionStorage.setItem('pendingAuth', JSON.stringify({
-        email: formData.email.trim(),
-        password: formData.password,
-        timestamp: Date.now()
-      }));
+        // Check if registration returned a direct Stripe URL
+        if (data.stripeRedirect && data.redirectTo) {
+          console.log("Redirecting directly to Stripe:", data.redirectTo);
+          
+          // Store user credentials temporarily for session restoration after payment
+          // This is needed because opening Stripe in new window breaks session in Lovable
+          localStorage.setItem('payment_user_email', formData.email);
+          localStorage.setItem('payment_user_password', formData.password);
+          console.log("Stored credentials for session restoration after payment");
+          
+          // Handle Stripe redirect - detect if we're in a sandboxed iframe
+          try {
+            // First try to detect if we're in a sandboxed iframe
+            const isInIframe = window.top !== window;
+            let isSandboxed = false;
+            
+            try {
+              // Test if we can access window.top.location
+              window.top.location.href;
+            } catch (sandboxError) {
+              isSandboxed = true;
+              console.log("Detected sandboxed iframe, will open Stripe in new window");
+            }
+            
+            if (isInIframe && isSandboxed) {
+              // We're in a sandboxed iframe (like Lovable), open in new window
+              const stripeWindow = window.open(data.redirectTo, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+              if (stripeWindow) {
+                console.log("Opened Stripe in new window");
+                // Focus the new window
+                stripeWindow.focus();
+                
+                // Show instruction to user
+                toast({
+                  title: "Payment Window Opened",
+                  description: "Complete your payment in the new window. You'll be automatically logged in afterward.",
+                  variant: "default",
+                });
 
+                // Listen for messages from the payment window
+                const handlePaymentMessage = (event) => {
+                  if (event.origin !== window.location.origin) return;
+                  
+                  if (event.data.type === 'PAYMENT_SUCCESS') {
+                    console.log("Received payment success message from popup");
+                    
+                    // Close the popup
+                    if (stripeWindow && !stripeWindow.closed) {
+                      stripeWindow.close();
+                    }
+                    
+                    // Restore session and navigate to welcome
+                    const restoreSessionAndNavigate = async () => {
+                      try {
+                        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                          email: formData.email,
+                          password: formData.password,
+                        });
+                        
+                        if (signInData.user && !signInError) {
+                          console.log("Session restored in main window:", signInData.user.email);
+                          
+                          // Clear stored credentials
+                          localStorage.removeItem('payment_user_email');
+                          localStorage.removeItem('payment_user_password');
+                          
+                          toast({
+                            title: "Payment Successful! 🎉",
+                            description: "Welcome back! Redirecting to your assessment...",
+                            variant: "default",
+                          });
+                          
+                          // Navigate to welcome page
+                          setTimeout(() => {
+                            navigate('/welcome');
+                          }, 1500);
+                        } else {
+                          console.error("Failed to restore session:", signInError);
+                          toast({
+                            title: "Session Error",
+                            description: "Payment successful, but please sign in to continue.",
+                            variant: "destructive",
+                          });
+                        }
+                      } catch (error) {
+                        console.error("Error restoring session:", error);
+                      }
+                    };
+                    
+                    restoreSessionAndNavigate();
+                    
+                    // Clean up event listener
+                    window.removeEventListener('message', handlePaymentMessage);
+                  }
+                };
+                
+                // Add event listener for messages from popup
+                window.addEventListener('message', handlePaymentMessage);
+                
+                // Clean up if popup is closed manually
+                const checkClosed = setInterval(() => {
+                  if (stripeWindow.closed) {
+                    clearInterval(checkClosed);
+                    window.removeEventListener('message', handlePaymentMessage);
+                    console.log("Payment popup was closed");
+                  }
+                }, 1000);
+                
+              } else {
+                console.error("Failed to open Stripe window - popup blocked?");
+                toast({
+                  title: "Popup Blocked",
+                  description: "Please allow popups and try again, or copy this link: " + data.redirectTo,
+                  variant: "destructive",
+                });
+              }
+            } else if (isInIframe) {
+              // We're in an iframe but not sandboxed, try top navigation
+              window.top.location.href = data.redirectTo;
+            } else {
+              // We're at top level, normal redirect
+              window.location.href = data.redirectTo;
+            }
+          } catch (e) {
+            console.warn("Error during Stripe redirect, falling back to new window:", e);
+            // Fallback: open in new window
+            window.open(data.redirectTo, '_blank');
+          }
+          return;
+        }
+        
+        // If no direct Stripe URL, log for debugging
+        console.log("No direct Stripe redirect, using fallback", {
+          stripeRedirect: data.stripeRedirect,
+          redirectTo: data.redirectTo,
+          freeAccess: data.freeAccess
+        });
+
+        // Fallback to payment page if direct redirect failed
+        const params = new URLSearchParams();
+        if (data.discountApplied) {
+          params.set('discount_applied', 'true');
+          params.set('discount_amount', data.discountAmount.toString());
+          params.set('final_amount', data.finalAmount.toString());
+          params.set('original_amount', data.originalAmount.toString());
+        }
+        navigate(`/payment?${params.toString()}`);
+
+      }
+
+      // Clear form only for successful free access (don't clear for paid redirects)
+      if (data.freeAccess) {
+        setFormData({
+          email: '',
+          password: '',
+          confirmPassword: '',
+          firstName: '',
+          lastName: '',
+          discountCode: ''
+        });
+      }
+
+    } catch (error) {
+      console.error("Unexpected error during registration:", error);
       toast({
-        title: "Redirecting to Payment",
-        description: "Taking you to our secure payment page...",
-      });
-
-      // Brief delay to show the toast
-      setTimeout(() => {
-        window.location.href = data.url;
-      }, 500);
-
-    } catch (err) {
-      console.error("Unexpected error during signup:", err);
-      toast({
-        title: "Registration Failed",
+        title: "Sign Up Failed",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -347,25 +531,17 @@ const Auth = () => {
               </TabsContent>
               
               <TabsContent value="signup" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
-                {/* Info Banner */}
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-foreground">
-                    <strong>Quick & Easy:</strong> Complete your details below, then you'll be securely redirected to payment. 
-                    After payment, you'll immediately start your assessment—no email verification needed!
-                  </p>
-                </div>
-
                 <form onSubmit={handleSignUp} className="space-y-3 sm:space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-sm sm:text-base">First Name *</Label>
+                      <Label htmlFor="firstName" className="text-sm sm:text-base">First Name</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="firstName"
                           name="firstName"
                           type="text"
-                          placeholder="Jane"
+                          placeholder="First name"
                           value={formData.firstName}
                           onChange={handleInputChange}
                           className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
@@ -375,14 +551,14 @@ const Auth = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-sm sm:text-base">Last Name *</Label>
+                      <Label htmlFor="lastName" className="text-sm sm:text-base">Last Name</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="lastName"
                           name="lastName"
                           type="text"
-                          placeholder="Smith"
+                          placeholder="Last name"
                           value={formData.lastName}
                           onChange={handleInputChange}
                           className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
@@ -393,14 +569,14 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-sm sm:text-base">Email Address *</Label>
+                    <Label htmlFor="signup-email" className="text-sm sm:text-base">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="signup-email"
                         name="email"
                         type="email"
-                        placeholder="jane.smith@example.com"
+                        placeholder="your@email.com"
                         value={formData.email}
                         onChange={handleInputChange}
                         className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
@@ -410,17 +586,17 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-sm sm:text-base">Password *</Label>
+                    <Label htmlFor="signup-password" className="text-sm sm:text-base">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="signup-password"
                         name="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Minimum 6 characters"
+                        placeholder="Create a password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base ${passwordErrors.length > 0 && formData.password.length > 0 ? "border-destructive" : ""}`}
+                        className="pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base"
                         required
                       />
                       <button
@@ -431,46 +607,23 @@ const Auth = () => {
                         {showPassword ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
                       </button>
                     </div>
-                    {formData.password.length > 0 && formData.password.length < 6 && (
-                      <p className="text-xs sm:text-sm text-destructive">Password must be at least 6 characters</p>
-                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password *</Label>
+                    <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="confirmPassword"
                         name="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="Re-enter your password"
+                        type="password"
+                        placeholder="Confirm your password"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        className={`pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base ${
-                          formData.confirmPassword.length > 0 && 
-                          formData.password !== formData.confirmPassword 
-                            ? "border-destructive" 
-                            : formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword
-                            ? "border-green-500"
-                            : ""
-                        }`}
+                        className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground hover:text-foreground touch-target"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
-                      </button>
                     </div>
-                    {formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword && (
-                      <p className="text-xs sm:text-sm text-destructive">Passwords do not match</p>
-                    )}
-                    {formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword && (
-                      <p className="text-xs sm:text-sm text-green-600">Passwords match ✓</p>
-                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -493,24 +646,14 @@ const Auth = () => {
                     variant="hero"
                     size="lg"
                     className="w-full touch-target"
-                    disabled={
-                      isLoading || 
-                      passwordErrors.length > 0 || 
-                      !formData.firstName.trim() ||
-                      !formData.lastName.trim() ||
-                      !formData.email.trim() ||
-                      formData.password.length < 6 ||
-                      formData.password !== formData.confirmPassword
-                    }
+                    disabled={isLoading || !formData.email || !formData.password || !formData.firstName || !formData.lastName}
                   >
                     {isLoading ? (
                       <>
-                        <span className="animate-spin mr-2">⏳</span>
-                        Processing...
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
+                        Creating account...
                       </>
-                    ) : (
-                      "Create Account & Continue to Payment"
-                    )}
+                    ) : "Create Account"}
                   </Button>
                 </form>
               </TabsContent>

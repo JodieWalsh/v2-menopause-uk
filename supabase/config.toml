@@ -4,9 +4,6 @@ project_id = "ppnunnmjvpiwrrrbluno"
 enable_confirmations = false
 enable_signup = true
 
-[functions.create-checkout-public]
-verify_jwt = false
-
 [functions.generate-pdf-document]
 verify_jwt = true
 
