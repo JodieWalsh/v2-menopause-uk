@@ -7,9 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
 import { Heart, Eye, EyeOff, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,24 +22,139 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    discountCode: "",
     agreeToTerms: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
-      return;
-    }
-    if (!formData.agreeToTerms) {
-      alert("Please agree to the terms and conditions");
-      return;
-    }
-    // TODO: Implement registration logic
-    console.log("Registration attempt:", formData);
     
-    // Navigate to payment page after successful registration
-    navigate("/payment");
+    // Client-side validation
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide your first and last name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.email.trim() || !formData.email.includes("@")) {
+      toast({
+        title: "Invalid Email",
+        description: "Please provide a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please check and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!formData.agreeToTerms) {
+      toast({
+        title: "Terms Required",
+        description: "Please agree to the terms and conditions to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      console.log("Creating Stripe checkout session...");
+      
+      // Invoke the create-checkout-public Edge Function
+      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
+        body: {
+          email: formData.email.trim(),
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          password: formData.password,
+          discountCode: formData.discountCode.trim() || undefined
+        }
+      });
+
+      if (error) {
+        console.error("Edge function error:", error);
+        const errorMessage = error.message || "Failed to create checkout session";
+        
+        // Provide user-friendly error messages
+        let friendlyMessage = errorMessage;
+        if (errorMessage.includes("email")) {
+          friendlyMessage = "There's an issue with the email address. Please check and try again.";
+        } else if (errorMessage.includes("discount")) {
+          friendlyMessage = "The discount code is invalid or has expired.";
+        }
+        
+        toast({
+          title: "Unable to Process",
+          description: friendlyMessage,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data || !data.success) {
+        console.error("Checkout creation failed:", data);
+        const errorMsg = data?.error || "Failed to create checkout session";
+        
+        toast({
+          title: "Unable to Process",
+          description: errorMsg.includes("already") 
+            ? "An account with this email already exists. Please sign in instead." 
+            : "Unable to process your request. Please try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("Checkout session created, redirecting to Stripe:", data.url);
+
+      // Store pending authentication details
+      sessionStorage.setItem('pendingAuth', JSON.stringify({
+        email: formData.email.trim(),
+        password: formData.password,
+        timestamp: Date.now()
+      }));
+
+      toast({
+        title: "Redirecting to Payment",
+        description: "Taking you to our secure payment page...",
+      });
+
+      // Brief delay to show the toast
+      setTimeout(() => {
+        window.location.href = data.url;
+      }, 500);
+
+    } catch (err) {
+      console.error("Unexpected error during signup:", err);
+      toast({
+        title: "Registration Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +220,14 @@ const Register = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Info Banner */}
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-4">
+              <p className="text-xs sm:text-sm text-foreground">
+                <strong>Secure Process:</strong> Enter your details below and you'll be redirected to our secure payment page. 
+                Your account will be created only after successful payment—no commitment until you pay!
+              </p>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -191,6 +318,19 @@ const Register = () => {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="discountCode">Discount Code (Optional)</Label>
+                <Input
+                  id="discountCode"
+                  name="discountCode"
+                  type="text"
+                  value={formData.discountCode}
+                  onChange={handleInputChange}
+                  placeholder="Enter discount code (optional)"
+                  className="transition-smooth focus:ring-primary"
+                />
+              </div>
+
               <div className="flex items-start space-x-2">
                 <Checkbox
                   id="agreeToTerms"
@@ -215,9 +355,16 @@ const Register = () => {
                 variant="default" 
                 size="lg" 
                 className="w-full"
-                disabled={!formData.agreeToTerms}
+                disabled={isLoading || !formData.agreeToTerms}
               >
-                Create Account & Continue to Payment
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  "Continue to Secure Payment"
+                )}
               </Button>
             </form>
           </CardContent>

@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 // Lazy load components for better performance
 const Landing = React.lazy(() => import("./pages/Landing"));
 const Auth = React.lazy(() => import("./pages/Auth"));
+const Register = React.lazy(() => import("./pages/Register"));
 const Payment = React.lazy(() => import("./pages/Payment"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
 const Welcome = React.lazy(() => import("./pages/Welcome"));
@@ -63,7 +64,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
-            <Route path="/register" element={<Auth />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/payment" element={<Payment />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
