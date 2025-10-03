@@ -157,16 +157,42 @@ const Auth = () => {
     try {
       console.log("Creating Stripe checkout session...");
       
-      // Invoke the create-checkout-public Edge Function (users created ONLY after payment)
-      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
-        body: {
-          email: formData.email.trim(),
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          password: formData.password,
-          discountCode: formData.discountCode.trim() || undefined
+      // Try create-checkout-public first (users created ONLY after payment)
+      let data, error;
+      try {
+        const result = await supabase.functions.invoke('create-checkout-public', {
+          body: {
+            email: formData.email.trim(),
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            password: formData.password,
+            discountCode: formData.discountCode.trim() || undefined
+          }
+        });
+        data = result.data;
+        error = result.error;
+      } catch (deploymentError) {
+        console.log("create-checkout-public not deployed, falling back to register-with-discount");
+        console.error("Deployment error:", deploymentError);
+        
+        // Fallback to register-with-discount if create-checkout-public isn't deployed
+        const fallbackResult = await supabase.functions.invoke('register-with-discount', {
+          body: {
+            email: formData.email.trim(),
+            firstName: formData.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            password: formData.password,
+            discountCode: formData.discountCode.trim() || undefined
+          }
+        });
+        data = fallbackResult.data;
+        error = fallbackResult.error;
+        
+        // Adjust response format for compatibility
+        if (data && data.redirectTo && !data.url) {
+          data.url = data.redirectTo;
         }
-      });
+      }
 
       if (error) {
         console.error("Edge function error:", error);
