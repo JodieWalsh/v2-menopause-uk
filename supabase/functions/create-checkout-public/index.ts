@@ -128,11 +128,9 @@ serve(async (req) => {
         } else {
           // Check if this is a 100% discount (free access)
           const coupon = promotionCode.coupon;
-          const baseAmount = 19; // £19 base price
-          let finalAmount = baseAmount;
-
+          
           if (coupon.percent_off === 100) {
-        logStep("100% discount detected - providing free access", { discountCode });
+            logStep("100% discount detected - providing free access", { discountCode });
         
         // For 100% discounts, we need to create the user immediately and give them access
         const supabaseService = createClient(
@@ -221,6 +219,13 @@ serve(async (req) => {
             }), {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
               status: 200,
+            });
+          } else {
+            // For non-100% discounts, continue to Stripe checkout with discount applied
+            logStep("Partial discount detected, continuing to Stripe checkout", { 
+              discountCode, 
+              percentOff: coupon.percent_off,
+              amountOff: coupon.amount_off 
             });
           }
         }
