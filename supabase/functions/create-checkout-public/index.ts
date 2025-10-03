@@ -135,6 +135,107 @@ serve(async (req) => {
           status: 400,
         });
       }
+
+      // Check if this is a 100% discount (free access)
+      const coupon = promotionCode.coupon;
+      const baseAmount = 19; // £19 base price
+      let finalAmount = baseAmount;
+
+      if (coupon.percent_off === 100) {
+        logStep("100% discount detected - providing free access", { discountCode });
+        
+        // For 100% discounts, we need to create the user immediately and give them access
+        // Import Supabase client
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
+        
+        const supabaseService = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        );
+
+        // Create user immediately for free access
+        const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
+          email,
+          password,
+          user_metadata: {
+            first_name: firstName,
+            last_name: lastName,
+          },
+          email_confirm: true,
+        });
+
+        if (authError) {
+          logStep("User creation error for free access", { error: authError.message });
+          
+          if (authError.message.includes('already been registered') || authError.code === 'email_exists') {
+            return new Response(JSON.stringify({
+              success: false,
+              error: "An account with this email already exists. Please sign in instead."
+            }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            });
+          }
+
+          return new Response(JSON.stringify({
+            success: false,
+            error: authError.message
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          });
+        }
+
+        const newUser = authData.user;
+        if (!newUser) {
+          throw new Error("Failed to create user for free access");
+        }
+
+        // Create subscription record for free access
+        const { error: subError } = await supabaseService
+          .from('user_subscriptions')
+          .insert({
+            user_id: newUser.id,
+            subscription_type: 'free',
+            status: 'active',
+            amount_paid: 0,
+            currency: 'gbp',
+            expires_at: null,
+            welcome_email_sent: false,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (subError) {
+          logStep("Subscription creation error for free access", { error: subError.message });
+          // Don't fail the registration, but log the error
+        }
+
+        // Send welcome email for free access
+        try {
+          await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+            body: {
+              user_id: newUser.id,
+              email: email,
+              firstName: firstName,
+              isPaid: false
+            }
+          });
+          logStep("Welcome email sent for free access");
+        } catch (emailError) {
+          logStep("Failed to send welcome email for free access", { error: emailError });
+          // Don't fail the registration if email fails
+        }
+
+        return new Response(JSON.stringify({
+          success: true,
+          freeAccess: true,
+          message: "Account created successfully! Your discount code gave you free access.",
+          userId: newUser.id,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
     }
 
     // Create Checkout Session with user data in metadata

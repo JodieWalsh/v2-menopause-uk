@@ -157,8 +157,8 @@ const Auth = () => {
     try {
       console.log("Creating Stripe checkout session...");
       
-      // Invoke the register-with-discount Edge Function (temporarily until create-checkout-public is deployed)
-      const { data, error } = await supabase.functions.invoke('register-with-discount', {
+      // Invoke the create-checkout-public Edge Function (users created ONLY after payment)
+      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
         body: {
           email: formData.email.trim(),
           firstName: formData.firstName.trim(),
@@ -205,10 +205,12 @@ const Auth = () => {
         return;
       }
 
-      console.log("Registration successful, redirecting to Stripe:", data.redirectTo);
-
-      // For paid access, redirect to Stripe
-      if (!data.freeAccess && data.redirectTo) {
+      // Check if this is free access or paid access
+      if (data.freeAccess) {
+        console.log("Free access granted, redirecting to welcome");
+      } else if (data.url) {
+        console.log("Checkout session created, redirecting to Stripe:", data.url);
+        
         toast({
           title: "Redirecting to Payment",
           description: "Taking you to our secure payment page...",
@@ -220,9 +222,13 @@ const Auth = () => {
         
         // Brief delay to show the toast
         setTimeout(() => {
-          window.location.href = data.redirectTo;
+          window.location.href = data.url;
         }, 500);
-      } else if (data.freeAccess) {
+        return;
+      }
+
+      // Handle free access case
+      if (data.freeAccess) {
         // Handle free access case - user is created but we need to sign them in
         toast({
           title: "Account Created Successfully!",
