@@ -126,6 +126,8 @@ const Register = () => {
         
         console.log("🔄 register-with-discount result:", fallbackResult);
         console.log("🔄 FALLBACK: Using register-with-discount function");
+        console.log("🔍 DISCOUNT CODE ENTERED:", formData.discountCode);
+        console.log("🔍 RESULT DATA:", JSON.stringify(fallbackResult.data, null, 2));
         data = fallbackResult.data;
         error = fallbackResult.error;
         
