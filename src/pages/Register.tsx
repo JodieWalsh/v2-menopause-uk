@@ -80,70 +80,23 @@ const Register = () => {
     try {
       console.log("Creating Stripe checkout session...");
       
-      // Try create-checkout-public first, fallback to register-with-discount
-      console.log("Attempting create-checkout-public...");
+      // Use create-checkout-public function only (no fallback to prevent user creation before payment)
+      console.log("Using create-checkout-public function...");
       
-      let data, error, usedFallback = false;
+      const result = await supabase.functions.invoke('create-checkout-public', {
+        body: {
+          email: formData.email.trim(),
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          password: formData.password,
+          discountCode: formData.discountCode.trim() || undefined
+        }
+      });
       
-      try {
-        const result = await supabase.functions.invoke('create-checkout-public', {
-          body: {
-            email: formData.email.trim(),
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
-            password: formData.password,
-            discountCode: formData.discountCode.trim() || undefined
-          }
-        });
-        
-        console.log("✅ create-checkout-public result:", result);
-        console.log("✅ SUCCESS: Using create-checkout-public function");
-        data = result.data;
-        error = result.error;
-        
-        // TEMPORARY: Force fallback to test discount codes with register-with-discount
-        console.log("🧪 TEMPORARILY forcing fallback to test discounts");
-        throw new Error("Testing fallback function");
-        
-        // If there's an error or no data, try fallback
-        if (error || !data || !data.success) {
-          console.log("create-checkout-public failed, trying fallback");
-          throw new Error("create-checkout-public failed");
-        }
-      } catch (functionError) {
-        console.log("Falling back to register-with-discount");
-        usedFallback = true;
-        
-        const fallbackResult = await supabase.functions.invoke('register-with-discount', {
-          body: {
-            email: formData.email.trim(),
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
-            password: formData.password,
-            discountCode: formData.discountCode.trim() || undefined
-          }
-        });
-        
-        console.log("🔄 register-with-discount result:", fallbackResult);
-        console.log("🔄 FALLBACK: Using register-with-discount function");
-        console.log("🔍 DISCOUNT CODE ENTERED:", formData.discountCode);
-        console.log("🔍 RESULT DATA:", JSON.stringify(fallbackResult.data, null, 2));
-        data = fallbackResult.data;
-        error = fallbackResult.error;
-        
-        // Convert response format for compatibility
-        if (data && data.redirectTo && !data.url) {
-          data.url = data.redirectTo;
-        }
-      }
-
-      if (usedFallback) {
-        console.log("🔄 FINAL: Used fallback function: register-with-discount");
-        console.log("🔄 NOTE: Users will be created BEFORE payment with this function");
-      } else {
-        console.log("✅ FINAL: Used primary function: create-checkout-public");
-        console.log("✅ NOTE: Users will be created ONLY AFTER payment with this function");
-      }
+      console.log("✅ create-checkout-public result:", result);
+      console.log("✅ SUCCESS: Using create-checkout-public function - users created ONLY AFTER payment");
+      const data = result.data;
+      const error = result.error;
 
       if (error) {
         console.error("Edge function error:", error);
@@ -198,13 +151,11 @@ const Register = () => {
         localStorage.setItem('temp_user_email', formData.email.trim());
         localStorage.setItem('temp_user_password', formData.password);
         
-        // Longer delay to see console logs
-        console.log("🚀 REDIRECTING TO STRIPE IN 5 SECONDS...");
-        console.log("🚀 Check logs above before redirect!");
+        // Brief delay to show the toast
         setTimeout(() => {
-          console.log("🚀 REDIRECTING NOW to:", data.url);
+          console.log("Redirecting to Stripe Checkout:", data.url);
           window.location.href = data.url;
-        }, 5000);
+        }, 500);
         return;
       }
 
