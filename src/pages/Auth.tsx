@@ -157,8 +157,8 @@ const Auth = () => {
     try {
       console.log("Creating Stripe checkout session...");
       
-      // Invoke the create-checkout-public Edge Function
-      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
+      // Invoke the register-with-discount Edge Function (temporarily until create-checkout-public is deployed)
+      const { data, error } = await supabase.functions.invoke('register-with-discount', {
         body: {
           email: formData.email.trim(),
           firstName: formData.firstName.trim(),
@@ -204,24 +204,30 @@ const Auth = () => {
         return;
       }
 
-      console.log("Checkout session created, redirecting to Stripe:", data.url);
+      console.log("Registration successful, redirecting to Stripe:", data.redirectTo);
 
-      // Store pending authentication details
-      sessionStorage.setItem('pendingAuth', JSON.stringify({
-        email: formData.email.trim(),
-        password: formData.password,
-        timestamp: Date.now()
-      }));
+      // For paid access, redirect to Stripe
+      if (!data.freeAccess && data.redirectTo) {
+        toast({
+          title: "Redirecting to Payment",
+          description: "Taking you to our secure payment page...",
+        });
 
-      toast({
-        title: "Redirecting to Payment",
-        description: "Taking you to our secure payment page...",
-      });
-
-      // Brief delay to show the toast
-      setTimeout(() => {
-        window.location.href = data.url;
-      }, 500);
+        // Brief delay to show the toast
+        setTimeout(() => {
+          window.location.href = data.redirectTo;
+        }, 500);
+      } else if (data.freeAccess) {
+        // Handle free access case
+        toast({
+          title: "Account Created Successfully!",
+          description: "Welcome! You have free access.",
+        });
+        navigate('/welcome');
+      } else {
+        // Fallback to payment page
+        navigate('/payment');
+      }
 
     } catch (err) {
       console.error("Unexpected error during signup:", err);

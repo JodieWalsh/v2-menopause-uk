@@ -39,31 +39,8 @@ const PaymentSuccess = () => {
       // Handle Stripe Checkout Session - wait for webhook processing
       if (sessionId) {
         try {
-          // Get stored credentials from sessionStorage (set during signup)
-          const pendingAuthStr = sessionStorage.getItem('pendingAuth');
-          if (!pendingAuthStr) {
-            toast({
-              title: "Session Expired",
-              description: "Your session has expired. Please sign in manually.",
-              variant: "destructive",
-            });
-            navigate('/auth');
-            return;
-          }
-
-          const pendingAuth = JSON.parse(pendingAuthStr);
-          
-          // Check if stored data is not too old (10 minutes)
-          if (Date.now() - pendingAuth.timestamp > 600000) {
-            sessionStorage.removeItem('pendingAuth');
-            toast({
-              title: "Session Expired",
-              description: "Your session has expired. Please sign in manually.",
-              variant: "destructive",
-            });
-            navigate('/auth');
-            return;
-          }
+          // Since register-with-discount creates users immediately, we don't need pendingAuth
+          // Just wait for webhook to process and then redirect
 
           // Poll for subscription status instead of relying on verify-checkout-session
           let attempts = 0;
@@ -87,31 +64,10 @@ const PaymentSuccess = () => {
             const hasSubscription = await pollForSubscription();
             
             if (hasSubscription) {
-              // Now sign in the user
-              console.log("Subscription found, signing in user...");
-              const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: pendingAuth.email,
-                password: pendingAuth.password,
-              });
-
-              if (authError) {
-                console.error("Auto-login error:", authError);
-                toast({
-                  title: "Sign In Error",
-                  description: "Please sign in manually to continue.",
-                  variant: "destructive",
-                });
-                navigate('/auth');
-                return;
-              }
-
-              // Clear stored credentials
-              sessionStorage.removeItem('pendingAuth');
-
               setVerified(true);
               toast({
                 title: "Payment Processed!",
-                description: "Welcome! Redirecting to your assessment...",
+                description: "Redirecting to your assessment...",
               });
               
               // Auto-redirect to welcome page after 2 seconds
@@ -128,9 +84,12 @@ const PaymentSuccess = () => {
           if (attempts >= maxAttempts) {
             toast({
               title: "Processing Payment",
-              description: "Payment is being processed. Please sign in to continue.",
+              description: "Payment is being processed. You can proceed to your assessment.",
             });
-            navigate('/auth');
+            setVerified(true);
+            setTimeout(() => {
+              navigate('/welcome');
+            }, 2000);
           }
         } catch (error) {
           console.error('Payment processing error:', error);
