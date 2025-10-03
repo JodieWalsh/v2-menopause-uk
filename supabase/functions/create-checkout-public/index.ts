@@ -99,13 +99,11 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
 
-    // For discount codes, let Stripe handle validation and application
-    // We only need to check for 100% free codes that should bypass payment entirely
-    let isFreeAccess = false;
-    let promotionCodeId = null;
+    // Check for 100% discount codes that should bypass payment entirely
+    let promotionCodeToApply = null;
     
     if (discountCode && discountCode.trim() !== "") {
-      logStep("Checking if discount code provides free access", { discountCode });
+      logStep("Processing discount code", { discountCode: discountCode.trim() });
       
       try {
         const promotionCodes = await stripe.promotionCodes.list({
@@ -116,12 +114,16 @@ serve(async (req) => {
 
         if (promotionCodes.data.length > 0) {
           const promotionCode = promotionCodes.data[0];
-          promotionCodeId = promotionCode.id;
+          logStep("Found valid promotion code", { 
+            discountCode: discountCode.trim(),
+            promotionCodeId: promotionCode.id,
+            percentOff: promotionCode.coupon.percent_off,
+            amountOff: promotionCode.coupon.amount_off
+          });
           
-          // Only handle 100% discounts specially (free access)
+          // Handle 100% discounts specially (free access)
           if (promotionCode.coupon.percent_off === 100) {
             logStep("100% discount detected - providing free access", { discountCode });
-            isFreeAccess = true;
             
             // Create user immediately for free access
             const supabaseService = createClient(
@@ -191,23 +193,26 @@ serve(async (req) => {
               status: 200,
             });
           } else {
-            logStep("Partial discount code - will be applied by Stripe", { 
-              discountCode, 
+            // For all other discounts, store to apply to Stripe session
+            promotionCodeToApply = promotionCode.id;
+            logStep("Will apply partial discount to Stripe session", { 
+              discountCode: discountCode.trim(),
+              promotionCodeId: promotionCodeToApply,
               percentOff: promotionCode.coupon.percent_off 
             });
           }
         } else {
-          logStep("Discount code not found - Stripe will handle validation", { discountCode });
-          promotionCodeId = null;
+          logStep("Discount code not found in Stripe", { discountCode: discountCode.trim() });
         }
       } catch (error) {
-        logStep("Error checking discount code - proceeding to Stripe", { error: error.message });
-        promotionCodeId = null;
+        logStep("Error validating discount code", { 
+          discountCode: discountCode.trim(),
+          error: error.message 
+        });
       }
     }
 
-    // If free access was handled above, we've already returned
-    // Continue with normal Stripe checkout for all other cases
+    // Continue with Stripe checkout for paid access
 
     // Create Checkout Session with user data in metadata
     const sessionConfig: any = {
@@ -235,44 +240,19 @@ serve(async (req) => {
       billing_address_collection: 'auto'
     };
 
-    // If we have a specific promotion code (for partial discounts), apply it
-    if (promotionCodeId) {
-      sessionConfig.discounts = [{ promotion_code: promotionCodeId }];
-      logStep("Pre-applied promotion code to session", { promotionCodeId });
-    } else if (discountCode && discountCode.trim()) {
-      // If user entered a code but we didn't validate it (or it failed validation)
-      // let Stripe try to apply it anyway
-      logStep("Attempting to apply discount code via Stripe", { discountCode: discountCode.trim() });
-      
-      try {
-        // Try to find and apply the promotion code
-        const promotionCodes = await stripe.promotionCodes.list({
-          code: discountCode.trim(),
-          active: true,
-          limit: 1,
-        });
-        
-        if (promotionCodes.data.length > 0) {
-          sessionConfig.discounts = [{ promotion_code: promotionCodes.data[0].id }];
-          logStep("Found and applied discount code to session", { 
-            discountCode: discountCode.trim(),
-            promotionCodeId: promotionCodes.data[0].id 
-          });
-        } else {
-          logStep("Discount code not found, user can enter in Stripe checkout", { discountCode: discountCode.trim() });
-        }
-      } catch (error) {
-        logStep("Error applying discount code, user can enter in Stripe checkout", { 
-          discountCode: discountCode.trim(),
-          error: error.message 
-        });
-      }
+    // Apply promotion code if we found one
+    if (promotionCodeToApply) {
+      sessionConfig.discounts = [{ promotion_code: promotionCodeToApply }];
+      logStep("Applied promotion code to Stripe session", { 
+        promotionCodeId: promotionCodeToApply,
+        discountCode: discountCode.trim()
+      });
     }
     
     logStep("Final session config", { 
       allowPromotionCodes: sessionConfig.allow_promotion_codes,
       hasPreAppliedDiscount: !!sessionConfig.discounts,
-      appliedDiscounts: sessionConfig.discounts 
+      discountCode: discountCode || "none"
     });
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
