@@ -6,7 +6,9 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(supabase functions:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

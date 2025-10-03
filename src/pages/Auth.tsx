@@ -113,8 +113,8 @@ const Auth = () => {
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
-     e.preventDefault();
-
+    e.preventDefault();
+    
     // Client-side validation
     if (!formData.firstName.trim() || !formData.lastName.trim()) {
       toast({
@@ -142,7 +142,7 @@ const Auth = () => {
       });
       return;
     }
-
+    
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Password Mismatch",
@@ -151,12 +151,12 @@ const Auth = () => {
       });
       return;
     }
-
+    
     setIsLoading(true);
-
+    
     try {
       console.log("Creating Stripe checkout session...");
-
+      
       // Invoke the create-checkout-public Edge Function
       const { data, error } = await supabase.functions.invoke('create-checkout-public', {
         body: {
@@ -171,7 +171,7 @@ const Auth = () => {
       if (error) {
         console.error("Edge function error:", error);
         const errorMessage = error.message || "Failed to create checkout session";
-
+        
         // Provide user-friendly error messages
         let friendlyMessage = errorMessage;
         if (errorMessage.includes("email")) {
@@ -179,7 +179,7 @@ const Auth = () => {
         } else if (errorMessage.includes("discount")) {
           friendlyMessage = "The discount code is invalid or has expired.";
         }
-
+        
         toast({
           title: "Unable to Process",
           description: friendlyMessage,
@@ -192,11 +192,11 @@ const Auth = () => {
       if (!data || !data.success) {
         console.error("Checkout creation failed:", data);
         const errorMsg = data?.error || "Failed to create checkout session";
-
+        
         toast({
           title: "Unable to Process",
-          description: errorMsg.includes("already")
-            ? "An account with this email already exists. Please sign in instead."
+          description: errorMsg.includes("already") 
+            ? "An account with this email already exists. Please sign in instead." 
             : "Unable to process your request. Please try again.",
           variant: "destructive",
         });
@@ -230,53 +230,6 @@ const Auth = () => {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-      setIsLoading(false);
-    }
-  };
-
-          }
-          return;
-        }
-        
-        // If no direct Stripe URL, log for debugging
-        console.log("No direct Stripe redirect, using fallback", {
-          stripeRedirect: data.stripeRedirect,
-          redirectTo: data.redirectTo,
-          freeAccess: data.freeAccess
-        });
-
-        // Fallback to payment page if direct redirect failed
-        const params = new URLSearchParams();
-        if (data.discountApplied) {
-          params.set('discount_applied', 'true');
-          params.set('discount_amount', data.discountAmount.toString());
-          params.set('final_amount', data.finalAmount.toString());
-          params.set('original_amount', data.originalAmount.toString());
-        }
-        navigate(`/payment?${params.toString()}`);
-
-      }
-
-      // Clear form only for successful free access (don't clear for paid redirects)
-      if (data.freeAccess) {
-        setFormData({
-          email: '',
-          password: '',
-          confirmPassword: '',
-          firstName: '',
-          lastName: '',
-          discountCode: ''
-        });
-      }
-
-    } catch (error) {
-      console.error("Unexpected error during registration:", error);
-      toast({
-        title: "Sign Up Failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -377,6 +330,14 @@ const Auth = () => {
               </TabsContent>
               
               <TabsContent value="signup" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                {/* Info Banner */}
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-foreground">
+                    <strong>Secure Process:</strong> Enter your details below and you'll be redirected to our secure payment page. 
+                    Your account will be created only after successful payment—no commitment until you pay!
+                  </p>
+                </div>
+
                 <form onSubmit={handleSignUp} className="space-y-3 sm:space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">

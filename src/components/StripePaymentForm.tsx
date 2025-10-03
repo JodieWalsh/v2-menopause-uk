@@ -54,14 +54,14 @@ import { useState, useEffect } from "react";
 
           toast({
             title: "Redirecting to Payment",
-            description: "Taking you to our secure payment window...",
+            description: "Taking you to our secure payment page...",
           });
 
- // Professional redirect to Stripe Checkout
-  setTimeout(() => {
-    console.log("Redirecting to Stripe Checkout");
-    window.location.href = data.url;
-  }, 500);
+          // Professional redirect to Stripe Checkout
+          setTimeout(() => {
+            console.log("Redirecting to Stripe Checkout");
+            window.location.href = data.url;
+          }, 500);
 
           return;
         }
