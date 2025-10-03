@@ -24,11 +24,55 @@ serve(async (req) => {
 
     const { email, firstName, lastName, password, discountCode } = await req.json();
     
+    // Validate required fields
     if (!email || !firstName || !lastName || !password) {
-      throw new Error("Missing required fields: email, firstName, lastName, password");
+      logStep("Missing required fields", { email: !!email, firstName: !!firstName, lastName: !!lastName, password: !!password });
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: "Missing required fields. Please provide email, first name, last name, and password." 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
     }
 
-    logStep("Request parsed", { email, firstName, lastName, hasPassword: !!password, discountCode });
+    // Validate email format
+    if (!email.includes("@") || email.length < 5) {
+      logStep("Invalid email format", { email });
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: "Please provide a valid email address." 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      logStep("Password too short", { length: password.length });
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: "Password must be at least 6 characters long." 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    // Validate names
+    if (firstName.trim().length === 0 || lastName.trim().length === 0) {
+      logStep("Invalid names", { firstName: firstName.trim(), lastName: lastName.trim() });
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: "Please provide valid first and last names." 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    logStep("Request parsed and validated", { email, firstName, lastName, hasPassword: !!password, discountCode });
 
     const stripeKey = Deno.env.get("stripesecret");
     if (!stripeKey) throw new Error("Stripe secret key not configured");
@@ -69,7 +113,7 @@ serve(async (req) => {
         logStep("Invalid discount code", { discountCode });
         return new Response(JSON.stringify({ 
           success: false,
-          error: "Invalid discount code" 
+          error: "The discount code you entered is invalid or has expired. Please check and try again, or proceed without a discount code." 
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 400,

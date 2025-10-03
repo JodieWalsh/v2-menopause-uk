@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Heart, Play, ArrowRight } from "lucide-react";
+import { Heart, Play, ArrowRight, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout/Layout";
@@ -415,13 +415,26 @@ const Welcome = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground mb-2">
-            Welcome, {user?.user_metadata?.first_name || user?.email}!
+          <div className="inline-block mb-4 px-6 py-2 bg-primary/10 rounded-full">
+            <span className="text-primary font-semibold">✓ Payment Successful</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-foreground mb-3">
+            Welcome, {user?.user_metadata?.first_name || 'there'}! 🎉
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
-            You're now ready to start your journey to an empowered doctor's visit. 
-            We'll guide you through a series of questions to help you prepare.
+          <p className="text-sm sm:text-base lg:text-lg text-muted-foreground mb-4 sm:mb-6 max-w-2xl mx-auto">
+            You're all set to begin your empowered menopause journey! We'll guide you through a comprehensive assessment 
+            to help you prepare for meaningful conversations with your healthcare provider.
           </p>
+          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span>12 Months Access</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span>Personalized Assessment</span>
+            </div>
+          </div>
         </div>
 
         {/* Welcome Video Placeholder */}

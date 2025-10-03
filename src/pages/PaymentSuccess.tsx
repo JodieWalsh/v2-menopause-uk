@@ -11,6 +11,7 @@ const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("Verifying your payment...");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -28,6 +29,7 @@ const PaymentSuccess = () => {
       }
 
       setVerifying(true);
+      setStatusMessage("Verifying your payment...");
 
       try {
         // Get stored credentials from sessionStorage
@@ -35,7 +37,7 @@ const PaymentSuccess = () => {
         if (!pendingAuthStr) {
           toast({
             title: "Session Expired",
-            description: "Please sign up again.",
+            description: "Your session has expired. Please sign up again.",
             variant: "destructive",
           });
           navigate('/auth');
@@ -49,7 +51,7 @@ const PaymentSuccess = () => {
           sessionStorage.removeItem('pendingAuth');
           toast({
             title: "Session Expired",
-            description: "Please sign up again.",
+            description: "Your session has expired. Please sign up again.",
             variant: "destructive",
           });
           navigate('/auth');
@@ -57,11 +59,13 @@ const PaymentSuccess = () => {
         }
 
         console.log("Waiting for webhook to create account...");
+        setStatusMessage("Creating your account...");
 
-        // Wait a bit for webhook to process
+        // Wait for webhook to process (3 seconds should be enough)
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log("Auto-logging in user after payment...");
+        setStatusMessage("Logging you in...");
 
         // Sign in the user
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -71,12 +75,45 @@ const PaymentSuccess = () => {
 
         if (authError) {
           console.error("Auto-login error:", authError);
+          
+          // If login fails, it might be because webhook is still processing
+          // Let's retry a couple times
+          let retryCount = 0;
+          let loginSuccess = false;
+          
+          while (retryCount < 3 && !loginSuccess) {
+            retryCount++;
+            setStatusMessage(`Retry ${retryCount}/3: Waiting for account setup...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const { data: retryAuthData, error: retryError } = await supabase.auth.signInWithPassword({
+              email: pendingAuth.email,
+              password: pendingAuth.password,
+            });
+            
+            if (!retryError && retryAuthData.user) {
+              loginSuccess = true;
+              sessionStorage.removeItem('pendingAuth');
+              setVerified(true);
+              setVerifying(false);
+              
+              toast({
+                title: "Payment Successful!",
+                description: "Welcome! Redirecting to your assessment...",
+              });
+              
+              setTimeout(() => navigate('/welcome'), 1500);
+              return;
+            }
+          }
+          
+          // If all retries failed, show manual login option
           toast({
             title: "Payment Successful",
-            description: "Please wait a moment and try signing in.",
+            description: "Your account is being set up. Please try signing in manually in a moment.",
             variant: "default",
           });
-          setTimeout(() => navigate('/auth'), 2000);
+          setTimeout(() => navigate('/auth'), 3000);
           return;
         }
 
@@ -112,11 +149,23 @@ const PaymentSuccess = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="max-w-md w-full mx-4">
-          <CardContent className="flex flex-col items-center py-8">
-            <Clock className="h-16 w-16 text-primary animate-spin mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Verifying Payment</h2>
-            <p className="text-muted-foreground text-center">
-              Please wait while we verify your payment...
+          <CardContent className="flex flex-col items-center py-8 space-y-4">
+            <div className="relative">
+              <Clock className="h-16 w-16 text-primary animate-spin" />
+            </div>
+            <div className="space-y-2 text-center">
+              <h2 className="text-xl font-semibold">Processing Payment</h2>
+              <p className="text-muted-foreground animate-pulse">
+                {statusMessage}
+              </p>
+            </div>
+            <div className="w-full max-w-xs">
+              <div className="h-2 bg-primary/20 rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '66%' }}></div>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              This usually takes just a few seconds...
             </p>
           </CardContent>
         </Card>

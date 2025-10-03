@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -60,12 +62,27 @@ const Auth = () => {
     }
   }, [toast]);
 
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }));
+
+    // Real-time password validation
+    if (name === "password" || name === "confirmPassword") {
+      const errors: string[] = [];
+      const passwordToCheck = name === "password" ? value : formData.password;
+      const confirmToCheck = name === "confirmPassword" ? value : formData.confirmPassword;
+
+      if (passwordToCheck.length > 0 && passwordToCheck.length < 6) {
+        errors.push("Password must be at least 6 characters");
+      }
+      if (confirmToCheck.length > 0 && passwordToCheck !== confirmToCheck) {
+        errors.push("Passwords do not match");
+      }
+      setPasswordErrors(errors);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -114,75 +131,114 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    if (formData.password !== formData.confirmPassword) {
+    
+    // Client-side validation
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
       toast({
-        title: "Password Mismatch",
-        description: "Please make sure your passwords match.",
+        title: "Missing Information",
+        description: "Please provide your first and last name",
         variant: "destructive",
       });
-      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.email.trim() || !formData.email.includes("@")) {
+      toast({
+        title: "Invalid Email",
+        description: "Please provide a valid email address",
+        variant: "destructive",
+      });
       return;
     }
 
     if (formData.password.length < 6) {
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
+        title: "Weak Password",
+        description: "Password must be at least 6 characters long",
         variant: "destructive",
       });
-      setIsLoading(false);
       return;
     }
-
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please check and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
     try {
-      console.log("Creating checkout session...");
+      console.log("Creating Stripe checkout session...");
       
+      // Invoke the create-checkout-public Edge Function
       const { data, error } = await supabase.functions.invoke('create-checkout-public', {
         body: {
-          email: formData.email,
+          email: formData.email.trim(),
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
           password: formData.password,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          discountCode: formData.discountCode || undefined
+          discountCode: formData.discountCode.trim() || undefined
         }
       });
 
-      console.log("Checkout session response:", { data, error });
-
       if (error) {
-        console.error("Checkout error:", error);
+        console.error("Edge function error:", error);
+        const errorMessage = error.message || "Failed to create checkout session";
+        
+        // Provide user-friendly error messages
+        let friendlyMessage = errorMessage;
+        if (errorMessage.includes("email")) {
+          friendlyMessage = "There's an issue with the email address. Please check and try again.";
+        } else if (errorMessage.includes("discount")) {
+          friendlyMessage = "The discount code is invalid or has expired.";
+        }
+        
         toast({
-          title: "Registration Failed",
-          description: error.message || "Failed to create checkout session",
+          title: "Unable to Process",
+          description: friendlyMessage,
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      if (!data.success || !data.url) {
+      if (!data || !data.success) {
+        console.error("Checkout creation failed:", data);
+        const errorMsg = data?.error || "Failed to create checkout session";
+        
         toast({
-          title: "Registration Failed",
-          description: data.error || "Failed to create checkout session",
+          title: "Unable to Process",
+          description: errorMsg.includes("already") 
+            ? "An account with this email already exists. Please sign in instead." 
+            : "Unable to process your request. Please try again.",
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      // Store email and password for auto-login after payment
+      console.log("Checkout session created, redirecting to Stripe:", data.url);
+
+      // Store pending authentication details
       sessionStorage.setItem('pendingAuth', JSON.stringify({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         timestamp: Date.now()
       }));
 
-      console.log("Redirecting to Stripe checkout...");
-      
-      // Redirect to Stripe in the same tab
-      window.location.href = data.url;
+      toast({
+        title: "Redirecting to Payment",
+        description: "Taking you to our secure payment page...",
+      });
+
+      // Brief delay to show the toast
+      setTimeout(() => {
+        window.location.href = data.url;
+      }, 500);
 
     } catch (err) {
       console.error("Unexpected error during signup:", err);
@@ -291,17 +347,25 @@ const Auth = () => {
               </TabsContent>
               
               <TabsContent value="signup" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+                {/* Info Banner */}
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+                  <p className="text-xs sm:text-sm text-foreground">
+                    <strong>Quick & Easy:</strong> Complete your details below, then you'll be securely redirected to payment. 
+                    After payment, you'll immediately start your assessment—no email verification needed!
+                  </p>
+                </div>
+
                 <form onSubmit={handleSignUp} className="space-y-3 sm:space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-sm sm:text-base">First Name</Label>
+                      <Label htmlFor="firstName" className="text-sm sm:text-base">First Name *</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="firstName"
                           name="firstName"
                           type="text"
-                          placeholder="First name"
+                          placeholder="Jane"
                           value={formData.firstName}
                           onChange={handleInputChange}
                           className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
@@ -311,14 +375,14 @@ const Auth = () => {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-sm sm:text-base">Last Name</Label>
+                      <Label htmlFor="lastName" className="text-sm sm:text-base">Last Name *</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                         <Input
                           id="lastName"
                           name="lastName"
                           type="text"
-                          placeholder="Last name"
+                          placeholder="Smith"
                           value={formData.lastName}
                           onChange={handleInputChange}
                           className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
@@ -329,14 +393,14 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="text-sm sm:text-base">Email</Label>
+                    <Label htmlFor="signup-email" className="text-sm sm:text-base">Email Address *</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="signup-email"
                         name="email"
                         type="email"
-                        placeholder="your@email.com"
+                        placeholder="jane.smith@example.com"
                         value={formData.email}
                         onChange={handleInputChange}
                         className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
@@ -346,17 +410,17 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-sm sm:text-base">Password</Label>
+                    <Label htmlFor="signup-password" className="text-sm sm:text-base">Password *</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="signup-password"
                         name="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Create a password"
+                        placeholder="Minimum 6 characters"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base"
+                        className={`pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base ${passwordErrors.length > 0 && formData.password.length > 0 ? "border-destructive" : ""}`}
                         required
                       />
                       <button
@@ -367,23 +431,46 @@ const Auth = () => {
                         {showPassword ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
                       </button>
                     </div>
+                    {formData.password.length > 0 && formData.password.length < 6 && (
+                      <p className="text-xs sm:text-sm text-destructive">Password must be at least 6 characters</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password</Label>
+                    <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password *</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
                         id="confirmPassword"
                         name="confirmPassword"
-                        type="password"
-                        placeholder="Confirm your password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Re-enter your password"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
+                        className={`pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base ${
+                          formData.confirmPassword.length > 0 && 
+                          formData.password !== formData.confirmPassword 
+                            ? "border-destructive" 
+                            : formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword
+                            ? "border-green-500"
+                            : ""
+                        }`}
                         required
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground hover:text-foreground touch-target"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
+                      </button>
                     </div>
+                    {formData.confirmPassword.length > 0 && formData.password !== formData.confirmPassword && (
+                      <p className="text-xs sm:text-sm text-destructive">Passwords do not match</p>
+                    )}
+                    {formData.confirmPassword.length > 0 && formData.password === formData.confirmPassword && (
+                      <p className="text-xs sm:text-sm text-green-600">Passwords match ✓</p>
+                    )}
                   </div>
                   
                   <div className="space-y-2">
@@ -406,14 +493,24 @@ const Auth = () => {
                     variant="hero"
                     size="lg"
                     className="w-full touch-target"
-                    disabled={isLoading || !formData.email || !formData.password || !formData.firstName || !formData.lastName}
+                    disabled={
+                      isLoading || 
+                      passwordErrors.length > 0 || 
+                      !formData.firstName.trim() ||
+                      !formData.lastName.trim() ||
+                      !formData.email.trim() ||
+                      formData.password.length < 6 ||
+                      formData.password !== formData.confirmPassword
+                    }
                   >
                     {isLoading ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                        Creating account...
+                        <span className="animate-spin mr-2">⏳</span>
+                        Processing...
                       </>
-                    ) : "Create Account"}
+                    ) : (
+                      "Create Account & Continue to Payment"
+                    )}
                   </Button>
                 </form>
               </TabsContent>
