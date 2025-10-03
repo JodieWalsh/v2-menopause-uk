@@ -96,7 +96,8 @@ const Register = () => {
           }
         });
         
-        console.log("create-checkout-public result:", result);
+        console.log("✅ create-checkout-public result:", result);
+        console.log("✅ SUCCESS: Using create-checkout-public function");
         data = result.data;
         error = result.error;
         
@@ -119,7 +120,8 @@ const Register = () => {
           }
         });
         
-        console.log("register-with-discount result:", fallbackResult);
+        console.log("🔄 register-with-discount result:", fallbackResult);
+        console.log("🔄 FALLBACK: Using register-with-discount function");
         data = fallbackResult.data;
         error = fallbackResult.error;
         
@@ -129,7 +131,13 @@ const Register = () => {
         }
       }
 
-      console.log(usedFallback ? "Used fallback function: register-with-discount" : "Used primary function: create-checkout-public");
+      if (usedFallback) {
+        console.log("🔄 FINAL: Used fallback function: register-with-discount");
+        console.log("🔄 NOTE: Users will be created BEFORE payment with this function");
+      } else {
+        console.log("✅ FINAL: Used primary function: create-checkout-public");
+        console.log("✅ NOTE: Users will be created ONLY AFTER payment with this function");
+      }
 
       if (error) {
         console.error("Edge function error:", error);
@@ -184,10 +192,13 @@ const Register = () => {
         localStorage.setItem('temp_user_email', formData.email.trim());
         localStorage.setItem('temp_user_password', formData.password);
         
-        // Brief delay to show the toast
+        // Longer delay to see console logs
+        console.log("🚀 REDIRECTING TO STRIPE IN 3 SECONDS...");
+        console.log("🚀 Check logs above before redirect!");
         setTimeout(() => {
+          console.log("🚀 REDIRECTING NOW to:", data.url);
           window.location.href = data.url;
-        }, 500);
+        }, 3000);
         return;
       }
 
