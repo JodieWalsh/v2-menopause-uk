@@ -77,16 +77,9 @@ const Register = () => {
     
     setIsLoading(true);
     
-    // IMMEDIATE PAUSE TO READ LOGS
-    console.log("⏸️ CHECK CONSOLE NOW - CLICK OK TO CONTINUE");
-    console.log("🔍 DISCOUNT CODE ENTERED:", formData.discountCode);
-    alert("Check console logs now, then click OK to continue");
-    
     try {
-      console.log("🔄 STARTING: Creating Stripe checkout session...");
-      
-      // Use create-checkout-public function only (no fallback to prevent user creation before payment)
-      console.log("🔄 CALLING: create-checkout-public function...");
+      console.log("Creating Stripe checkout session...");
+      console.log("Discount code entered:", formData.discountCode);
       
       const result = await supabase.functions.invoke('create-checkout-public', {
         body: {
@@ -98,16 +91,9 @@ const Register = () => {
         }
       });
       
-      console.log("📥 RESPONSE: create-checkout-public result:", result);
-      console.log("📊 RESPONSE DATA:", JSON.stringify(result.data, null, 2));
-      console.log("❌ RESPONSE ERROR:", result.error);
-      console.log("✅ SUCCESS: Using create-checkout-public function - users created ONLY AFTER payment");
+      console.log("create-checkout-public result:", result);
       const data = result.data;
       const error = result.error;
-      
-      // PAUSE HERE TO READ LOGS
-      console.log("⏸️ PAUSING FOR 10 SECONDS TO READ LOGS...");
-      await new Promise(resolve => setTimeout(resolve, 10000));
 
       if (error) {
         console.error("Edge function error:", error);
