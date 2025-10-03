@@ -239,11 +239,40 @@ serve(async (req) => {
     if (promotionCodeId) {
       sessionConfig.discounts = [{ promotion_code: promotionCodeId }];
       logStep("Pre-applied promotion code to session", { promotionCodeId });
+    } else if (discountCode && discountCode.trim()) {
+      // If user entered a code but we didn't validate it (or it failed validation)
+      // let Stripe try to apply it anyway
+      logStep("Attempting to apply discount code via Stripe", { discountCode: discountCode.trim() });
+      
+      try {
+        // Try to find and apply the promotion code
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: discountCode.trim(),
+          active: true,
+          limit: 1,
+        });
+        
+        if (promotionCodes.data.length > 0) {
+          sessionConfig.discounts = [{ promotion_code: promotionCodes.data[0].id }];
+          logStep("Found and applied discount code to session", { 
+            discountCode: discountCode.trim(),
+            promotionCodeId: promotionCodes.data[0].id 
+          });
+        } else {
+          logStep("Discount code not found, user can enter in Stripe checkout", { discountCode: discountCode.trim() });
+        }
+      } catch (error) {
+        logStep("Error applying discount code, user can enter in Stripe checkout", { 
+          discountCode: discountCode.trim(),
+          error: error.message 
+        });
+      }
     }
     
-    logStep("Session config", { 
+    logStep("Final session config", { 
       allowPromotionCodes: sessionConfig.allow_promotion_codes,
-      hasPreAppliedDiscount: !!promotionCodeId 
+      hasPreAppliedDiscount: !!sessionConfig.discounts,
+      appliedDiscounts: sessionConfig.discounts 
     });
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
