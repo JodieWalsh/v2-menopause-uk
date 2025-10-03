@@ -92,184 +92,136 @@ serve(async (req) => {
         customerId: session.customer,
         paymentStatus: session.payment_status,
         amountTotal: session.amount_total,
-        currency: session.currency
+        currency: session.currency,
+        metadata: session.metadata
       });
 
-      if (session.payment_status === "paid" && session.customer) {
-        // Get customer email from Stripe
-        const customer = await stripe.customers.retrieve(session.customer as string);
-        if (customer.deleted) {
-          logStep("Customer was deleted", { customerId: session.customer });
-          return new Response(JSON.stringify({ received: true, processed: false, reason: "customer_deleted" }), {
-            headers: { "Content-Type": "application/json" },
-            status: 200,
-          });
-        }
+      if (session.payment_status === "paid") {
+        // Extract user data from session metadata
+        const metadata = session.metadata || {};
+        const email = metadata.email;
+        const firstName = metadata.first_name;
+        const lastName = metadata.last_name;
+        const password = metadata.password;
 
-        const customerEmail = customer.email;
-        if (!customerEmail) {
-          logStep("No email found for customer", { customerId: session.customer });
+        if (!email) {
+          logStep("No email found in metadata");
           return new Response(JSON.stringify({ received: true, processed: false, reason: "no_email" }), {
             headers: { "Content-Type": "application/json" },
             status: 200,
           });
         }
 
-        // Find user by email
+        logStep("User data extracted from metadata", { email, firstName, lastName, hasPassword: !!password });
+
+        // Check if user already exists
         const { data: userData, error: userError } = await supabaseService.auth.admin.listUsers();
         if (userError) {
           logStep("Error fetching users", { error: userError.message });
           throw new Error(`Failed to fetch users: ${userError.message}`);
         }
 
-        const user = userData.users.find(u => u.email === customerEmail);
+        let user = userData.users.find(u => u.email === email);
+        
+        // Create user if doesn't exist
+        if (!user && password) {
+          logStep("Creating new user", { email });
+          
+          const { data: newUserData, error: createError } = await supabaseService.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              first_name: firstName,
+              last_name: lastName
+            }
+          });
+
+          if (createError) {
+            logStep("Error creating user", { error: createError.message });
+            return new Response(JSON.stringify({ 
+              received: true,
+              processed: false,
+              reason: 'user_creation_failed',
+              error: createError.message
+            }), {
+              headers: { "Content-Type": "application/json" },
+              status: 200,
+            });
+          }
+
+          user = newUserData.user;
+          logStep("User created successfully", { userId: user.id });
+        }
+
         if (!user) {
-          logStep("User not found", { email: customerEmail });
+          logStep("Could not create or find user");
           return new Response(JSON.stringify({ received: true, processed: false, reason: "user_not_found" }), {
             headers: { "Content-Type": "application/json" },
             status: 200,
           });
         }
 
-        // Check if subscription already exists
-        const { data: existingSub } = await supabaseService
-          .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', user.id)
+        // Upsert subscription (create or update)
+        const { data: subscription, error: subError } = await supabaseService
+          .from("user_subscriptions")
+          .upsert({
+            user_id: user.id,
+            subscription_type: "paid",
+            status: "active",
+            stripe_customer_id: session.customer as string,
+            stripe_session_id: session.id,
+            amount_paid: session.amount_total || 0,
+            currency: session.currency || "gbp",
+            expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            welcome_email_sent: false,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'user_id'
+          })
+          .select()
           .single();
 
-        if (!existingSub) {
-          // Create subscription
-          const { error: subError } = await supabaseService
-            .from("user_subscriptions")
-            .insert({
+        if (subError) {
+          logStep("ERROR upserting subscription", { error: subError.message });
+          throw new Error(`Failed to upsert subscription: ${subError.message}`);
+        }
+
+        logStep("Subscription upserted successfully", { subscriptionId: subscription.id, userId: user.id });
+
+        // Send welcome email
+        try {
+          logStep("Sending welcome email", { 
+            userId: user.id, 
+            email: user.email, 
+            firstName: user.user_metadata?.first_name || firstName
+          });
+
+          const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+            body: {
               user_id: user.id,
-              subscription_type: "paid",
-              status: "active",
-              stripe_customer_id: session.customer as string,
-              stripe_session_id: session.id,
-              amount_paid: session.amount_total || 0, // Keep in pence as integer
-              currency: session.currency || "gbp",
-              expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-              welcome_email_sent: false, // Will be set to true by email function after successful send
-              updated_at: new Date().toISOString(),
-            });
-
-          if (subError) {
-            logStep("ERROR creating subscription", { error: subError.message });
-            throw new Error(`Failed to create subscription: ${subError.message}`);
-          }
-
-          logStep("Subscription created via webhook", { userId: user.id });
-
-          // PRIMARY PATH: Send welcome email after successful payment
-          try {
-            logStep("About to send welcome email", { 
-              userId: user.id, 
-              email: user.email, 
-              firstName: user.user_metadata?.first_name,
-              amountPaid: session.amount_total 
-            });
-
-            const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-              body: {
-                user_id: user.id,
-                email: user.email!,
-                firstName: user.user_metadata?.first_name,
-                isPaid: session.amount_total > 0 // True for paid, false for £0.00 payments
-              }
-            });
-
-            if (emailError) {
-              logStep("ERROR sending welcome email via webhook", { 
-                error: emailError,
-                userId: user.id,
-                email: user.email 
-              });
-            } else {
-              logStep("Welcome email sent via webhook", { 
-                email: user.email, 
-                amountPaid: session.amount_total,
-                skipped: emailData?.skipped,
-                emailId: emailData?.id,
-                success: emailData?.success
-              });
+              email: user.email!,
+              firstName: user.user_metadata?.first_name || firstName || '',
+              isPaid: session.amount_total > 0
             }
-          } catch (emailError) {
-            logStep("ERROR in welcome email process via webhook", { 
+          });
+
+          if (emailError) {
+            logStep("ERROR sending welcome email", { 
               error: emailError,
-              errorMessage: emailError?.message,
-              userId: user.id,
-              email: user.email 
+              userId: user.id
+            });
+          } else {
+            logStep("Welcome email sent successfully", { 
+              email: user.email,
+              success: emailData?.success
             });
           }
-        } else {
-          logStep("Subscription already exists, updating to active status", { userId: user.id, existingStatus: existingSub.status });
-          
-          // Update existing subscription to active status and reset email flag for email function
-          const { error: updateError } = await supabaseService
-            .from("user_subscriptions")
-            .update({
-              subscription_type: "paid",
-              status: "active",
-              stripe_customer_id: session.customer as string,
-              stripe_session_id: session.id,
-              amount_paid: session.amount_total || 0, // Keep in pence as integer
-              currency: session.currency || "gbp",
-              expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-              updated_at: new Date().toISOString(),
-              welcome_email_sent: false, // Reset to false so email function can send email
-            })
-            .eq('user_id', user.id);
-
-          if (updateError) {
-            logStep("ERROR updating existing subscription", { error: updateError.message });
-            throw new Error(`Failed to update subscription: ${updateError.message}`);
-          }
-
-          logStep("Subscription updated to active via webhook", { userId: user.id });
-
-          // Send welcome email for updated subscription
-          try {
-            logStep("About to send welcome email for updated subscription", { 
-              userId: user.id, 
-              email: user.email, 
-              firstName: user.user_metadata?.first_name,
-              amountPaid: session.amount_total 
-            });
-
-            const { data: emailData, error: emailError } = await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-              body: {
-                user_id: user.id,
-                email: user.email!,
-                firstName: user.user_metadata?.first_name,
-                isPaid: session.amount_total > 0
-              }
-            });
-
-            if (emailError) {
-              logStep("ERROR sending welcome email for updated subscription", { 
-                error: emailError,
-                userId: user.id,
-                email: user.email 
-              });
-            } else {
-              logStep("Welcome email sent for updated subscription", { 
-                email: user.email, 
-                amountPaid: session.amount_total,
-                skipped: emailData?.skipped,
-                emailId: emailData?.id,
-                success: emailData?.success
-              });
-            }
-          } catch (emailError) {
-            logStep("ERROR in welcome email process for updated subscription", { 
-              error: emailError,
-              errorMessage: emailError?.message,
-              userId: user.id,
-              email: user.email 
-            });
-          }
+        } catch (emailError) {
+          logStep("ERROR in welcome email process", { 
+            error: emailError,
+            userId: user.id
+          });
         }
       }
     }

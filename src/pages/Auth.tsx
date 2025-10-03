@@ -137,300 +137,60 @@ const Auth = () => {
     }
 
     try {
-      console.log("Starting registration process...");
+      console.log("Creating checkout session...");
       
-      // Use new registration function that handles discount codes
-      const { data, error } = await supabase.functions.invoke('register-with-discount', {
+      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
         body: {
           email: formData.email,
           password: formData.password,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          discountCode: formData.discountCode
+          discountCode: formData.discountCode || undefined
         }
       });
 
-      console.log("Registration response:", { data, error });
-      console.log("Response fields:", {
-        success: data?.success,
-        userExists: data?.userExists,
-        freeAccess: data?.freeAccess,
-        stripeRedirect: data?.stripeRedirect,
-        redirectTo: data?.redirectTo,
-        message: data?.message
-      });
+      console.log("Checkout session response:", { data, error });
 
       if (error) {
-        console.error("Registration function error:", error);
+        console.error("Checkout error:", error);
         toast({
           title: "Registration Failed",
-          description: error.message || "An error occurred during registration.",
+          description: error.message || "Failed to create checkout session",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
-      if (data.success === false || data.error) {
-        // Handle specific error types
-        if (data.error && data.error.includes("already exists")) {
-          toast({
-            title: "Account Exists",
-            description: "An account with this email already exists. Please sign in instead.",
-            variant: "destructive",
-          });
-          // Switch to sign-in tab
-          const signInTab = document.querySelector('[value="signin"]') as HTMLElement;
-          if (signInTab) signInTab.click();
-          return;
-        }
-        
+      if (!data.success || !data.url) {
         toast({
-          title: data.error.includes("discount code") ? "Invalid Discount Code" : "Registration Failed",
-          description: data.error,
+          title: "Registration Failed",
+          description: data.error || "Failed to create checkout session",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
+      // Store email and password for auto-login after payment
+      sessionStorage.setItem('pendingAuth', JSON.stringify({
+        email: formData.email,
+        password: formData.password,
+        timestamp: Date.now()
+      }));
 
-      if (data.userExists) {
-        // User already exists - show message and redirect to sign in
-        toast({
-          title: data.freeAccess ? "Account Updated!" : "Account Already Exists",
-          description: data.freeAccess ? data.message : "An account with this email already exists. Please use the Sign In tab below to access your account.",
-          variant: data.freeAccess ? "default" : "destructive",
-        });
-        
-        // If not free access, automatically switch to sign-in tab for user convenience
-        if (!data.freeAccess) {
-          setTimeout(() => {
-            const signInTab = document.querySelector('[value="signin"]') as HTMLElement;
-            if (signInTab) signInTab.click();
-          }, 2000); // 2 second delay to let user read the message
-        }
-        return;
-      }
+      console.log("Redirecting to Stripe checkout...");
+      
+      // Redirect to Stripe in the same tab
+      window.location.href = data.url;
 
-      if (data.freeAccess) {
-        toast({
-          title: "Account Created Successfully!",
-          description: "Welcome! You have free access to the consultation tool.",
-        });
-        // Sign in the user automatically for free access
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        
-        if (signInError) {
-          console.error("Auto sign-in error after free registration:", signInError);
-          toast({
-            title: "Sign In Error",
-            description: "Account created but couldn't sign you in automatically. Please sign in manually.",
-            variant: "destructive",
-          });
-          navigate('/login');
-          return;
-        }
-        
-        console.log("Free access user signed in successfully, navigating to welcome");
-        navigate('/welcome');
-      } else {
-        toast({
-          title: "Account Created Successfully!",
-          description: data.discountApplied ? 
-            `Discount applied! Your total is £${data.finalAmount}.` : 
-            "Please complete your payment to get started.",
-        });
-        // Sign in the user and navigate to payment
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        
-        if (signInError) {
-          console.error("Auto sign-in error after paid registration:", signInError);
-          toast({
-            title: "Sign In Error", 
-            description: "Account created but couldn't sign you in automatically. Please sign in manually.",
-            variant: "destructive",
-          });
-          navigate('/login');
-          return;
-        }
-        
-        console.log("Paid user signed in successfully, navigating to payment");
-
-        // Check if registration returned a direct Stripe URL
-        if (data.stripeRedirect && data.redirectTo) {
-          console.log("Redirecting directly to Stripe:", data.redirectTo);
-          
-          // Store user credentials temporarily for session restoration after payment
-          // This is needed because opening Stripe in new window breaks session in Lovable
-          localStorage.setItem('payment_user_email', formData.email);
-          localStorage.setItem('payment_user_password', formData.password);
-          console.log("Stored credentials for session restoration after payment");
-          
-          // Handle Stripe redirect - detect if we're in a sandboxed iframe
-          try {
-            // First try to detect if we're in a sandboxed iframe
-            const isInIframe = window.top !== window;
-            let isSandboxed = false;
-            
-            try {
-              // Test if we can access window.top.location
-              window.top.location.href;
-            } catch (sandboxError) {
-              isSandboxed = true;
-              console.log("Detected sandboxed iframe, will open Stripe in new window");
-            }
-            
-            if (isInIframe && isSandboxed) {
-              // We're in a sandboxed iframe (like Lovable), open in new window
-              const stripeWindow = window.open(data.redirectTo, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-              if (stripeWindow) {
-                console.log("Opened Stripe in new window");
-                // Focus the new window
-                stripeWindow.focus();
-                
-                // Show instruction to user
-                toast({
-                  title: "Payment Window Opened",
-                  description: "Complete your payment in the new window. You'll be automatically logged in afterward.",
-                  variant: "default",
-                });
-
-                // Listen for messages from the payment window
-                const handlePaymentMessage = (event) => {
-                  if (event.origin !== window.location.origin) return;
-                  
-                  if (event.data.type === 'PAYMENT_SUCCESS') {
-                    console.log("Received payment success message from popup");
-                    
-                    // Close the popup
-                    if (stripeWindow && !stripeWindow.closed) {
-                      stripeWindow.close();
-                    }
-                    
-                    // Restore session and navigate to welcome
-                    const restoreSessionAndNavigate = async () => {
-                      try {
-                        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                          email: formData.email,
-                          password: formData.password,
-                        });
-                        
-                        if (signInData.user && !signInError) {
-                          console.log("Session restored in main window:", signInData.user.email);
-                          
-                          // Clear stored credentials
-                          localStorage.removeItem('payment_user_email');
-                          localStorage.removeItem('payment_user_password');
-                          
-                          toast({
-                            title: "Payment Successful! 🎉",
-                            description: "Welcome back! Redirecting to your assessment...",
-                            variant: "default",
-                          });
-                          
-                          // Navigate to welcome page
-                          setTimeout(() => {
-                            navigate('/welcome');
-                          }, 1500);
-                        } else {
-                          console.error("Failed to restore session:", signInError);
-                          toast({
-                            title: "Session Error",
-                            description: "Payment successful, but please sign in to continue.",
-                            variant: "destructive",
-                          });
-                        }
-                      } catch (error) {
-                        console.error("Error restoring session:", error);
-                      }
-                    };
-                    
-                    restoreSessionAndNavigate();
-                    
-                    // Clean up event listener
-                    window.removeEventListener('message', handlePaymentMessage);
-                  }
-                };
-                
-                // Add event listener for messages from popup
-                window.addEventListener('message', handlePaymentMessage);
-                
-                // Clean up if popup is closed manually
-                const checkClosed = setInterval(() => {
-                  if (stripeWindow.closed) {
-                    clearInterval(checkClosed);
-                    window.removeEventListener('message', handlePaymentMessage);
-                    console.log("Payment popup was closed");
-                  }
-                }, 1000);
-                
-              } else {
-                console.error("Failed to open Stripe window - popup blocked?");
-                toast({
-                  title: "Popup Blocked",
-                  description: "Please allow popups and try again, or copy this link: " + data.redirectTo,
-                  variant: "destructive",
-                });
-              }
-            } else if (isInIframe) {
-              // We're in an iframe but not sandboxed, try top navigation
-              window.top.location.href = data.redirectTo;
-            } else {
-              // We're at top level, normal redirect
-              window.location.href = data.redirectTo;
-            }
-          } catch (e) {
-            console.warn("Error during Stripe redirect, falling back to new window:", e);
-            // Fallback: open in new window
-            window.open(data.redirectTo, '_blank');
-          }
-          return;
-        }
-        
-        // If no direct Stripe URL, log for debugging
-        console.log("No direct Stripe redirect, using fallback", {
-          stripeRedirect: data.stripeRedirect,
-          redirectTo: data.redirectTo,
-          freeAccess: data.freeAccess
-        });
-
-        // Fallback to payment page if direct redirect failed
-        const params = new URLSearchParams();
-        if (data.discountApplied) {
-          params.set('discount_applied', 'true');
-          params.set('discount_amount', data.discountAmount.toString());
-          params.set('final_amount', data.finalAmount.toString());
-          params.set('original_amount', data.originalAmount.toString());
-        }
-        navigate(`/payment?${params.toString()}`);
-
-      }
-
-      // Clear form only for successful free access (don't clear for paid redirects)
-      if (data.freeAccess) {
-        setFormData({
-          email: '',
-          password: '',
-          confirmPassword: '',
-          firstName: '',
-          lastName: '',
-          discountCode: ''
-        });
-      }
-
-    } catch (error) {
-      console.error("Unexpected error during registration:", error);
+    } catch (err) {
+      console.error("Unexpected error during signup:", err);
       toast({
-        title: "Sign Up Failed",
+        title: "Registration Failed",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };

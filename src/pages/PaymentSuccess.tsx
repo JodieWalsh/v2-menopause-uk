@@ -14,130 +14,99 @@ const PaymentSuccess = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const verifyPayment = async () => {
+    const verifyPaymentAndRedirect = async () => {
       const sessionId = searchParams.get('session_id');
-      const paymentIntentId = searchParams.get('payment_intent');
-      const freeAccess = searchParams.get('free_access');
-      
-      // Handle free access case
-      if (freeAccess === 'true') {
-        setVerified(true);
-        
+
+      if (!sessionId) {
         toast({
-          title: "Free Access Granted!",
-          description: "Redirecting to your assessment...",
+          title: "Error",
+          description: "No payment session found",
+          variant: "destructive",
         });
-        setVerifying(false);
-        
-        // Auto-redirect to welcome page after 2 seconds
-        setTimeout(() => {
-          navigate('/welcome');
-        }, 2000);
+        navigate('/auth');
         return;
       }
-      
-      // Handle Stripe Checkout Session - wait for webhook processing
-      if (sessionId) {
-        try {
-          // Poll for subscription status instead of relying on verify-checkout-session
-          let attempts = 0;
-          const maxAttempts = 30; // 30 seconds max wait
-          
-          const pollForSubscription = async (): Promise<boolean> => {
-            const { data: subscription } = await supabase
-              .from('user_subscriptions')
-              .select('*')
-              .eq('stripe_session_id', sessionId)
-              .single();
-              
-            return !!subscription;
-          };
-          
-          while (attempts < maxAttempts) {
-            const hasSubscription = await pollForSubscription();
-            
-            if (hasSubscription) {
-              setVerified(true);
-              toast({
-                title: "Payment Processed!",
-                description: "Redirecting to your assessment...",
-              });
-              
-              // Auto-redirect to welcome page after 2 seconds
-              setTimeout(() => {
-                navigate('/welcome');
-              }, 2000);
-              break;
-            }
-            
-            attempts++;
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
-          }
-          
-          if (attempts >= maxAttempts) {
-            toast({
-              title: "Processing Payment",
-              description: "Payment is being processed. You can proceed to your assessment.",
-            });
-            setVerified(true);
-            setTimeout(() => {
-              navigate('/welcome');
-            }, 2000);
-          }
-        } catch (error) {
-          console.error('Payment processing error:', error);
-          toast({
-            title: "Payment Processing",
-            description: "Your payment is being processed. You can proceed to your assessment.",
-          });
-          setVerified(true);
-          setTimeout(() => {
-            navigate('/welcome');
-          }, 2000);
-        }
-      }
-      // Handle Payment Intent (direct payment without discount)
-      else if (paymentIntentId) {
-        try {
-          const { data, error } = await supabase.functions.invoke('confirm-payment', {
-            body: { payment_intent_id: paymentIntentId }
-          });
 
-          if (error) throw error;
+      setVerifying(true);
 
-          if (data?.success) {
-            setVerified(true);
-            toast({
-              title: "Payment Verified!",
-              description: "Redirecting to your assessment...",
-            });
-            
-            // Auto-redirect to welcome page after 2 seconds
-            setTimeout(() => {
-              navigate('/welcome');
-            }, 2000);
-          } else {
-            toast({
-              title: "Payment Verification Failed",
-              description: "Please contact support if payment was completed.",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error('Payment intent verification error:', error);
+      try {
+        // Get stored credentials from sessionStorage
+        const pendingAuthStr = sessionStorage.getItem('pendingAuth');
+        if (!pendingAuthStr) {
           toast({
-            title: "Verification Error",
-            description: "Unable to verify payment. Please contact support.",
+            title: "Session Expired",
+            description: "Please sign up again.",
             variant: "destructive",
           });
+          navigate('/auth');
+          return;
         }
+
+        const pendingAuth = JSON.parse(pendingAuthStr);
+        
+        // Check if stored data is not too old (10 minutes)
+        if (Date.now() - pendingAuth.timestamp > 600000) {
+          sessionStorage.removeItem('pendingAuth');
+          toast({
+            title: "Session Expired",
+            description: "Please sign up again.",
+            variant: "destructive",
+          });
+          navigate('/auth');
+          return;
+        }
+
+        console.log("Waiting for webhook to create account...");
+
+        // Wait a bit for webhook to process
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        console.log("Auto-logging in user after payment...");
+
+        // Sign in the user
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: pendingAuth.email,
+          password: pendingAuth.password,
+        });
+
+        if (authError) {
+          console.error("Auto-login error:", authError);
+          toast({
+            title: "Payment Successful",
+            description: "Please wait a moment and try signing in.",
+            variant: "default",
+          });
+          setTimeout(() => navigate('/auth'), 2000);
+          return;
+        }
+
+        // Clear stored credentials
+        sessionStorage.removeItem('pendingAuth');
+
+        console.log("User logged in successfully");
+        
+        setVerified(true);
+        setVerifying(false);
+        toast({
+          title: "Payment Successful!",
+          description: "Welcome! Redirecting to your assessment...",
+        });
+        
+        // Redirect to welcome page
+        setTimeout(() => navigate('/welcome'), 1500);
+
+      } catch (error) {
+        console.error("Error during auto-login:", error);
+        toast({
+          title: "Payment Successful",
+          description: "Please sign in to continue.",
+        });
+        navigate('/auth');
       }
-      
-      setVerifying(false);
     };
 
-    verifyPayment();
-  }, [searchParams, toast, navigate]);
+    verifyPaymentAndRedirect();
+  }, [navigate, searchParams, toast]);
 
   if (verifying) {
     return (
