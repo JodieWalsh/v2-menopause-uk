@@ -159,6 +159,8 @@ const Auth = () => {
       
       // Try create-checkout-public first (users created ONLY after payment)
       let data, error;
+      let usedFallback = false;
+      
       try {
         const result = await supabase.functions.invoke('create-checkout-public', {
           body: {
@@ -171,11 +173,18 @@ const Auth = () => {
         });
         data = result.data;
         error = result.error;
-      } catch (deploymentError) {
-        console.log("create-checkout-public not deployed, falling back to register-with-discount");
-        console.error("Deployment error:", deploymentError);
         
-        // Fallback to register-with-discount if create-checkout-public isn't deployed
+        // If create-checkout-public returns an error, try fallback
+        if (error || (result.status && result.status >= 400)) {
+          console.log("create-checkout-public failed, trying fallback to register-with-discount");
+          console.error("create-checkout-public error:", error);
+          throw new Error("create-checkout-public failed");
+        }
+      } catch (functionError) {
+        console.log("Falling back to register-with-discount due to error:", functionError.message);
+        usedFallback = true;
+        
+        // Fallback to register-with-discount
         const fallbackResult = await supabase.functions.invoke('register-with-discount', {
           body: {
             email: formData.email.trim(),
@@ -193,6 +202,8 @@ const Auth = () => {
           data.url = data.redirectTo;
         }
       }
+
+      console.log(usedFallback ? "Used fallback function: register-with-discount" : "Used primary function: create-checkout-public");
 
       if (error) {
         console.error("Edge function error:", error);
