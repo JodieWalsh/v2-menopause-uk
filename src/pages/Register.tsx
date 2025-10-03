@@ -80,51 +80,21 @@ const Register = () => {
     try {
       console.log("Creating Stripe checkout session...");
       
-      // Try create-checkout-public first (users created ONLY after payment)
-      let data, error;
-      let usedFallback = false;
+      // Use create-checkout-public ONLY (no fallback - we need to fix this function)
+      console.log("Attempting create-checkout-public (no fallback)...");
       
-      try {
-        const result = await supabase.functions.invoke('create-checkout-public', {
-          body: {
-            email: formData.email.trim(),
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
-            password: formData.password,
-            discountCode: formData.discountCode.trim() || undefined
-          }
-        });
-        data = result.data;
-        error = result.error;
-        
-        // If create-checkout-public returns an error, try fallback
-        if (error || (result.status && result.status >= 400)) {
-          console.log("create-checkout-public failed, trying fallback to register-with-discount");
-          console.error("create-checkout-public error:", error);
-          throw new Error("create-checkout-public failed");
+      const { data, error } = await supabase.functions.invoke('create-checkout-public', {
+        body: {
+          email: formData.email.trim(),
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          password: formData.password,
+          discountCode: formData.discountCode.trim() || undefined
         }
-      } catch (functionError) {
-        console.log("Falling back to register-with-discount due to error:", functionError.message);
-        usedFallback = true;
-        
-        // Fallback to register-with-discount
-        const fallbackResult = await supabase.functions.invoke('register-with-discount', {
-          body: {
-            email: formData.email.trim(),
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
-            password: formData.password,
-            discountCode: formData.discountCode.trim() || undefined
-          }
-        });
-        data = fallbackResult.data;
-        error = fallbackResult.error;
-        
-        // Adjust response format for compatibility
-        if (data && data.redirectTo && !data.url) {
-          data.url = data.redirectTo;
-        }
-      }
+      });
+      
+      console.log("create-checkout-public response:", { data, error });
+      let usedFallback = false;
 
       console.log(usedFallback ? "Used fallback function: register-with-discount" : "Used primary function: create-checkout-public");
 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -145,9 +146,6 @@ serve(async (req) => {
         logStep("100% discount detected - providing free access", { discountCode });
         
         // For 100% discounts, we need to create the user immediately and give them access
-        // Import Supabase client
-        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
-        
         const supabaseService = createClient(
           Deno.env.get("SUPABASE_URL") ?? "",
           Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
