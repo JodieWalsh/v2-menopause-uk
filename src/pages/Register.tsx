@@ -114,6 +114,7 @@ const Register = () => {
 
       if (!data || !data.success) {
         console.error("Checkout creation failed:", data);
+        console.error("Full response data:", JSON.stringify(data, null, 2));
         const errorMsg = data?.error || "Failed to create checkout session";
         
         toast({
