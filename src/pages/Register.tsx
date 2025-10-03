@@ -101,6 +101,10 @@ const Register = () => {
         data = result.data;
         error = result.error;
         
+        // TEMPORARY: Force fallback to test discount codes with register-with-discount
+        console.log("🧪 TEMPORARILY forcing fallback to test discounts");
+        throw new Error("Testing fallback function");
+        
         // If there's an error or no data, try fallback
         if (error || !data || !data.success) {
           console.log("create-checkout-public failed, trying fallback");
@@ -193,12 +197,12 @@ const Register = () => {
         localStorage.setItem('temp_user_password', formData.password);
         
         // Longer delay to see console logs
-        console.log("🚀 REDIRECTING TO STRIPE IN 3 SECONDS...");
+        console.log("🚀 REDIRECTING TO STRIPE IN 5 SECONDS...");
         console.log("🚀 Check logs above before redirect!");
         setTimeout(() => {
           console.log("🚀 REDIRECTING NOW to:", data.url);
           window.location.href = data.url;
-        }, 3000);
+        }, 5000);
         return;
       }
 
