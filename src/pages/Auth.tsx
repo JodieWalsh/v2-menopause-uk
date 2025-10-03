@@ -223,12 +223,37 @@ const Auth = () => {
           window.location.href = data.redirectTo;
         }, 500);
       } else if (data.freeAccess) {
-        // Handle free access case
+        // Handle free access case - user is created but we need to sign them in
         toast({
           title: "Account Created Successfully!",
           description: "Welcome! You have free access.",
         });
-        navigate('/welcome');
+        
+        // Sign in the user automatically for free access
+        try {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: formData.email.trim(),
+            password: formData.password,
+          });
+          
+          if (signInError) {
+            console.error("Free access sign-in error:", signInError);
+            toast({
+              title: "Please Sign In",
+              description: "Your account was created successfully. Please sign in to continue.",
+              variant: "default",
+            });
+            // Stay on auth page for manual sign-in
+          } else {
+            // Clean up any stored credentials since we don't need them for free access
+            localStorage.removeItem('temp_user_email');
+            localStorage.removeItem('temp_user_password');
+            navigate('/welcome');
+          }
+        } catch (authError) {
+          console.error("Free access authentication error:", authError);
+          // Stay on auth page for manual sign-in
+        }
       } else {
         // Fallback to payment page
         navigate('/payment');

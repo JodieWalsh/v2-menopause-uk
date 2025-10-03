@@ -68,7 +68,7 @@
             const coupon = promotionCodeData.coupon;
 
             if (coupon.percent_off) {
-              discountAmount = Math.round((finalAmount * coupon.percent_off)) / 100;
+              discountAmount = Math.round((finalAmount * coupon.percent_off / 100) * 100) / 100;
             } else if (coupon.amount_off) {
               discountAmount = coupon.amount_off / 100;
             }
