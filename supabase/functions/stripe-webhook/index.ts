@@ -95,36 +95,66 @@ serve(async (req) => {
         currency: session.currency
       });
 
-      if (session.payment_status === "paid" && session.customer) {
-        // Get customer email from Stripe
-        const customer = await stripe.customers.retrieve(session.customer as string);
-        if (customer.deleted) {
-          logStep("Customer was deleted", { customerId: session.customer });
-          return new Response(JSON.stringify({ received: true, processed: false, reason: "customer_deleted" }), {
-            headers: { "Content-Type": "application/json" },
-            status: 200,
-          });
-        }
+      if (session.payment_status === "paid") {
+        // Extract user data from session metadata
+        const metadata = session.metadata || {};
+        const email = metadata.email;
+        const firstName = metadata.first_name;
+        const lastName = metadata.last_name;
+        const password = metadata.password;
 
-        const customerEmail = customer.email;
-        if (!customerEmail) {
-          logStep("No email found for customer", { customerId: session.customer });
+        if (!email) {
+          logStep("No email found in metadata");
           return new Response(JSON.stringify({ received: true, processed: false, reason: "no_email" }), {
             headers: { "Content-Type": "application/json" },
             status: 200,
           });
         }
 
-        // Find user by email
+        logStep("User data extracted from metadata", { email, firstName, lastName, hasPassword: !!password });
+
+        // Check if user already exists
         const { data: userData, error: userError } = await supabaseService.auth.admin.listUsers();
         if (userError) {
           logStep("Error fetching users", { error: userError.message });
           throw new Error(`Failed to fetch users: ${userError.message}`);
         }
 
-        const user = userData.users.find(u => u.email === customerEmail);
+        let user = userData.users.find(u => u.email === email);
+        
+        // Create user if doesn't exist
+        if (!user && password) {
+          logStep("Creating new user", { email });
+          
+          const { data: newUserData, error: createError } = await supabaseService.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+              first_name: firstName,
+              last_name: lastName
+            }
+          });
+
+          if (createError) {
+            logStep("Error creating user", { error: createError.message });
+            return new Response(JSON.stringify({ 
+              received: true,
+              processed: false,
+              reason: 'user_creation_failed',
+              error: createError.message
+            }), {
+              headers: { "Content-Type": "application/json" },
+              status: 200,
+            });
+          }
+
+          user = newUserData.user;
+          logStep("User created successfully", { userId: user.id });
+        }
+
         if (!user) {
-          logStep("User not found", { email: customerEmail });
+          logStep("Could not create or find user");
           return new Response(JSON.stringify({ received: true, processed: false, reason: "user_not_found" }), {
             headers: { "Content-Type": "application/json" },
             status: 200,
@@ -146,7 +176,7 @@ serve(async (req) => {
               user_id: user.id,
               subscription_type: "paid",
               status: "active",
-              stripe_customer_id: session.customer as string,
+              stripe_customer_id: session.customer as string || null,
               stripe_session_id: session.id,
               amount_paid: session.amount_total || 0, // Keep in pence as integer
               currency: session.currency || "gbp",
@@ -212,7 +242,7 @@ serve(async (req) => {
             .update({
               subscription_type: "paid",
               status: "active",
-              stripe_customer_id: session.customer as string,
+              stripe_customer_id: session.customer as string || null,
               stripe_session_id: session.id,
               amount_paid: session.amount_total || 0, // Keep in pence as integer
               currency: session.currency || "gbp",
