@@ -81,7 +81,7 @@ const Register = () => {
       console.log("Creating Stripe checkout session...");
       console.log("Discount code entered:", formData.discountCode);
       
-      const result = await supabase.functions.invoke('create-checkout-public', {
+      const result = await supabase.functions.invoke('create-checkout-v2', {
         body: {
           email: formData.email.trim(),
           firstName: formData.firstName.trim(),

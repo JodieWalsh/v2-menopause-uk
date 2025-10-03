@@ -160,7 +160,7 @@ const Auth = () => {
       // Use create-checkout-public function only (no fallback to prevent user creation before payment)
       console.log("Using create-checkout-public function...");
       
-      const result = await supabase.functions.invoke('create-checkout-public', {
+      const result = await supabase.functions.invoke('create-checkout-v2', {
         body: {
           email: formData.email.trim(),
           firstName: formData.firstName.trim(),
