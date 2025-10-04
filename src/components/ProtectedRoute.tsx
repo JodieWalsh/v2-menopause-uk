@@ -31,7 +31,15 @@ export function ProtectedRoute({ children, requiresSubscription = true }: Protec
         // Check if user is authenticated
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
+        console.log("🔵 ProtectedRoute: Auth check result:", {
+          hasUser: !!user,
+          userEmail: user?.email,
+          authError: authError?.message,
+          currentPath: window.location.pathname
+        });
+        
         if (authError || !user) {
+          console.log("🔴 ProtectedRoute: No authenticated user, redirecting to /login");
           if (mounted) {
             navigate('/login');
           }

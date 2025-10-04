@@ -125,8 +125,16 @@ const PaymentSuccess = () => {
                 description: "Redirecting to your assessment...",
               });
               
+              // Check final auth state before redirect
+              const { data: finalAuthCheck } = await supabase.auth.getUser();
+              console.log("PaymentSuccess: Final auth check before redirect:", {
+                isAuthenticated: !!finalAuthCheck.user,
+                userEmail: finalAuthCheck.user?.email
+              });
+              
               // Auto-redirect to welcome page after 2 seconds
               setTimeout(() => {
+                console.log("PaymentSuccess: Redirecting to /welcome");
                 navigate('/welcome');
               }, 2000);
               break;
