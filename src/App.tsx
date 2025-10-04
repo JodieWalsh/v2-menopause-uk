@@ -6,8 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
-// Lazy load components for better performance
-const Landing = React.lazy(() => import("./pages/Landing"));
+// Eager load critical pages to avoid chunk failures
+import Landing from "./pages/Landing";
+
+// Lazy load other components for better performance
 const Auth = React.lazy(() => import("./pages/Auth"));
 const Register = React.lazy(() => import("./pages/Register"));
 const Payment = React.lazy(() => import("./pages/Payment"));
@@ -54,14 +56,50 @@ const queryClient = new QueryClient({
   },
 });
 
+// Error Boundary for lazy-load failures
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl font-bold">Something went wrong</h1>
+            <p className="text-muted-foreground">Please refresh the page to continue</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/register" element={<Register />} />
@@ -139,6 +177,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </ErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
