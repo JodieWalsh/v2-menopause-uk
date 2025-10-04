@@ -58,13 +58,41 @@ const PaymentSuccess = () => {
           const maxAttempts = 40; // 40 seconds max wait (increased)
           
           const pollForSubscription = async (): Promise<{hasSubscription: boolean, userId?: string}> => {
-            const { data: subscription } = await supabase
+            // First try to find by session ID
+            let { data: subscription } = await supabase
               .from('user_subscriptions')
-              .select('user_id, stripe_session_id')
+              .select('user_id, stripe_session_id, created_at')
               .eq('stripe_session_id', sessionId)
               .single();
               
-            console.log(`PaymentSuccess: Poll attempt ${attempts + 1}, subscription found:`, !!subscription);
+            // If not found by session ID, try to find recent subscription for stored email
+            if (!subscription) {
+              const storedEmail = localStorage.getItem('temp_user_email');
+              if (storedEmail) {
+                console.log(`PaymentSuccess: No subscription found by session ID, trying email: ${storedEmail}`);
+                
+                // Look for recent subscription (within last 5 minutes) for this email
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+                
+                const { data: userResult } = await supabase.auth.admin.listUsers();
+                const user = userResult?.users?.find(u => u.email === storedEmail);
+                
+                if (user) {
+                  const { data: recentSub } = await supabase
+                    .from('user_subscriptions')
+                    .select('user_id, stripe_session_id, created_at')
+                    .eq('user_id', user.id)
+                    .gte('created_at', fiveMinutesAgo)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                    
+                  subscription = recentSub;
+                }
+              }
+            }
+              
+            console.log(`PaymentSuccess: Poll attempt ${attempts + 1}, subscription found:`, !!subscription, subscription?.stripe_session_id);
               
             return {
               hasSubscription: !!subscription,
