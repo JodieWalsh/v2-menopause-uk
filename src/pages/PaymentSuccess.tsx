@@ -13,11 +13,21 @@ const PaymentSuccess = () => {
   const [verified, setVerified] = useState(false);
   const { toast } = useToast();
 
+  // Debug logging
+  console.log("🟢 PaymentSuccess component loaded");
+  console.log("🟢 Current URL search params:", searchParams.toString());
+  console.log("🟢 Session ID from URL:", searchParams.get('session_id'));
+  console.log("🟢 Current window location:", window.location.href);
+
   useEffect(() => {
     const verifyPayment = async () => {
+      console.log("🟢 PaymentSuccess useEffect triggered");
+      
       const sessionId = searchParams.get('session_id');
       const paymentIntentId = searchParams.get('payment_intent');
       const freeAccess = searchParams.get('free_access');
+      
+      console.log("🟢 Payment parameters:", { sessionId, paymentIntentId, freeAccess });
       
       // Handle free access case
       if (freeAccess === 'true') {
