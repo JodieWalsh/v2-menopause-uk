@@ -39,19 +39,22 @@ const PaymentSuccess = () => {
       // Handle Stripe Checkout Session - wait for webhook processing
       if (sessionId) {
         try {
-          // Since register-with-discount creates users immediately, we don't need pendingAuth
-          // Just wait for webhook to process and then redirect
+          // With create-checkout-v2, users are created by webhook after payment
+          // We need to wait for both user creation and subscription creation
 
-          // Poll for subscription status instead of relying on verify-checkout-session
+          console.log("PaymentSuccess: Waiting for webhook to process payment and create user...");
+          
           let attempts = 0;
-          const maxAttempts = 30; // 30 seconds max wait
+          const maxAttempts = 40; // 40 seconds max wait (increased)
           
           const pollForSubscription = async (): Promise<{hasSubscription: boolean, userId?: string}> => {
             const { data: subscription } = await supabase
               .from('user_subscriptions')
-              .select('user_id')
+              .select('user_id, stripe_session_id')
               .eq('stripe_session_id', sessionId)
               .single();
+              
+            console.log(`PaymentSuccess: Poll attempt ${attempts + 1}, subscription found:`, !!subscription);
               
             return {
               hasSubscription: !!subscription,
@@ -59,39 +62,51 @@ const PaymentSuccess = () => {
             };
           };
           
-          console.log("Waiting for webhook to create subscription...");
-          // Wait for webhook to process (3 seconds should be enough)
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          // Wait longer for webhook to process (5 seconds)
+          console.log("PaymentSuccess: Initial wait for webhook processing...");
+          await new Promise(resolve => setTimeout(resolve, 5000));
           
           while (attempts < maxAttempts) {
             const {hasSubscription, userId} = await pollForSubscription();
             
             if (hasSubscription && userId) {
+              console.log("PaymentSuccess: Found subscription and user ID:", userId);
+              
               // Try to get stored credentials from localStorage (from registration)
               const storedEmail = localStorage.getItem('temp_user_email');
               const storedPassword = localStorage.getItem('temp_user_password');
               
+              console.log("PaymentSuccess: Stored credentials check:", { 
+                hasEmail: !!storedEmail, 
+                hasPassword: !!storedPassword,
+                email: storedEmail 
+              });
+              
               if (storedEmail && storedPassword) {
-                console.log("PaymentSuccess: Found stored credentials, signing in user:", storedEmail);
+                console.log("PaymentSuccess: Attempting to sign in user:", storedEmail);
                 
                 try {
-                  const { error: signInError } = await supabase.auth.signInWithPassword({
+                  const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
                     email: storedEmail,
                     password: storedPassword,
                   });
                   
-                  if (!signInError) {
-                    console.log("PaymentSuccess: User signed in successfully");
+                  if (!signInError && authData.user) {
+                    console.log("PaymentSuccess: User signed in successfully:", authData.user.email);
                     localStorage.removeItem('temp_user_email'); // Clean up
                     localStorage.removeItem('temp_user_password'); // Clean up
                   } else {
-                    console.error("PaymentSuccess: Sign in failed:", signInError.message);
+                    console.error("PaymentSuccess: Sign in failed:", signInError?.message || "Unknown error");
+                    // Don't fail completely - let them continue to welcome page anyway
                   }
                 } catch (authError) {
                   console.error("PaymentSuccess: Auth error:", authError);
+                  // Don't fail completely - let them continue to welcome page anyway
                 }
               } else {
-                console.log("PaymentSuccess: No stored credentials found, user will need to sign in manually");
+                console.log("PaymentSuccess: No stored credentials found");
+                // This might happen if user refreshed page or credentials were lost
+                // We can still redirect to welcome page and let them sign in manually
               }
               
               setVerified(true);
