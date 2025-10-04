@@ -29,6 +29,45 @@ const PaymentSuccess = () => {
       
       console.log("🟢 Payment parameters:", { sessionId, paymentIntentId, freeAccess });
       
+      // IMMEDIATE SIGN-IN ATTEMPT for paid users
+      if (sessionId) {
+        console.log("🟢 Attempting immediate sign-in with stored credentials");
+        const storedEmail = localStorage.getItem('temp_user_email');
+        const storedPassword = localStorage.getItem('temp_user_password');
+        
+        if (storedEmail && storedPassword) {
+          try {
+            const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: storedEmail,
+              password: storedPassword,
+            });
+            
+            if (!signInError && authData.user) {
+              console.log("🟢 Immediate sign-in successful:", authData.user.email);
+              localStorage.removeItem('temp_user_email');
+              localStorage.removeItem('temp_user_password');
+              
+              // Skip complex polling, just redirect to welcome
+              setVerified(true);
+              setVerifying(false);
+              toast({
+                title: "Payment Successful!",
+                description: "Welcome! Redirecting to your assessment...",
+              });
+              
+              setTimeout(() => {
+                navigate('/welcome');
+              }, 1000);
+              return;
+            } else {
+              console.log("🟢 Immediate sign-in failed, proceeding with polling");
+            }
+          } catch (error) {
+            console.log("🟢 Immediate sign-in error, proceeding with polling:", error);
+          }
+        }
+      }
+      
       // Handle free access case
       if (freeAccess === 'true') {
         setVerified(true);
