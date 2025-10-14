@@ -9,10 +9,12 @@ import { Link } from "react-router-dom";
 import { Heart, Eye, EyeOff, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useMarket } from "@/contexts/MarketContext";
 
 const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { market } = useMarket();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -78,17 +80,25 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      console.log("Creating Stripe checkout session...");
+      console.log("=== CREATING STRIPE CHECKOUT SESSION ===");
+      console.log("Market Code being sent:", market.code);
+      console.log("Market Config:", market);
+      console.log("Expected Price:", market.pricing.display);
       console.log("Discount code entered:", formData.discountCode);
-      
-      const result = await supabase.functions.invoke('create-checkout-v2', {
-        body: {
-          email: formData.email.trim(),
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          password: formData.password,
-          discountCode: formData.discountCode.trim() || undefined
-        }
+
+      const requestBody = {
+        email: formData.email.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        password: formData.password,
+        discountCode: formData.discountCode.trim() || undefined,
+        marketCode: market.code
+      };
+
+      console.log("Request body:", JSON.stringify(requestBody, null, 2));
+
+      const result = await supabase.functions.invoke('create-checkout-public', {
+        body: requestBody
       });
       
       console.log("create-checkout-public result:", result);
@@ -147,14 +157,15 @@ const Register = () => {
         // Store user data temporarily for post-payment authentication
         localStorage.setItem('temp_user_email', formData.email.trim());
         localStorage.setItem('temp_user_password', formData.password);
-        
-        // Extended delay to read console logs
-        console.log("🚀 REDIRECTING TO STRIPE IN 10 SECONDS...");
-        console.log("🚀 Check logs above before redirect!");
+
+        // Redirect to Stripe checkout
+        console.log("🚀 Redirecting to Stripe checkout...");
+        console.log("🚀 Stripe URL:", data.url);
+
+        // Small delay to ensure localStorage is saved
         setTimeout(() => {
-          console.log("🚀 REDIRECTING NOW to:", data.url);
           window.location.href = data.url;
-        }, 10000);
+        }, 500);
         return;
       }
 

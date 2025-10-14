@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { ModuleLayout } from "@/components/ModuleLayout";
 import { TextQuestion } from "@/components/QuestionComponents";
 import { useToast } from "@/hooks/use-toast";
+import { useMarket } from "@/contexts/MarketContext";
+import { MARKET_CONTENT } from "@/config/marketContent";
+import { useResponses } from "@/contexts/ResponseContext";
 
 interface Responses {
   [key: string]: string;
@@ -12,9 +14,11 @@ interface Responses {
 export default function Module2c() {
   const [responses, setResponses] = useState<Responses>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingData, setIsLoadingData] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { market } = useMarket();
+  const marketContent = MARKET_CONTENT[market.code];
+  const { getModuleResponses, saveResponses: saveToContext, isLoading: contextLoading } = useResponses();
 
   const questions = [
     {
@@ -40,36 +44,11 @@ export default function Module2c() {
   ];
 
   useEffect(() => {
-    loadExistingResponses();
-  }, []);
+    // Load responses from context (instant!)
+    const moduleResponses = getModuleResponses('module_2c');
+    setResponses(moduleResponses);
+  }, [getModuleResponses]);
 
-  const loadExistingResponses = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('user_responses')
-        .select('question_id, response_value')
-        .eq('user_id', user.id)
-        .eq('module_name', 'module_2c');
-
-      if (error) {
-        console.error('Error loading responses:', error);
-        return;
-      }
-
-      const existingResponses: Responses = {};
-      data?.forEach((response) => {
-        existingResponses[response.question_id] = response.response_value || '';
-      });
-      setResponses(existingResponses);
-    } catch (error) {
-      console.error('Error loading responses:', error);
-    } finally {
-      setIsLoadingData(false);
-    }
-  };
 
   const handleResponseChange = (questionId: string, value: string) => {
     setResponses(prev => ({
@@ -79,72 +58,15 @@ export default function Module2c() {
   };
 
   const saveResponses = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Error",
-          description: "Please log in to continue",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      // Save each response
-      for (const [questionId, value] of Object.entries(responses)) {
-        if (!value) continue; // Skip empty responses
-
-        const { error } = await supabase
-          .from('user_responses')
-          .upsert({
-            user_id: user.id,
-            module_name: 'module_2c',
-            question_id: questionId,
-            response_value: value,
-            response_type: 'text'
-          }, {
-            onConflict: 'user_id,question_id',
-            ignoreDuplicates: false
-          });
-
-        if (error) {
-          console.error('Error saving response:', error);
-          toast({
-            title: "Error",
-            description: "Failed to save some responses. Please try again.",
-            variant: "destructive"
-          });
-          return false;
-        }
-      }
-
-      // Mark module as completed
-      const { error: progressError } = await supabase
-        .from('user_progress')
-        .upsert({
-          user_id: user.id,
-          module_name: 'module_2c',
-          completed: true,
-          completed_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,module_name',
-          ignoreDuplicates: false
-        });
-
-      if (progressError) {
-        console.error('Error updating progress:', progressError);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error saving responses:', error);
+    const success = await saveToContext('module_2c', responses);
+    if (!success) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: "Failed to save responses. Please try again.",
         variant: "destructive"
       });
-      return false;
     }
+    return success;
   };
 
   const handleNext = async () => {
@@ -160,7 +82,7 @@ export default function Module2c() {
     navigate('/consultation/module-2b');
   };
 
-  if (isLoadingData) {
+  if (contextLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -196,16 +118,22 @@ export default function Module2c() {
         />
 
         <InfoBox>
-          If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.
-          <br /><br />
-          Use this link to access a booking:<br />
-          <a href="https://www.health.gov.au/our-work/breastscreen-australia-program/having-a-breast-screen/who-should-have-a-breast-screen" className="text-primary underline" target="_blank" rel="noopener noreferrer">
-            https://www.health.gov.au/our-work/breastscreen-australia-program/having-a-breast-screen/who-should-have-a-breast-screen
-          </a>
-          <br /><br />
-          Please be aware that having had breast cancer is not always a reason to avoid menopause medications. 
-          If you are in this circumstance please speak with your doctor. 
-          This video may help. <a href="https://www.youtube.com/watch?v=JtLU1FFo8Yw" className="text-primary underline" target="_blank" rel="noopener noreferrer">https://www.youtube.com/watch?v=JtLU1FFo8Yw</a>
+          <div 
+            dangerouslySetInnerHTML={{ __html: marketContent.helpfulHints.mammogramInfo.text }}
+          />
+          {marketContent.helpfulHints.mammogramInfo.link && (
+            <div className="mt-4">
+              <strong>Use this link to access a booking:</strong><br />
+              <a href={marketContent.helpfulHints.mammogramInfo.link} className="text-primary underline" target="_blank" rel="noopener noreferrer">
+                {marketContent.helpfulHints.mammogramInfo.link}
+              </a>
+            </div>
+          )}
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded">
+            <strong>Important Note:</strong> Please be aware that having had breast cancer is not always a reason to avoid menopause medications. 
+            If you are in this circumstance please speak with your {marketContent.helpfulHints.terminology.gp}. 
+            This video may help: <a href="https://www.youtube.com/watch?v=JtLU1FFo8Yw" className="text-primary underline" target="_blank" rel="noopener noreferrer">https://www.youtube.com/watch?v=JtLU1FFo8Yw</a>
+          </div>
         </InfoBox>
 
         <TextQuestion
@@ -225,23 +153,45 @@ export default function Module2c() {
         />
 
         <InfoBox>
-          <strong>Take time to talk to your family</strong>
-          <br /><br />
-          Do you meet any of these criteria that increase your risk of breast cancer? These may or may not impact on your eligibility to have hormone replacement therapy.
-          <br /><br />
-          • One first-degree relative diagnosed with breast cancer at age &lt;50 years (without the additional features of the potentially high-risk group)<br />
-          • Two first-degree relatives, on the same side of the family, diagnosed with breast cancer (without the additional features of the potentially high-risk group)<br />
-          • Two second-degree relatives, on the same side of the family, diagnosed with breast cancer, at least one at age &lt;50 years (without the additional features of the potentially high risk group)<br />
-          <br />
-          Two first- or second-degree relatives on one side of the family diagnosed with breast or ovarian cancer, plus one or more of the following features on the same side of the family:<br />
-          • additional relative(s) with breast or ovarian cancer<br />
-          • breast cancer diagnosed before age 40 years<br />
-          • bilateral breast cancer<br />
-          • breast and ovarian cancer in the same woman<br />
-          • Ashkenazi Jewish ancestry<br />
-          • breast cancer in a male relative<br />
-          • One first- or second-degree relative diagnosed with breast cancer at age &lt;45 years plus another first- or second-degree relative on the same side of the family with sarcoma (bone/soft tissue) at age &lt;45 years<br />
-          • Member of a family in which the presence of a high-risk breast cancer gene mutation (eg BRCA1, BRCA2) has been established
+          <div className="space-y-4">
+            <div>
+              <strong>Take time to talk to your family</strong>
+            </div>
+            
+            <p>
+              Do you meet any of these criteria that increase your risk of breast cancer? 
+              These may or may not impact your eligibility for hormone replacement therapy.
+            </p>
+
+            <div>
+              <strong>Standard Risk Factors:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                <li>One first-degree relative diagnosed with breast cancer at age &lt;50 years</li>
+                <li>Two first-degree relatives, on the same side of the family, diagnosed with breast cancer</li>
+                <li>Two second-degree relatives, on the same side of the family, diagnosed with breast cancer, 
+                    at least one at age &lt;50 years</li>
+              </ul>
+            </div>
+
+            <div>
+              <strong>Higher Risk Factors:</strong>
+              <p className="text-sm mt-1 mb-2">
+                Two first- or second-degree relatives on one side of the family diagnosed with breast or ovarian cancer, 
+                plus one or more of the following features on the same side of the family:
+              </p>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                <li>Additional relative(s) with breast or ovarian cancer</li>
+                <li>Breast cancer diagnosed before age 40 years</li>
+                <li>Bilateral breast cancer</li>
+                <li>Breast and ovarian cancer in the same woman</li>
+                <li>Ashkenazi Jewish ancestry</li>
+                <li>Breast cancer in a male relative</li>
+                <li>One first- or second-degree relative diagnosed with breast cancer at age &lt;45 years plus another 
+                    first- or second-degree relative on the same side of the family with sarcoma (bone/soft tissue) at age &lt;45 years</li>
+                <li>Member of a family in which the presence of a high-risk breast cancer gene mutation (eg BRCA1, BRCA2) has been established</li>
+              </ul>
+            </div>
+          </div>
         </InfoBox>
 
         <div className="mt-8">

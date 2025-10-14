@@ -13,7 +13,20 @@ const logStep = (step: string, details?: any) => {
 };
 
 const STRIPE_PRODUCT_ID = "prod_SnDJCDMZWdUQGl";
-const STRIPE_PRICE_ID = "price_1RrcsPATHqCGypnRMPr4nbKE";
+
+// Market-specific pricing IDs
+const MARKET_PRICE_IDS = {
+  UK: "price_1RrcsPATHqCGypnRMPr4nbKE", // £19
+  US: "price_1SGDyQATHqCGypnRmfWlO9GF", // $25 USD
+  AU: "price_1RqY9xATHqCGypnRNTqcJwXN", // AU$39 AUD
+};
+
+// Market configuration
+const MARKET_CONFIG = {
+  UK: { currency: 'gbp', symbol: '£', amount: 19 },
+  US: { currency: 'usd', symbol: '$', amount: 25 },
+  AU: { currency: 'aud', symbol: 'AU$', amount: 39 },
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -23,7 +36,7 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { email, firstName, lastName, password, discountCode } = await req.json();
+    const { email, firstName, lastName, password, discountCode, marketCode = 'UK' } = await req.json();
     
     // Validate required fields
     if (!email || !firstName || !lastName || !password) {
@@ -73,7 +86,14 @@ serve(async (req) => {
       });
     }
 
-    logStep("Request parsed and validated", { email, firstName, lastName, hasPassword: !!password, discountCode });
+    logStep("Request parsed and validated", { email, firstName, lastName, hasPassword: !!password, discountCode, marketCode });
+    
+    // Validate market code
+    const validMarketCode = ['UK', 'US', 'AU'].includes(marketCode) ? marketCode : 'UK';
+    const marketConfig = MARKET_CONFIG[validMarketCode];
+    const priceId = MARKET_PRICE_IDS[validMarketCode];
+    
+    logStep("Market configuration", { marketCode: validMarketCode, currency: marketConfig.currency, priceId });
 
     const stripeKey = Deno.env.get("stripesecret");
     if (!stripeKey) throw new Error("Stripe secret key not configured");
@@ -163,7 +183,7 @@ serve(async (req) => {
               subscription_type: 'free',
               status: 'active',
               amount_paid: 0,
-              currency: 'gbp',
+              currency: marketConfig.currency,
               expires_at: null,
               welcome_email_sent: false,
               updated_at: new Date().toISOString(),
@@ -219,7 +239,7 @@ serve(async (req) => {
       customer: customerId,
       line_items: [
         {
-          price: STRIPE_PRICE_ID,
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -234,7 +254,8 @@ serve(async (req) => {
         first_name: firstName,
         last_name: lastName,
         password, // Store password temporarily in Stripe metadata
-        discount_code_applied: discountCode || "none"
+        discount_code_applied: discountCode || "none",
+        market_code: validMarketCode
       },
       automatic_tax: { enabled: false },
       billing_address_collection: 'auto'

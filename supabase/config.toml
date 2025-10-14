@@ -1,7 +1,6 @@
 project_id = "ppnunnmjvpiwrrrbluno"
 
 [auth]
-enable_confirmations = false
 enable_signup = true
 
 [functions.generate-pdf-document]

@@ -39,8 +39,25 @@ serve(async (req) => {
     const userName = user.user_metadata?.first_name || 'Patient';
     const htmlContent = generateBrandedHTMLDocument(responses, userName);
     
-    // The responses are already saved individually in user_responses table during the assessment
-    // No need to save to a separate assessments table
+    // Check for recent email sends to prevent duplicates (within last 2 minutes)
+    // Using a simple in-memory cache approach instead of database table for now
+    const requestId = `${user.id}_${Math.floor(Date.now() / (2 * 60 * 1000))}`; // 2-minute window
+    
+    // Simple duplicate check using request timestamp in user metadata or session
+    const lastEmailTime = user.user_metadata?.last_document_email_time;
+    const currentTime = Date.now();
+    
+    if (lastEmailTime && (currentTime - lastEmailTime) < 2 * 60 * 1000) {
+      console.log('Recent email found, skipping duplicate send within 2 minutes');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Document email was recently sent, skipping duplicate",
+        documentContent: htmlContent
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     // Send HTML email directly (PDF generation temporarily disabled due to missing API key)
     console.log('Sending HTML document email directly (PDF generation disabled)');
@@ -58,6 +75,14 @@ serve(async (req) => {
       console.error('HTML email sending failed:', emailError);
       throw new Error(`Failed to send document email: ${emailError.message || JSON.stringify(emailError)}`);
     }
+
+    // Update user metadata to record the email send time
+    await supabaseClient.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...user.user_metadata,
+        last_document_email_time: currentTime
+      }
+    });
 
     console.log('HTML document email sent successfully');
 
@@ -252,7 +277,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     <!-- ${module} Page -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
+            <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: block; border: 0; outline: none; text-decoration: none;">
             <h2 class="page-title">${module}</h2>
         </div>
     ` : '';
@@ -306,17 +331,20 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         
         body {
             font-family: 'Open Sans', sans-serif;
-            font-size: 11pt;
-            line-height: 1.6;
+            font-size: 14pt;
+            line-height: 1.7;
             color: #333333;
             background: #FFFFFF;
+            margin: 0;
+            padding: 0;
         }
         
         .page {
-            width: 210mm;
-            min-height: 297mm;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 100vh;
             margin: 0 auto;
-            padding: 20mm;
+            padding: 40px;
             background: #FFFFFF;
             page-break-after: always;
             position: relative;
@@ -363,7 +391,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             text-align: center;
             position: relative;
             z-index: 2;
-            max-width: 600px;
+            max-width: 800px;
             width: 100%;
             flex-grow: 1;
             gap: 50px;
@@ -390,7 +418,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             border: 1px solid rgba(168, 218, 220, 0.2);
             backdrop-filter: blur(10px);
             width: 100%;
-            max-width: 500px;
+            max-width: 700px;
         }
         
         .patient-name {
@@ -534,7 +562,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         }
         
         .page-title {
-            font-size: 18pt;
+            font-size: 22pt;
             font-weight: 700;
             color: #333333;
         }
@@ -594,7 +622,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         
         /* Question blocks */
         .question-block {
-            margin-bottom: 25px;
+            margin-bottom: 35px;
             page-break-inside: avoid;
         }
         
@@ -604,21 +632,24 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         }
         
         .question-title {
-            font-size: 12pt;
+            font-size: 18pt;
             font-weight: 600;
             color: #333333;
-            margin-bottom: 8px;
-            line-height: 1.4;
+            margin-bottom: 15px;
+            line-height: 1.5;
         }
         
         .answer-content {
             background: #F5F5F5;
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #A8DADC;
-            font-size: 11pt;
-            line-height: 1.6;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 5px solid #A8DADC;
+            font-size: 16pt;
+            line-height: 1.7;
             color: #333333;
+            margin-bottom: 15px;
+            max-width: none;
+            width: 100%;
         }
         
         .section-divider {
@@ -633,72 +664,83 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             .page {
                 width: 100%;
                 min-width: 320px;
-                padding: 15mm;
+                padding: 20px;
                 margin: 0;
+            }
+            
+            body {
+                font-size: 16pt;
             }
             
             .page-header {
                 flex-direction: column;
                 text-align: center;
-                gap: 10px;
+                gap: 15px;
+                margin-bottom: 25px;
             }
             
             .header-logo {
-                width: 40px;
+                width: 60px;
             }
             
             .page-title {
-                font-size: 14pt;
+                font-size: 20pt;
             }
             
             .greene-scale-table {
-                font-size: 7pt;
-                margin: 10px 0;
+                font-size: 12pt;
+                margin: 15px 0;
             }
             
             .greene-scale-table th,
             .greene-scale-table td {
-                padding: 3px 2px;
-                font-size: 7pt;
-                line-height: 1.1;
+                padding: 8px 6px;
+                font-size: 12pt;
+                line-height: 1.3;
             }
             
             .question-title {
-                font-size: 10pt;
+                font-size: 18pt;
+                margin-bottom: 15px;
             }
             
             .answer-content {
-                font-size: 9pt;
-                padding: 10px;
+                font-size: 16pt;
+                padding: 18px;
+                line-height: 1.8;
             }
         }
         
         @media screen and (max-width: 480px) {
             .page {
-                padding: 10mm;
+                padding: 15px;
+            }
+            
+            body {
+                font-size: 15pt;
             }
             
             .greene-scale-table {
-                font-size: 6pt;
+                font-size: 11pt;
             }
             
             .greene-scale-table th,
             .greene-scale-table td {
-                padding: 2px 1px;
-                font-size: 6pt;
+                padding: 6px 4px;
+                font-size: 11pt;
             }
             
             .page-title {
-                font-size: 12pt;
+                font-size: 18pt;
             }
             
             .question-title {
-                font-size: 9pt;
+                font-size: 16pt;
             }
             
             .answer-content {
-                font-size: 8pt;
-                padding: 8px;
+                font-size: 15pt;
+                padding: 15px;
             }
         }
         
@@ -766,18 +808,21 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     <!-- Page 1: Welcome Message and Helpful Hints -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
+            <div style="text-align: center;">
+                <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
+                <div style="font-size: 10pt; font-weight: 600; color: #2c5f61; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">MENOPAUSE UK</div>
+            </div>
             <h2 class="page-title">Welcome and Next Steps</h2>
         </div>
         
         <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
-            <p style="font-size: 12pt; line-height: 1.6; margin-bottom: 20px;">
+            <h3 style="font-size: 18pt; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
+            <p style="font-size: 14pt; line-height: 1.6; margin-bottom: 20px;">
                 Thank you for completing your menopause consultation. This comprehensive document contains all of your responses and will help facilitate a productive discussion with your healthcare provider.
             </p>
             
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
-            <p style="font-size: 12pt; line-height: 1.6; margin-bottom: 20px;">
+            <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
+            <p style="font-size: 14pt; line-height: 1.6; margin-bottom: 20px;">
                 Please review your responses in this document and bring it with you to your menopause consultation appointment. Your healthcare provider will use this information to better understand your symptoms and health history.
             </p>
         </div>
@@ -785,16 +830,16 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         <div style="margin-top: 30px;">
             <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Helpful Hints</h3>
             
-            <div style="margin-bottom: 20px; padding: 15px; background: #F5F5F5; border-radius: 6px; border-left: 4px solid #A8DADC;">
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.</p>
+            <div style="margin-bottom: 25px; padding: 20px; background: #F5F5F5; border-radius: 8px; border-left: 4px solid #A8DADC;">
+                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 1:</strong> As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.</p>
                 
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
+                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
                 
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
+                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
                 
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.</p>
+                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 4:</strong> If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.</p>
                 
-                <p style="font-size: 11pt; line-height: 1.6;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
+                <p style="font-size: 13pt; line-height: 1.6;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
             </div>
         </div>
         
@@ -804,16 +849,19 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     <!-- Page 2: Top Symptoms and Modified Greene Scale -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
+            <div style="text-align: center;">
+                <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
+                <div style="font-size: 10pt; font-weight: 600; color: #2c5f61; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">MENOPAUSE UK</div>
+            </div>
             <h2 class="page-title">Your Top Symptoms & Assessment</h2>
         </div>
         
         <!-- Top Three Symptoms Section -->
-        <div style="margin-bottom: 25px;">
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
-            <div class="question-block" style="background: #F8FFFE; border: 1px solid #A8DADC; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
-                <h4 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 10px;">What are your top three symptoms that you desperately need help with?</h4>
-                <div style="font-size: 11pt; line-height: 1.6; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
+        <div style="margin-bottom: 30px;">
+            <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
+            <div class="question-block" style="background: #F8FFFE; border: 1px solid #A8DADC; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
+                <h4 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 12px;">What are your top three symptoms that you desperately need help with?</h4>
+                <div style="font-size: 14pt; line-height: 1.6; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
             </div>
         </div>
 
@@ -848,7 +896,10 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     <!-- Page 3+: Long Answer Questions -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
+            <div style="text-align: center;">
+                <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
+                <div style="font-size: 10pt; font-weight: 600; color: #2c5f61; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">MENOPAUSE UK</div>
+            </div>
             <h2 class="page-title">Detailed Responses</h2>
         </div>
         

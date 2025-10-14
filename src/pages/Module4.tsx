@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { ModuleLayout } from "@/components/ModuleLayout";
 import { TextQuestion } from "@/components/QuestionComponents";
 import { useToast } from "@/hooks/use-toast";
+import { useResponses } from "@/contexts/ResponseContext";
 
 interface Responses {
   [key: string]: string;
@@ -12,9 +12,9 @@ interface Responses {
 export default function Module4() {
   const [responses, setResponses] = useState<Responses>({});
   const [isLoading, setIsLoading] = useState(false);
-    const [isLoadingData, setIsLoadingData] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { getModuleResponses, saveResponses: saveToContext, isLoading: contextLoading } = useResponses();
 
   const questions = [
     {
@@ -25,36 +25,11 @@ export default function Module4() {
   ];
 
   useEffect(() => {
-    loadExistingResponses();
-  }, []);
+    // Load responses from context (instant!)
+    const moduleResponses = getModuleResponses('module_4');
+    setResponses(moduleResponses);
+  }, [getModuleResponses]);
 
-  const loadExistingResponses = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('user_responses')
-        .select('question_id, response_value')
-        .eq('user_id', user.id)
-        .eq('module_name', 'module_4');
-
-      if (error) {
-        console.error('Error loading responses:', error);
-        return;
-      }
-
-      const existingResponses: Responses = {};
-      data?.forEach((response) => {
-        existingResponses[response.question_id] = response.response_value || '';
-      });
-      setResponses(existingResponses);
-    } catch (error) {
-      console.error('Error loading responses:', error);
-    } finally {
-        setIsLoadingData(false);
-    }
-  };
 
   const handleResponseChange = (questionId: string, value: string) => {
     setResponses(prev => ({
@@ -64,72 +39,15 @@ export default function Module4() {
   };
 
   const saveResponses = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "Authentication Error",
-          description: "Please log in to continue",
-          variant: "destructive"
-        });
-        return false;
-      }
-
-      // Save each response
-      for (const [questionId, value] of Object.entries(responses)) {
-        if (!value) continue; // Skip empty responses
-
-        const { error } = await supabase
-          .from('user_responses')
-          .upsert({
-            user_id: user.id,
-            module_name: 'module_4',
-            question_id: questionId,
-            response_value: value,
-            response_type: 'text'
-          }, {
-            onConflict: 'user_id,question_id',
-            ignoreDuplicates: false
-          });
-
-        if (error) {
-          console.error('Error saving response:', error);
-          toast({
-            title: "Error",
-            description: "Failed to save some responses. Please try again.",
-            variant: "destructive"
-          });
-          return false;
-        }
-      }
-
-      // Mark module as completed
-      const { error: progressError } = await supabase
-        .from('user_progress')
-        .upsert({
-          user_id: user.id,
-          module_name: 'module_4',
-          completed: true,
-          completed_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,module_name',
-          ignoreDuplicates: false
-        });
-
-      if (progressError) {
-        console.error('Error updating progress:', progressError);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error saving responses:', error);
+    const success = await saveToContext('module_4', responses);
+    if (!success) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: "Failed to save responses. Please try again.",
         variant: "destructive"
       });
-      return false;
     }
+    return success;
   };
 
   const handleNext = async () => {
@@ -145,20 +63,21 @@ export default function Module4() {
     navigate('/consultation/module-3');
   };
 
-    if (isLoadingData) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Loading...</p>
-                </div>
-            </div>
-        );
-    }
+  // Only show loading during initial context load
+  if (contextLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const InfoBox = ({ children }: { children: React.ReactNode }) => (
-    <div className="bg-muted/30 border border-border rounded-lg p-4 mb-6">
-      <div className="text-sm text-foreground leading-relaxed">
+    <div className="bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-xl p-4 sm:p-6 mb-6 shadow-sm">
+      <div className="text-sm sm:text-base text-foreground leading-relaxed">
         {children}
       </div>
     </div>
@@ -225,17 +144,18 @@ export default function Module4() {
         Menopause is a natural part of life, and with the right tools and support, you can navigate this change with confidence and feel fantastic!
       </InfoBox>
 
-      <div className="space-y-8">
+      <div className="space-y-6 sm:space-y-8">
         <div>
           {questionsBySection["Questions for Doctor"]?.map((question) => (
-            <TextQuestion
-              key={question.id}
-              questionId={question.id}
-              question={question.question}
-              value={responses[question.id] || ''}
-              onChange={(value) => handleResponseChange(question.id, value)}
-              maxLength={1000}
-            />
+            <div key={question.id} className="bg-white/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <TextQuestion
+                questionId={question.id}
+                question={question.question}
+                value={responses[question.id] || ''}
+                onChange={(value) => handleResponseChange(question.id, value)}
+                maxLength={1000}
+              />
+            </div>
           ))}
         </div>
       </div>

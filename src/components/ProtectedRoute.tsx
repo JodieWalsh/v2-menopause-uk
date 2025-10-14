@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, CreditCard, Clock } from "lucide-react";
 
+// Simple cache to avoid repeated subscription checks
+const subscriptionCache = new Map<string, { hasValid: boolean; timestamp: number }>();
+const CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+
 interface ProtectedRouteProps {
   children: ReactNode;
   requiresSubscription?: boolean;
@@ -23,13 +27,12 @@ export function ProtectedRoute({ children, requiresSubscription = true }: Protec
 
     const checkAuthAndSubscription = async () => {
       try {
-        // Add delay to ensure auth state is properly loaded
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Use faster getSession instead of getUser
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
         
         if (!mounted) return;
 
-        // Check if user is authenticated
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        const user = session?.user;
         
         console.log("🔵 ProtectedRoute: Auth check result:", {
           hasUser: !!user,
@@ -50,67 +53,68 @@ export function ProtectedRoute({ children, requiresSubscription = true }: Protec
           setUser(user);
         }
 
-        // If subscription is required, check subscription status with retries
+        // If subscription is required, check subscription status with caching
         if (requiresSubscription && mounted) {
-          let retries = 3;
-          let subscription = null;
+          const cacheKey = `sub_${user.id}`;
+          const cached = subscriptionCache.get(cacheKey);
           
-          while (retries > 0 && mounted) {
-            const { data: sub, error: subError } = await supabase
+          // Use cached result if available and fresh
+          if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+            console.log('Using cached subscription status:', cached.hasValid);
+            setHasValidSubscription(cached.hasValid);
+          } else {
+            // Fetch fresh subscription data
+            const { data: subscription, error: subError } = await supabase
               .from('user_subscriptions')
               .select('*')
               .eq('user_id', user.id)
               .maybeSingle();
 
-            if (!subError && sub) {
-              subscription = sub;
-              break;
-            }
-            
             if (subError) {
-              console.error(`Error checking subscription (attempt ${4 - retries}):`, subError);
+              console.error('Error checking subscription:', subError);
             }
-            
-            retries--;
-            if (retries > 0) {
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
 
-          if (mounted) {
-            if (!subscription) {
-              console.log('No subscription found for user:', user.id);
-              setHasValidSubscription(false);
-            } else {
-              // Check if subscription is active and not expired
-              const isActive = subscription.status === 'active';
-              const isNotExpired = !subscription.expires_at || new Date(subscription.expires_at) > new Date();
-              
-              // TEMPORARY FIX: Also accept recent pending subscriptions (within last 10 minutes)
-              // This handles the case where webhook hasn't processed the payment yet
-              const isPendingRecent = subscription.status === 'pending' && 
-                subscription.created_at && 
-                new Date(subscription.created_at) > new Date(Date.now() - 10 * 60 * 1000);
-              
-              const hasValidAccess = (isActive || isPendingRecent) && isNotExpired;
-              
-              console.log('Subscription check:', { 
-                isActive, 
-                isPendingRecent, 
-                isNotExpired, 
-                hasValidAccess, 
-                subscription 
-              });
-              
-              setHasValidSubscription(hasValidAccess);
-              
-              // Show toast for pending subscriptions
-              if (isPendingRecent && !isActive) {
-                toast({
-                  title: "Payment Received! 🎉",
-                  description: "Your payment is being processed. You have full access to the assessment.",
-                  variant: "default",
+            if (mounted) {
+              if (!subscription) {
+                console.log('No subscription found for user:', user.id);
+                setHasValidSubscription(false);
+              } else {
+                // Check if subscription is active and not expired
+                const isActive = subscription.status === 'active';
+                const isNotExpired = !subscription.expires_at || new Date(subscription.expires_at) > new Date();
+                
+                // TEMPORARY FIX: Also accept recent pending subscriptions (within last 10 minutes)
+                // This handles the case where webhook hasn't processed the payment yet
+                const isPendingRecent = subscription.status === 'pending' && 
+                  subscription.created_at && 
+                  new Date(subscription.created_at) > new Date(Date.now() - 10 * 60 * 1000);
+                
+                const hasValidAccess = (isActive || isPendingRecent) && isNotExpired;
+                
+                console.log('Subscription check:', { 
+                  isActive, 
+                  isPendingRecent, 
+                  isNotExpired, 
+                  hasValidAccess, 
+                  subscription 
                 });
+                
+                setHasValidSubscription(hasValidAccess);
+                
+                // Cache the result
+                subscriptionCache.set(cacheKey, {
+                  hasValid: hasValidAccess,
+                  timestamp: Date.now()
+                });
+                
+                // Show toast for pending subscriptions
+                if (isPendingRecent && !isActive) {
+                  toast({
+                    title: "Payment Received! 🎉",
+                    description: "Your payment is being processed. You have full access to the assessment.",
+                    variant: "default",
+                  });
+                }
               }
             }
           }

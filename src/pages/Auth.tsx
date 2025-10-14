@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,10 @@ const Auth = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  
+  // Determine default tab from URL parameters
+  const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
 
   // Check if we're in a popup window (redirected here from /welcome after payment)
   useEffect(() => {
@@ -296,10 +300,13 @@ const Auth = () => {
             />
           </Link>
           <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground mb-2">
-            Welcome Back
+            {defaultTab === 'signup' ? 'Get Started' : 'Welcome Back'}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Access your personalized menopause consultation tool
+            {defaultTab === 'signup' 
+              ? 'Create your account and start your menopause consultation journey'
+              : 'Access your personalized menopause consultation tool'
+            }
           </p>
         </div>
 
@@ -312,7 +319,7 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue={defaultTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 h-10 sm:h-11">
                 <TabsTrigger value="signin" className="text-sm sm:text-base">Sign In</TabsTrigger>
                 <TabsTrigger value="signup" className="text-sm sm:text-base">Sign Up</TabsTrigger>

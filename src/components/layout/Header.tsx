@@ -138,7 +138,7 @@ export const Header = () => {
                   <Link to="/auth">Login</Link>
                 </Button>
                 <Button size="sm" asChild className="touch-target">
-                  <Link to="/auth">Get Started</Link>
+                  <Link to="/auth?tab=signup">Get Started</Link>
                 </Button>
               </div>
             )}
@@ -220,7 +220,7 @@ export const Header = () => {
                       </Link>
                     </Button>
                     <Button size="sm" asChild className="w-full touch-target">
-                      <Link to="/auth" onClick={() => setIsMenuOpen(false)}>
+                      <Link to="/auth?tab=signup" onClick={() => setIsMenuOpen(false)}>
                         Get Started
                       </Link>
                     </Button>
