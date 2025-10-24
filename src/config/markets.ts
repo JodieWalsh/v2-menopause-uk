@@ -37,8 +37,8 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
       code: 'GBP'
     },
     pricing: {
-      regular: 19,
-      display: '£19'
+      regular: 10,
+      display: '£10'
     },
     videos: {
       landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL1%20Menopause%20UK%202.mp4',
@@ -63,8 +63,8 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
       code: 'USD'
     },
     pricing: {
-      regular: 25,
-      display: '$25'
+      regular: 10,
+      display: '$10'
     },
     videos: {
       landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20USA%20V1.mp4',
@@ -89,8 +89,8 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
       code: 'AUD'
     },
     pricing: {
-      regular: 39,
-      display: 'AU$39'
+      regular: 10,
+      display: 'AU$10'
     },
     videos: {
       landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20Australia%20V4.mp4',

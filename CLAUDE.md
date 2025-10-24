@@ -100,27 +100,29 @@ updateResponse(moduleName, questionId, value);
 #### UK Market
 - **Currency**: £ GBP
 - **Pricing**: £19
-- **Domain**: uk.menopause-uk.com, menopause-uk.com, localhost
-- **Terminology**: "doctor" (user preference)
+- **Domain**: menopause.the-empowered-patient.org, localhost
+- **Terminology**: "doctor", "mum"
 - **Videos**: UK-specific landing and welcome videos
 - **Mammogram Info**: NHS breast screening programme
+- **Government Support**: None
 
 #### US Market
 - **Currency**: $ USD
 - **Pricing**: $25
-- **Domain**: us.menopause.com
-- **Terminology**: "doctor"
+- **Domain**: menopause.the-empowered-patient.com
+- **Terminology**: "doctor", "mom"
 - **Videos**: US-specific videos (VSL Menopause USA V1.mp4) ✅
 - **Mammogram Info**: American Cancer Society guidelines
+- **Government Support**: None
 
 #### Australian Market
 - **Currency**: AU$ AUD
 - **Pricing**: AU$39
-- **Domain**: au.menopause.com
-- **Terminology**: "doctor"
+- **Domain**: menopause.the-empowered-patient.com.au
+- **Terminology**: "doctor", "mum"
 - **Videos**: Australian videos (VSL Menopause Australia V4.mp4) ✅
 - **Mammogram Info**: BreastScreen Australia program
-- **Government Support**: Medicare rebate $101.90
+- **Government Support**: Medicare may provide rebates for menopause consultations
 
 ### Stripe Price IDs
 - **UK**: price_1RrcsPATHqCGypnRMPr4nbKE (£19 GBP)
@@ -234,7 +236,7 @@ updateResponse(moduleName, questionId, value);
 - **`test-checkout.js`** - Backend API testing script for market verification
 
 ### Configuration Updates
-- **`src/config/markets.ts`** - Updated domain routing (us./au. on menopause.com)
+- **`src/config/markets.ts`** - Domain routing for the-empowered-patient domains (.org/.com/.com.au)
 - **`src/pages/Register.tsx`** - Re-enabled Stripe redirect (removed test mode)
 - **`src/index.css`** - Restored complete CSS with all utility classes
 
@@ -314,4 +316,4 @@ updateResponse(moduleName, questionId, value);
 2. See `PRE_DEPLOYMENT_CHECKLIST.md` for verification
 3. Commit changes and push to repository
 4. Create Vercel project and deploy
-5. Configure domains (menopause-uk.com, us./au.menopause.com)
+5. Configure domains (the-empowered-patient.org/.com/.com.au)

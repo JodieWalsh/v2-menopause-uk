@@ -16,16 +16,16 @@ const STRIPE_PRODUCT_ID = "prod_SnDJCDMZWdUQGl";
 
 // Market-specific pricing IDs
 const MARKET_PRICE_IDS = {
-  UK: "price_1RrcsPATHqCGypnRMPr4nbKE", // £19
-  US: "price_1SGDyQATHqCGypnRmfWlO9GF", // $25 USD
-  AU: "price_1RqY9xATHqCGypnRNTqcJwXN", // AU$39 AUD
+  UK: "price_1SLgBQATHqCGypnRWbcR9Inl", // £10
+  US: "price_1SLgF9ATHqCGypnRO3pWMDTd", // $10 USD
+  AU: "price_1SLgCMATHqCGypnRWZY6tC10", // AU$10 AUD
 };
 
 // Market configuration
 const MARKET_CONFIG = {
-  UK: { currency: 'gbp', symbol: '£', amount: 19 },
-  US: { currency: 'usd', symbol: '$', amount: 25 },
-  AU: { currency: 'aud', symbol: 'AU$', amount: 39 },
+  UK: { currency: 'gbp', symbol: '£', amount: 10 },
+  US: { currency: 'usd', symbol: '$', amount: 10 },
+  AU: { currency: 'aud', symbol: 'AU$', amount: 10 },
 };
 
 serve(async (req) => {
