@@ -99,7 +99,7 @@ updateResponse(moduleName, questionId, value);
 
 #### UK Market
 - **Currency**: £ GBP
-- **Pricing**: £19
+- **Pricing**: £10 ✅ UPDATED
 - **Domain**: menopause.the-empowered-patient.org, localhost
 - **Terminology**: "doctor", "mum"
 - **Videos**: UK-specific landing and welcome videos
@@ -108,8 +108,8 @@ updateResponse(moduleName, questionId, value);
 
 #### US Market
 - **Currency**: $ USD
-- **Pricing**: $25
-- **Domain**: menopause.the-empowered-patient.com
+- **Pricing**: $10 ✅ UPDATED
+- **Domain**: menopause.the-empowered-patient.com ⚠️ DNS NOT YET CONFIGURED
 - **Terminology**: "doctor", "mom"
 - **Videos**: US-specific videos (VSL Menopause USA V1.mp4) ✅
 - **Mammogram Info**: American Cancer Society guidelines
@@ -117,17 +117,17 @@ updateResponse(moduleName, questionId, value);
 
 #### Australian Market
 - **Currency**: AU$ AUD
-- **Pricing**: AU$39
-- **Domain**: menopause.the-empowered-patient.com.au
+- **Pricing**: AU$10 ✅ UPDATED
+- **Domain**: menopause.the-empowered-patient.com.au ✅ DEPLOYED
 - **Terminology**: "doctor", "mum"
 - **Videos**: Australian videos (VSL Menopause Australia V4.mp4) ✅
 - **Mammogram Info**: BreastScreen Australia program
 - **Government Support**: Medicare may provide rebates for menopause consultations
 
-### Stripe Price IDs
-- **UK**: price_1RrcsPATHqCGypnRMPr4nbKE (£19 GBP)
-- **US**: price_1SGDyQATHqCGypnRmfWlO9GF ($25 USD)  
-- **AU**: price_1RqY9xATHqCGypnRNTqcJwXN (AU$39 AUD)
+### Stripe Price IDs (UPDATED October 24, 2025)
+- **UK**: price_1SLgBQATHqCGypnRWbcR9Inl (£10 GBP) ✅
+- **US**: price_1SLgF9ATHqCGypnRO3pWMDTd ($10 USD) ✅
+- **AU**: price_1SLgCMATHqCGypnRWZY6tC10 (AU$10 AUD) ✅
 
 ## Critical Files and Components
 
@@ -209,6 +209,43 @@ updateResponse(moduleName, questionId, value);
 - **Restored CSS styling** - Fixed missing utility classes causing layout issues
 - **Prepared Vercel deployment** - Created config files and comprehensive documentation
 
+### Session 5 (Pricing Update and Deployment - October 24, 2025)
+
+#### Completed ✅
+- **Updated all pricing to £10/$10/AU$10** across all three markets
+  - Updated Stripe price IDs in backend (supabase/functions/create-checkout-public/index.ts)
+  - Updated market configuration (src/config/markets.ts)
+  - Landing pages automatically display new pricing via market context
+- **Deployed Supabase function** - create-checkout-public redeployed with new price IDs
+- **Git deployment to Vercel** - Successfully pushed pricing changes to production
+- **Fixed Vercel co-author warning** - Removed "Co-Authored-By: Claude" from commits
+- **Identified US domain DNS issue** - menopause.the-empowered-patient.com not resolving
+
+#### Pending for Next Session ⚠️
+1. **US Domain DNS Configuration**
+   - Need to add CNAME in Hostinger: `f719921d401826fb.vercel-dns-017.com`
+   - Same configuration as UK (.org) and AU (.com.au) domains
+   - User checking if already configured
+
+2. **Video Links Update** (awaiting URLs from user)
+   - Need new Supabase video URLs for landing pages
+   - UK, US, AU markets
+
+3. **Questionnaire Wording Fixes** (awaiting details from user)
+   - Specific wording issues to be identified
+
+4. **Green Scale Functionality Testing** (awaiting details from user)
+   - Modified green scale in questionnaire needs testing
+   - Module/question location to be specified
+
+#### Technical Details
+- **Files Updated**:
+  - `supabase/functions/create-checkout-public/index.ts` (Stripe price IDs)
+  - `src/config/markets.ts` (Market pricing configuration)
+  - `CLAUDE.md` (Documentation)
+- **Git Commits**: 2 commits pushed to main branch
+- **Deployment Status**: Vercel auto-deployed to all configured domains
+
 ## Testing Checklist
 
 ### Core Functionality ✅
@@ -261,15 +298,36 @@ updateResponse(moduleName, questionId, value);
 
 ### Quick Start Instructions
 1. **Navigate to project**: `cd "C:\Users\Jodie Ralph\Documents\v2-menopause-uk"`
-2. **Start dev server**: `npm run dev` 
+2. **Start dev server**: `npm run dev`
 3. **Open browser**: http://localhost:8084 (or whatever port shows)
-4. **Current status**: Fully optimized, all systems operational
+4. **Current status**: Pricing updated to £10/$10/AU$10, deployed to production
+
+### Immediate Tasks for Next Session
+1. **Check US domain DNS** - Verify if menopause.the-empowered-patient.com is configured in Hostinger
+   - If not configured: Add CNAME pointing to `f719921d401826fb.vercel-dns-017.com`
+   - Same setup as UK (.org) and AU (.com.au) domains
+
+2. **Get video URLs from user** for landing pages:
+   - UK landing video
+   - US landing video
+   - AU landing video
+   - Update in `src/config/markets.ts`
+
+3. **Get questionnaire wording fixes from user**:
+   - Which modules/questions need wording changes?
+   - What should the new wording be?
+
+4. **Get green scale testing details from user**:
+   - Which module has the green scale?
+   - What functionality needs testing?
 
 ### Key Context to Remember
+- **Pricing**: All updated to £10/$10/AU$10 ✅
+- **Deployment**: Working via Vercel auto-deploy from GitHub ✅
+- **Git commits**: No longer include Co-Authored-By line (prevents Vercel warnings) ✅
 - **Performance**: All major bottlenecks eliminated
-- **Email system**: Beautiful formatting, responses flowing through perfectly  
-- **Multi-market**: Fully implemented, needs testing
-- **User experience**: Dramatically improved from previous sessions
+- **Email system**: Beautiful formatting, responses flowing through perfectly
+- **Multi-market**: Fully implemented, pricing updated
 - **Code quality**: All syntax errors resolved, clean architecture
 
 ### Important Files to Check First
@@ -296,20 +354,23 @@ updateResponse(moduleName, questionId, value);
 - **Result**: Sub-second response times throughout app
 
 ## Current Status Summary
-🚀 **READY FOR VERCEL DEPLOYMENT**
+🚀 **DEPLOYED TO PRODUCTION** (October 24, 2025)
 
 - ✅ All performance issues resolved
 - ✅ Beautiful email system working perfectly
-- ✅ Multi-market system verified and tested
+- ✅ Multi-market system fully deployed
+- ✅ **Pricing updated to £10/$10/AU$10** across all markets
+- ✅ **Stripe price IDs updated and deployed**
+- ✅ **Vercel deployment working** (auto-deploy from GitHub)
+- ✅ **AU domain live**: menopause.the-empowered-patient.com.au
+- ✅ **UK domain live**: menopause.the-empowered-patient.org
+- ⚠️ **US domain pending**: menopause.the-empowered-patient.com (DNS configuration needed)
 - ✅ Clean, maintainable codebase
 - ✅ Excellent user experience
-- ✅ All deployment files created
 - ✅ Backend functions deployed to Supabase
-- ✅ Stripe redirect re-enabled for production
 - ✅ CSS styling fully restored
-- ✅ Market-specific videos configured
 
-**The menopause consultation platform is deployment-ready. Next step: Vercel deployment + DNS configuration.**
+**Platform Status**: Production-ready with 2/3 domains live. Pending: US domain DNS, video updates, questionnaire fixes.
 
 ### Quick Deployment Reference
 1. See `VERCEL_DEPLOYMENT.md` for step-by-step instructions
