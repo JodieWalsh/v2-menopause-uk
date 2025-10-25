@@ -217,9 +217,17 @@ updateResponse(moduleName, questionId, value);
   - Updated market configuration (src/config/markets.ts)
   - Landing pages automatically display new pricing via market context
 - **Deployed Supabase function** - create-checkout-public redeployed with new price IDs
-- **Git deployment to Vercel** - Successfully pushed pricing changes to production
+- **Git deployment to Vercel** - Successfully pushed pricing changes to GitHub
 - **Fixed Vercel co-author warning** - Removed "Co-Authored-By: Claude" from commits
 - **Identified US domain DNS issue** - menopause.the-empowered-patient.com not resolving
+
+#### Deployment Troubleshooting (Session 5 Continued)
+- **Discovered**: Vercel auto-deploy was broken - deployments not triggering from GitHub pushes
+- **Root Cause**: GitHub repository was private, causing Vercel permission issues
+- **Solution**: Made GitHub repository public (temporarily)
+- **Created**: Vercel Deploy Hook for manual deployment triggers
+- **Deploy Hook URL**: `https://api.vercel.com/v1/integrations/deploy/prj_iEOJfjbM453BflLaB6qEAzNhyBbR/2XZAbZPt9u`
+- **Status**: Currently triggering manual deployment with updated pricing
 
 #### Pending for Next Session ⚠️
 1. **US Domain DNS Configuration**
