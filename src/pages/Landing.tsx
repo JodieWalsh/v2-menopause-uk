@@ -50,11 +50,11 @@ const Landing = () => {
               </div>
               
               <h1 className="responsive-heading font-serif font-bold text-foreground mb-4 sm:mb-6 leading-tight">
-                Navigate Menopause with Confidence: Save Time, Money, and Stress
+                Ready to talk with your doctor about Menopause?
               </h1>
-              
+
               <p className="text-base sm:text-lg text-foreground drop-shadow-lg mb-6 sm:mb-8 leading-relaxed max-w-2xl mx-auto">
-                Our new tool helps you be fully ready for your {market.content.terminology.doctor} visit, so you feel confident, heard, and get the right care with fewer {market.content.terminology.doctor} visits.
+                Our new tool helps you be fully ready for your {market.content.terminology.doctor} visit, so you feel confident, heard, and get the right care with fewer {market.content.terminology.doctor} visits. Save time, money and stress.
               </p>
               
               <div className="flex justify-center">
