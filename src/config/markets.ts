@@ -59,12 +59,12 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
     code: 'AU',
     name: 'Australia',
     currency: {
-      symbol: 'AU$',
+      symbol: '$',
       code: 'AUD'
     },
     pricing: {
       regular: 10,
-      display: 'AU$10'
+      display: '$10'
     },
     videos: {
       landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20Australia%20V4.mp4',
