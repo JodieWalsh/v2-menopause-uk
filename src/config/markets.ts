@@ -76,8 +76,7 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
         mum: 'mum'
       },
       regulations: {
-        hasGovernmentSupport: true,
-        supportDetails: 'Medicare may provide rebates for menopause consultations with your doctor. Speak to your doctor about bulk billing options.'
+        hasGovernmentSupport: false
       }
     },
     domains: ['menopause.the-empowered-patient.com.au']
