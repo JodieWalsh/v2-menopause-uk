@@ -109,25 +109,25 @@ updateResponse(moduleName, questionId, value);
 #### US Market
 - **Currency**: $ USD
 - **Pricing**: $10 ✅ UPDATED
-- **Domain**: menopause.the-empowered-patient.com ⚠️ DNS NOT YET CONFIGURED
+- **Domain**: menopause.the-empowered-patient.com ✅ DEPLOYED
 - **Terminology**: "doctor", "mom"
 - **Videos**: US-specific videos (VSL Menopause USA V1.mp4) ✅
 - **Mammogram Info**: American Cancer Society guidelines
 - **Government Support**: None
 
 #### Australian Market
-- **Currency**: AU$ AUD
-- **Pricing**: AU$10 ✅ UPDATED
+- **Currency**: $ AUD
+- **Pricing**: $10 ✅ UPDATED
 - **Domain**: menopause.the-empowered-patient.com.au ✅ DEPLOYED
 - **Terminology**: "doctor", "mum"
 - **Videos**: Australian videos (VSL Menopause Australia V4.mp4) ✅
 - **Mammogram Info**: BreastScreen Australia program
-- **Government Support**: Medicare may provide rebates for menopause consultations
+- **Government Support**: None (Medicare message removed from landing page)
 
 ### Stripe Price IDs (UPDATED October 24, 2025)
 - **UK**: price_1SLgBQATHqCGypnRWbcR9Inl (£10 GBP) ✅
 - **US**: price_1SLgF9ATHqCGypnRO3pWMDTd ($10 USD) ✅
-- **AU**: price_1SLgCMATHqCGypnRWZY6tC10 (AU$10 AUD) ✅
+- **AU**: price_1SLgCMATHqCGypnRWZY6tC10 ($10 AUD) ✅
 
 ## Critical Files and Components
 
@@ -227,32 +227,51 @@ updateResponse(moduleName, questionId, value);
 - **Solution**: Made GitHub repository public (temporarily)
 - **Created**: Vercel Deploy Hook for manual deployment triggers
 - **Deploy Hook URL**: `https://api.vercel.com/v1/integrations/deploy/prj_iEOJfjbM453BflLaB6qEAzNhyBbR/2XZAbZPt9u`
-- **Status**: Currently triggering manual deployment with updated pricing
+- **Fixed**: Market detection bug - AU domain was matching US (reordered config to check AU before US)
+- **Updated**: AU pricing display from "AU$10" to "$10" with AUD shown separately
+- **Removed**: Medicare support message from AU landing page
+- **Updated**: Hero section text on all landing pages with new heading and tagline
+- **Status**: All 3 domains now live and working with correct pricing
+
+#### Session 5 Final Status ✅
+- **All 3 domains LIVE**:
+  - UK: https://menopause.the-empowered-patient.org (£10 / GBP)
+  - US: https://menopause.the-empowered-patient.com ($10 / USD)
+  - AU: https://menopause.the-empowered-patient.com.au ($10 / AUD)
+- **Pricing**: All updated to $10/£10 equivalent across markets
+- **Market detection**: Working correctly (AU checked before US)
+- **Landing page**: New hero text deployed to all domains
+- **Deploy process**: Manual deployment via webhook until auto-deploy fixed
 
 #### Pending for Next Session ⚠️
-1. **US Domain DNS Configuration**
-   - Need to add CNAME in Hostinger: `f719921d401826fb.vercel-dns-017.com`
-   - Same configuration as UK (.org) and AU (.com.au) domains
-   - User checking if already configured
-
-2. **Video Links Update** (awaiting URLs from user)
-   - Need new Supabase video URLs for landing pages
+1. **Video Links Update** (user working on this)
+   - User updating videos and will provide new Supabase URLs
+   - Will need to update in `src/config/markets.ts`
    - UK, US, AU markets
 
-3. **Questionnaire Wording Fixes** (awaiting details from user)
+2. **Questionnaire Wording Fixes** (awaiting details from user)
    - Specific wording issues to be identified
+   - Which modules/questions need changes
 
-4. **Green Scale Functionality Testing** (awaiting details from user)
+3. **Green Scale Functionality Testing** (awaiting details from user)
    - Modified green scale in questionnaire needs testing
    - Module/question location to be specified
+
+4. **GitHub Repository Privacy** (review after testing complete)
+   - Currently public to fix Vercel deployment issues
+   - Consider changing back to private once deployment workflow stable
+   - May need to configure Vercel GitHub App permissions differently
 
 #### Technical Details
 - **Files Updated**:
   - `supabase/functions/create-checkout-public/index.ts` (Stripe price IDs)
-  - `src/config/markets.ts` (Market pricing configuration)
+  - `src/config/markets.ts` (Market pricing, domain order, AU currency, Medicare removal)
+  - `src/pages/Landing.tsx` (Hero section text updates)
+  - `vercel.json` (Clean URLs configuration)
   - `CLAUDE.md` (Documentation)
-- **Git Commits**: 2 commits pushed to main branch
-- **Deployment Status**: Vercel auto-deployed to all configured domains
+- **Git Commits**: Multiple commits pushed to main branch
+- **Deployment Status**: Manual deployments via Vercel Deploy Hook
+- **Deploy Hook URL**: `https://api.vercel.com/v1/integrations/deploy/prj_iEOJfjbM453BflLaB6qEAzNhyBbR/2XZAbZPt9u`
 
 ## Testing Checklist
 
@@ -264,13 +283,17 @@ updateResponse(moduleName, questionId, value);
 - [x] No syntax errors or overlays
 - [x] Clean Module 1 (no video placeholder)
 
-### Multi-Market Testing
-- [x] US market backend verified ($25 USD Stripe checkout confirmed)
-- [x] Backend correctly routes market code to Stripe price IDs
-- [x] Landing page videos configured for all three markets
-- [ ] UK market end-to-end testing (pending deployment)
-- [ ] US market end-to-end testing (pending deployment)
-- [ ] AU market end-to-end testing (pending deployment)
+### Multi-Market Testing (Session 5)
+- [x] UK domain live and displaying £10 pricing correctly
+- [x] US domain live and displaying $10 USD pricing correctly
+- [x] AU domain live and displaying $10 AUD pricing correctly
+- [x] Market detection working correctly (AU checked before US)
+- [x] AU currency symbol updated from "AU$" to "$"
+- [x] Medicare support message removed from AU landing page
+- [x] Hero section text updated on all landing pages
+- [x] Backend correctly routes market code to Stripe price IDs ($10 pricing)
+- [ ] End-to-end payment testing on all three domains (pending)
+- [ ] Landing page videos to be updated (awaiting new URLs from user)
 
 ## Deployment Preparation Files
 
@@ -311,21 +334,17 @@ updateResponse(moduleName, questionId, value);
 4. **Current status**: Pricing updated to £10/$10/AU$10, deployed to production
 
 ### Immediate Tasks for Next Session
-1. **Check US domain DNS** - Verify if menopause.the-empowered-patient.com is configured in Hostinger
-   - If not configured: Add CNAME pointing to `f719921d401826fb.vercel-dns-017.com`
-   - Same setup as UK (.org) and AU (.com.au) domains
-
-2. **Get video URLs from user** for landing pages:
+1. **Get video URLs from user** for landing pages:
    - UK landing video
    - US landing video
    - AU landing video
    - Update in `src/config/markets.ts`
 
-3. **Get questionnaire wording fixes from user**:
+2. **Get questionnaire wording fixes from user**:
    - Which modules/questions need wording changes?
    - What should the new wording be?
 
-4. **Get green scale testing details from user**:
+3. **Get green scale testing details from user**:
    - Which module has the green scale?
    - What functionality needs testing?
 
@@ -370,15 +389,15 @@ updateResponse(moduleName, questionId, value);
 - ✅ **Pricing updated to £10/$10/AU$10** across all markets
 - ✅ **Stripe price IDs updated and deployed**
 - ✅ **Vercel deployment working** (auto-deploy from GitHub)
-- ✅ **AU domain live**: menopause.the-empowered-patient.com.au
-- ✅ **UK domain live**: menopause.the-empowered-patient.org
-- ⚠️ **US domain pending**: menopause.the-empowered-patient.com (DNS configuration needed)
+- ✅ **AU domain live**: menopause.the-empowered-patient.com.au ($10 AUD)
+- ✅ **UK domain live**: menopause.the-empowered-patient.org (£10 GBP)
+- ✅ **US domain live**: menopause.the-empowered-patient.com ($10 USD)
 - ✅ Clean, maintainable codebase
 - ✅ Excellent user experience
 - ✅ Backend functions deployed to Supabase
 - ✅ CSS styling fully restored
 
-**Platform Status**: Production-ready with 2/3 domains live. Pending: US domain DNS, video updates, questionnaire fixes.
+**Platform Status**: All 3 domains live and operational. Pending: video updates, questionnaire wording fixes, green scale testing.
 
 ### Quick Deployment Reference
 1. See `VERCEL_DEPLOYMENT.md` for step-by-step instructions
