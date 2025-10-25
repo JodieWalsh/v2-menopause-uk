@@ -55,32 +55,6 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
     },
     domains: ['menopause.the-empowered-patient.org', 'localhost']
   },
-  US: {
-    code: 'US',
-    name: 'United States',
-    currency: {
-      symbol: '$',
-      code: 'USD'
-    },
-    pricing: {
-      regular: 10,
-      display: '$10'
-    },
-    videos: {
-      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20USA%20V1.mp4',
-      welcome: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/Welcome%20Menopause%20Australia%20descript%20video.mp4'
-    },
-    content: {
-      terminology: {
-        doctor: 'doctor',
-        mum: 'mom'
-      },
-      regulations: {
-        hasGovernmentSupport: false
-      }
-    },
-    domains: ['menopause.the-empowered-patient.com']
-  },
   AU: {
     code: 'AU',
     name: 'Australia',
@@ -107,6 +81,32 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
       }
     },
     domains: ['menopause.the-empowered-patient.com.au']
+  },
+  US: {
+    code: 'US',
+    name: 'United States',
+    currency: {
+      symbol: '$',
+      code: 'USD'
+    },
+    pricing: {
+      regular: 10,
+      display: '$10'
+    },
+    videos: {
+      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20USA%20V1.mp4',
+      welcome: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/Welcome%20Menopause%20Australia%20descript%20video.mp4'
+    },
+    content: {
+      terminology: {
+        doctor: 'doctor',
+        mum: 'mom'
+      },
+      regulations: {
+        hasGovernmentSupport: false
+      }
+    },
+    domains: ['menopause.the-empowered-patient.com']
   }
 };
 
