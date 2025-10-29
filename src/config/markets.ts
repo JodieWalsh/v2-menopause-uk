@@ -41,7 +41,7 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
       display: '£10'
     },
     videos: {
-      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL1%20Menopause%20UK%202.mp4',
+      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL1%20Menopause%20UK%203%20251029.mp4',
       welcome: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/Welcome%20Menopause%20Australia%20descript%20video.mp4'
     },
     content: {
@@ -67,7 +67,7 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
       display: '$10'
     },
     videos: {
-      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20Australia%20V4.mp4',
+      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20Australia%20V4%20251029.mp4',
       welcome: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/Welcome%20Menopause%20Australia%20descript%20video.mp4'
     },
     content: {
@@ -93,7 +93,7 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
       display: '$10'
     },
     videos: {
-      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20USA%20V1.mp4',
+      landing: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/VSL%20Menopause%20USA%20V1%20251029.mp4',
       welcome: 'https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos/Welcome%20Menopause%20Australia%20descript%20video.mp4'
     },
     content: {
