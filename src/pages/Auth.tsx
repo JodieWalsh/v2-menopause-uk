@@ -311,21 +311,21 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background section-padding">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-md">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-md lg:max-w-2xl">
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <Link to="/" className="inline-flex items-center justify-center mb-4 sm:mb-6">
-            <img 
-              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" 
-              alt="The Empowered Patient Logo" 
-              className="h-12 w-auto sm:h-16 sm:w-auto"
+        <div className="text-center mb-4 sm:mb-6 lg:mb-8">
+          <Link to="/" className="inline-flex items-center justify-center mb-3 sm:mb-4 lg:mb-6">
+            <img
+              src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png"
+              alt="The Empowered Patient Logo"
+              className="h-16 w-auto sm:h-20 lg:h-32 xl:h-36"
             />
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground mb-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-foreground mb-2">
             {defaultTab === 'signup' ? 'Get Started' : 'Welcome Back'}
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            {defaultTab === 'signup' 
+          <p className="text-sm sm:text-base lg:text-lg text-muted-foreground">
+            {defaultTab === 'signup'
               ? 'Create your account and start your menopause consultation journey'
               : 'Access your personalized menopause consultation tool'
             }
@@ -407,17 +407,17 @@ const Auth = () => {
                 </form>
               </TabsContent>
               
-              <TabsContent value="signup" className="space-y-3 sm:space-y-4 mt-4 sm:mt-6">
+              <TabsContent value="signup" className="space-y-3 lg:space-y-4 mt-4 sm:mt-6">
                 {/* Info Banner */}
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-                  <p className="text-xs sm:text-sm text-foreground">
-                    <strong>Secure Process:</strong> Enter your details below and you'll be redirected to our secure payment page. 
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4 mb-3">
+                  <p className="text-xs sm:text-sm lg:text-base text-foreground">
+                    <strong>Secure Process:</strong> Enter your details below and you'll be redirected to our secure payment page.
                     Your account will be created only after successful payment—no commitment until you pay!
                   </p>
                 </div>
 
-                <form onSubmit={handleSignUp} className="space-y-3 sm:space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <form onSubmit={handleSignUp} className="space-y-3 lg:space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="firstName" className="text-sm sm:text-base">First Name</Label>
                       <div className="relative">
@@ -452,7 +452,7 @@ const Auth = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="signup-email" className="text-sm sm:text-base">Email</Label>
                     <div className="relative">
@@ -469,45 +469,47 @@ const Auth = () => {
                       />
                     </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="text-sm sm:text-base">Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Create a password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        className="pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground hover:text-foreground touch-target"
-                      >
-                        {showPassword ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
-                      </button>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password" className="text-sm sm:text-base">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Create a password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          className="pl-9 sm:pl-10 pr-9 sm:pr-10 h-10 sm:h-11 text-sm sm:text-base"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground hover:text-foreground touch-target"
+                        >
+                          {showPassword ? <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" /> : <Eye className="h-3 w-3 sm:h-4 sm:w-4" />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        placeholder="Confirm your password"
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
-                        required
-                      />
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword" className="text-sm sm:text-base">Confirm Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                        <Input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type="password"
+                          placeholder="Confirm your password"
+                          value={formData.confirmPassword}
+                          onChange={handleInputChange}
+                          className="pl-9 sm:pl-10 h-10 sm:h-11 text-sm sm:text-base"
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
                   
