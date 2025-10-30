@@ -36,6 +36,7 @@ const Auth = () => {
       try {
         const parsedData = JSON.parse(savedFormData);
         setFormData(parsedData);
+        setIsLoading(false); // Reset loading state so button becomes active
         console.log("Restored form data from session storage");
       } catch (error) {
         console.error("Error restoring form data:", error);
