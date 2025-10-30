@@ -29,39 +29,53 @@ const Auth = () => {
   // Determine default tab from URL parameters
   const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
 
+  // Restore form data if user pressed back from Stripe
+  useEffect(() => {
+    const savedFormData = sessionStorage.getItem('signup_form_data');
+    if (savedFormData) {
+      try {
+        const parsedData = JSON.parse(savedFormData);
+        setFormData(parsedData);
+        console.log("Restored form data from session storage");
+      } catch (error) {
+        console.error("Error restoring form data:", error);
+      }
+    }
+  }, []);
+
   // Check if we're in a popup window (redirected here from /welcome after payment)
   useEffect(() => {
     if (window.opener && window.opener !== window) {
       console.log("Auth page: Detected popup window, this is likely a post-payment redirect");
-      
+
       // Send message to parent window that payment was successful
       try {
         window.opener.postMessage({
           type: 'PAYMENT_SUCCESS',
           timestamp: Date.now()
         }, window.location.origin);
-        
+
         console.log("Auth page: Sent PAYMENT_SUCCESS message to parent window");
-        
+
         // Show brief message and close popup
         toast({
           title: "Payment Successful!",
           description: "Closing window and logging you in...",
           variant: "default",
         });
-        
+
         setTimeout(() => {
           console.log("Auth page: Closing popup window");
           window.close();
         }, 2000);
-        
+
       } catch (error) {
         console.error("Error communicating with parent window:", error);
         setTimeout(() => {
           window.close();
         }, 3000);
       }
-      
+
       return; // Don't render the normal auth form in popup
     }
   }, [toast]);
@@ -230,10 +244,13 @@ const Auth = () => {
           description: "Taking you to our secure payment page...",
         });
 
+        // Store form data so it can be restored if user presses back
+        sessionStorage.setItem('signup_form_data', JSON.stringify(formData));
+
         // Store user data temporarily for post-payment authentication
         localStorage.setItem('temp_user_email', formData.email.trim());
         localStorage.setItem('temp_user_password', formData.password);
-        
+
         // Brief delay to show the toast
         setTimeout(() => {
           window.location.href = data.url;
@@ -265,9 +282,10 @@ const Auth = () => {
             });
             // Stay on auth page for manual sign-in
           } else {
-            // Clean up any stored credentials since we don't need them for free access
+            // Clean up any stored credentials and form data
             localStorage.removeItem('temp_user_email');
             localStorage.removeItem('temp_user_password');
+            sessionStorage.removeItem('signup_form_data');
             navigate('/welcome');
           }
         } catch (authError) {
