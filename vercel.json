@@ -9,6 +9,9 @@
       "destination": "/index.html"
     }
   ],
+  "buildSettings": {
+    "cache": false
+  },
   "headers": [
     {
       "source": "/(.*)",
