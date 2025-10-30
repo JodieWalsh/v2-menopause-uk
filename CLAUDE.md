@@ -276,6 +276,50 @@ updateResponse(moduleName, questionId, value);
    - Manual deployment webhook used when auto-deploy was slow
    - Fixed invalid Vercel config that caused build errors
 
+5. **Fixed Back Navigation from Stripe** 🔧
+   - **Problem**: When users pressed back from Stripe checkout, they got a 404 error
+   - **User Feedback**: "Users may press the back arrow during signup as they forgot to put in their discount code"
+   - **Solution Implemented**:
+     - Added sessionStorage to save form data before redirecting to Stripe
+     - Restore form data when user navigates back to Auth page
+     - Reset isLoading state so submit button becomes active again
+   - **Files Modified**: `src/pages/Auth.tsx`
+   - **Result**: Users can now press back, add discount code, and resubmit ✅
+
+6. **Optimized Auth Page Layout for Laptop Screens** 💻
+   - **Problem**: Form fields required scrolling on laptop, logo was too small
+   - **User Request**: "Make logo at least 3x larger, optimize so users don't need to scroll"
+   - **Changes Implemented**:
+     - Logo size increased: `h-16 sm:h-20 lg:h-32 xl:h-36` (3x larger on desktop)
+     - Container widened: `max-w-md lg:max-w-2xl` for more horizontal space
+     - Password fields side-by-side: `grid-cols-1 lg:grid-cols-2` on desktop
+     - Reduced vertical spacing to minimize scrolling
+     - Maintained full mobile responsiveness
+   - **Files Modified**: `src/pages/Auth.tsx`
+   - **Result**: Better laptop experience while preserving mobile layout ✅
+
+7. **CRITICAL: Fixed 100% Promotion Code Usage Tracking** 🚨
+   - **Problem**: When users used 100% discount codes (e.g., "friendaus" / promo_1SGzc7ATHqCGypnRhK7BSsZL), Stripe never tracked the usage
+   - **Impact**: Promotion codes with redemption limits could be used unlimited times
+   - **Root Cause**: For 100% discounts, the function created the user immediately and returned, bypassing Stripe entirely
+   - **Solution Implemented**:
+     - Now creates a $0 subscription in Stripe with the promotion code applied BEFORE creating user
+     - This ensures Stripe tracks the usage and increments the redemption count
+     - Added error handling for when promotion code limit is reached
+     - User still gets immediate free access (no UX change)
+   - **Code Changes** (`supabase/functions/create-checkout-v2/index.ts`):
+     ```typescript
+     // Create $0 subscription to track promotion code usage
+     const freeSubscription = await stripe.subscriptions.create({
+       customer: customerId,
+       items: [{ price: priceId }],
+       promotion_code: promotionCode.id,
+       metadata: { free_access: 'true', discount_code: discountCode.trim() }
+     });
+     ```
+   - **Result**: Promotion code usage now properly tracked in Stripe ✅
+   - **Deployed**: create-checkout-v2 function updated and deployed to Supabase
+
 #### Issues Identified for Future Work ⚠️
 1. **Stripe Phone Number Request**
    - Stripe checkout is asking users for phone number
