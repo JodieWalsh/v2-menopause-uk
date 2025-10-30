@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useMarket } from "@/contexts/MarketContext";
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +23,7 @@ const Auth = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { market } = useMarket();
   const [searchParams] = useSearchParams();
   
   // Determine default tab from URL parameters
@@ -170,7 +172,8 @@ const Auth = () => {
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
           password: formData.password,
-          discountCode: formData.discountCode.trim() || undefined
+          discountCode: formData.discountCode.trim() || undefined,
+          marketCode: market.code
         }
       });
       
