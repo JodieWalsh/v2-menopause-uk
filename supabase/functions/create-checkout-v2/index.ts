@@ -145,35 +145,64 @@ serve(async (req) => {
           if (promotionCode.coupon.percent_off === 100) {
             logStep("100% discount detected - providing free access", { discountCode });
 
-            // CRITICAL: Create a $0 subscription in Stripe with the promotion code
-            // This ensures Stripe tracks the promotion code usage and respects redemption limits
+            // CRITICAL: Create a $0 invoice with the promotion code to track usage
+            // This works with one-time payment prices and ensures Stripe tracks redemptions
             try {
-              const freeSubscription = await stripe.subscriptions.create({
+              // Create invoice item for the product
+              const invoiceItem = await stripe.invoiceItems.create({
                 customer: customerId,
-                items: [{ price: priceId }],
-                promotion_code: promotionCode.id,
+                price: priceId,
+                description: `Menopause Consultation Tool - Free with ${discountCode.trim()}`,
+              });
+
+              logStep("Created invoice item", { invoiceItemId: invoiceItem.id });
+
+              // Create invoice
+              const invoice = await stripe.invoices.create({
+                customer: customerId,
+                auto_advance: false, // Don't auto-finalize
+                discounts: [{ promotion_code: promotionCode.id }], // Apply promotion code
                 metadata: {
                   free_access: 'true',
                   discount_code: discountCode.trim(),
                   email: email,
                   first_name: firstName,
-                  last_name: lastName
+                  last_name: lastName,
+                  market_code: validMarketCode
                 }
               });
 
-              logStep("Created $0 subscription to track promotion code usage", {
-                subscriptionId: freeSubscription.id,
+              logStep("Created invoice with promotion code", {
+                invoiceId: invoice.id,
                 promotionCodeId: promotionCode.id,
-                status: freeSubscription.status,
-                amountTotal: freeSubscription.items.data[0]?.price?.unit_amount || 0
+                amountDue: invoice.amount_due,
+                total: invoice.total
               });
+
+              // Finalize the invoice to apply the discount and track usage
+              const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
+
+              logStep("Finalized invoice", {
+                invoiceId: finalizedInvoice.id,
+                amountDue: finalizedInvoice.amount_due,
+                status: finalizedInvoice.status
+              });
+
+              // If amount is $0, mark as paid
+              if (finalizedInvoice.amount_due === 0) {
+                await stripe.invoices.pay(finalizedInvoice.id);
+                logStep("Marked $0 invoice as paid - promotion code usage tracked", {
+                  invoiceId: finalizedInvoice.id
+                });
+              }
+
             } catch (stripeError) {
-              logStep("Failed to create tracking subscription in Stripe", { error: stripeError.message });
-              // Check if it's because the promotion code reached its limit
-              if (stripeError.message.includes('promotion') || stripeError.message.includes('coupon')) {
+              logStep("Failed to create invoice with promotion code", { error: stripeError.message });
+              // Check if it's because the promotion code reached its limit or doesn't apply
+              if (stripeError.message.includes('promotion') || stripeError.message.includes('coupon') || stripeError.message.includes('discount')) {
                 return new Response(JSON.stringify({
                   success: false,
-                  error: "This discount code has reached its usage limit or is no longer valid."
+                  error: "This discount code has reached its usage limit, doesn't apply to this product, or is no longer valid."
                 }), {
                   headers: { ...corsHeaders, "Content-Type": "application/json" },
                   status: 400,
