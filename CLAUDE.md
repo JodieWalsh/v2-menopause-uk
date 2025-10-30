@@ -320,6 +320,66 @@ updateResponse(moduleName, questionId, value);
    - **Result**: Promotion code usage now properly tracked in Stripe ✅
    - **Deployed**: create-checkout-v2 function updated and deployed to Supabase
 
+8. **Discovered Promotion Code Product Restriction Issue** 🔍
+   - **Problem**: User tested "friendaus" 100% discount code but was charged full price
+   - **Root Cause**: Promotion code in Stripe had NO product restrictions set, OR was restricted to old price IDs
+   - **Critical Discovery**: When promotion codes have product restrictions, they must include ALL THREE new price IDs:
+     - `price_1SLgBQATHqCGypnRWbcR9Inl` (UK £10)
+     - `price_1SLgF9ATHqCGypnRO3pWMDTd` (US $10)
+     - `price_1SLgCMATHqCGypnRWZY6tC10` (AU $10)
+   - **Solution**: Set "Applies to" in Stripe to either:
+     - "All products" (recommended for simplicity)
+     - OR specific list including all three new price IDs
+   - **User Action**: Created new discount code with proper product restrictions
+   - **Status**: Awaiting testing of new discount code (deployment in progress)
+
+9. **Final Deployment - Back Navigation & Layout Fixes** 🚀
+   - **Deployed to Vercel**: All Auth.tsx changes including:
+     - SessionStorage back navigation fix (lines 32-45)
+     - Auth page layout optimization for laptop (lines 314-559)
+     - Form data restoration with loading state reset
+   - **Deployment Details**:
+     - Vercel Deploy Hook triggered: `https://api.vercel.com/v1/integrations/deploy/prj_iEOJfjbM453BflLaB6qEAzNhyBbR/2XZAbZPt9u`
+     - Job ID: AYOfriCvP2JXUJGnq7iF
+     - Status: Building and deploying (takes 2-3 minutes)
+   - **Expected Result**:
+     - No more 404 errors when pressing back from Stripe
+     - Form data restored including discount code field
+     - Submit button active and ready for resubmission
+     - Larger logo and better laptop layout
+
+#### Session 6 Summary - All Fixes Deployed ✅
+
+**What Was Fixed:**
+1. ✅ Landing page videos updated (all 3 markets)
+2. ✅ Stripe pricing bug fixed (marketCode now sent from Auth.tsx)
+3. ✅ Back navigation from Stripe fixed (sessionStorage solution)
+4. ✅ Auth page layout optimized for laptop screens
+5. ✅ 100% promotion code usage tracking implemented
+6. ✅ Promotion code product restriction issue identified and documented
+
+**Files Modified in Session 6:**
+- `src/config/markets.ts` - Updated video URLs for UK/US/AU
+- `src/pages/Auth.tsx` - Added marketCode, back navigation fix, layout optimization
+- `supabase/functions/create-checkout-v2/index.ts` - Added $0 subscription for tracking 100% codes
+- `CLAUDE.md` - Comprehensive documentation of all fixes
+
+**Git Commits:**
+- Commit 940db86: "Optimize Auth page layout for laptop screens"
+- Commit 8ab19bf: "CRITICAL FIX: Track 100% promotion code usage in Stripe"
+- Commit 7352cca: "Update documentation with Session 6 critical fixes"
+
+**Deployment Status:**
+- ✅ Supabase: create-checkout-v2 deployed with promotion code tracking
+- ⏳ Vercel: Final deployment in progress (back navigation + layout fixes)
+- ✅ Git: All changes committed and pushed to GitHub
+
+**Testing Required After Break:**
+1. Test back navigation from Stripe (should restore form data, no 404)
+2. Test new discount code with proper product restrictions
+3. Verify laptop layout improvements (larger logo, no scrolling needed)
+4. Confirm promotion code usage tracking in Stripe dashboard
+
 #### Issues Identified for Future Work ⚠️
 1. **Stripe Phone Number Request**
    - Stripe checkout is asking users for phone number
@@ -330,6 +390,11 @@ updateResponse(moduleName, questionId, value);
    - Questionnaire wording fixes (awaiting specific details)
    - Green scale functionality testing (awaiting location details)
    - GitHub repository privacy review (currently public)
+
+3. **Promotion Code Configuration Best Practices**
+   - Document requirement: ALL promotion codes must apply to all three price IDs
+   - OR set to "All products" to avoid product restriction issues
+   - Test each new promotion code on all three domains before going live
 
 #### Technical Details
 - **Files Updated**:
