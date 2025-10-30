@@ -14,7 +14,7 @@ import { useMarket } from "@/contexts/MarketContext";
 const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { market } = useMarket();
+  const { market } = useMarket(); // Force rebuild to fix market pricing
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
