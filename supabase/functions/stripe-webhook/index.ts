@@ -108,6 +108,7 @@ serve(async (req) => {
         const firstName = metadata.first_name;
         const lastName = metadata.last_name;
         const password = metadata.password;
+        const marketCode = metadata.market_code || 'UK'; // Default to UK if not specified
 
         if (!email) {
           logStep("No email found in metadata");
@@ -213,7 +214,8 @@ serve(async (req) => {
                 user_id: user.id,
                 email: user.email!,
                 firstName: user.user_metadata?.first_name,
-                isPaid: session.amount_total > 0 // True for paid, false for £0.00 payments
+                isPaid: session.amount_total > 0, // True for paid, false for £0.00 payments
+                marketCode: marketCode // Pass market code so email uses correct domain
               }
             });
 
@@ -281,7 +283,8 @@ serve(async (req) => {
                 user_id: user.id,
                 email: user.email!,
                 firstName: user.user_metadata?.first_name,
-                isPaid: session.amount_total > 0
+                isPaid: session.amount_total > 0,
+                marketCode: marketCode // Pass market code so email uses correct domain
               }
             });
 

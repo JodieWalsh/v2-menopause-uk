@@ -14,6 +14,7 @@ interface WelcomeEmailRequest {
   email: string;
   firstName?: string;
   isPaid: boolean;
+  marketCode?: string;
 }
 
 const logStep = (step: string, details?: any) => {
@@ -29,8 +30,8 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     logStep("Function started");
 
-    const { user_id, email, firstName, isPaid }: WelcomeEmailRequest = await req.json();
-    logStep("Request parsed", { user_id, email, isPaid });
+    const { user_id, email, firstName, isPaid, marketCode = 'UK' }: WelcomeEmailRequest = await req.json();
+    logStep("Request parsed", { user_id, email, isPaid, marketCode });
 
     if (!user_id || !email) {
       throw new Error("user_id and email are required");
@@ -68,6 +69,16 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     logStep("Email not yet sent, proceeding");
+
+    // Map market code to correct domain
+    const MARKET_DOMAINS = {
+      'UK': 'https://menopause.the-empowered-patient.org',
+      'US': 'https://menopause.the-empowered-patient.com',
+      'AU': 'https://menopause.the-empowered-patient.com.au'
+    };
+
+    const siteUrl = MARKET_DOMAINS[marketCode as keyof typeof MARKET_DOMAINS] || MARKET_DOMAINS['UK'];
+    logStep("Using site URL for market", { marketCode, siteUrl });
 
     // Generate idempotency key for email service
     const idempotencyKey = `welcome_${user_id}_${Date.now()}`;
@@ -111,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div style="text-align: center; margin: 35px 0;">
-              <a href="${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/welcome" 
+              <a href="${siteUrl}/welcome" 
                  style="background: linear-gradient(135deg, #9ec0b7 0%, #7ba49e 100%); color: white; padding: 15px 30px; 
                         text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 16px;
                         box-shadow: 0 4px 6px rgba(158, 192, 183, 0.3);">
@@ -151,7 +162,7 @@ const handler = async (req: Request): Promise<Response> => {
         • Complete your comprehensive menopause assessment
         • Receive your personalised "doctor ready" document to bring to your appointment
         
-        Start your assessment: ${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/welcome
+        Start your assessment: ${siteUrl}/welcome
         
         Need help? Our support team is here for you. Simply reply to this email or contact us at support@the-empowered-patient.org
         
