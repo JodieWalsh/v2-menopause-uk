@@ -119,12 +119,18 @@ serve(async (req) => {
       logStep("Created new customer", { customerId });
     }
 
-    // Check for 100% discount codes that should bypass payment entirely
+    // STRIPE BEST PRACTICE: Always create checkout session (even for $0 orders)
+    // Let Stripe validate promotion codes, check product restrictions, and track redemptions
+    // For 100% discounts, Stripe will automatically skip payment collection and fire
+    // checkout.session.completed with payment_status="no_payment_required"
+
     let promotionCodeToApply = null;
-    
+
+    // If discount code provided, try to look it up to pre-apply it
+    // But don't error if not found - let Stripe validate it during checkout
     if (discountCode && discountCode.trim() !== "") {
-      logStep("Processing discount code", { discountCode: discountCode.trim() });
-      
+      logStep("Attempting to pre-apply discount code", { discountCode: discountCode.trim() });
+
       try {
         const promotionCodes = await stripe.promotionCodes.list({
           code: discountCode.trim(),
@@ -133,172 +139,27 @@ serve(async (req) => {
         });
 
         if (promotionCodes.data.length > 0) {
-          const promotionCode = promotionCodes.data[0];
-          logStep("Found valid promotion code", { 
+          promotionCodeToApply = promotionCodes.data[0].id;
+          logStep("Found promotion code - will pre-apply to session", {
             discountCode: discountCode.trim(),
-            promotionCodeId: promotionCode.id,
-            percentOff: promotionCode.coupon.percent_off,
-            amountOff: promotionCode.coupon.amount_off
+            promotionCodeId: promotionCodeToApply,
+            percentOff: promotionCodes.data[0].coupon.percent_off,
+            amountOff: promotionCodes.data[0].coupon.amount_off
           });
-          
-          // Handle 100% discounts specially (free access)
-          if (promotionCode.coupon.percent_off === 100) {
-            logStep("100% discount detected - providing free access", { discountCode });
-
-            // CRITICAL: Create a $0 invoice with the promotion code to track usage
-            // This works with one-time payment prices and ensures Stripe tracks redemptions
-            try {
-              // Create invoice item for the product
-              const invoiceItem = await stripe.invoiceItems.create({
-                customer: customerId,
-                price: priceId,
-                description: `Menopause Consultation Tool - Free with ${discountCode.trim()}`,
-              });
-
-              logStep("Created invoice item", { invoiceItemId: invoiceItem.id });
-
-              // Create invoice
-              const invoice = await stripe.invoices.create({
-                customer: customerId,
-                auto_advance: false, // Don't auto-finalize
-                discounts: [{ promotion_code: promotionCode.id }], // Apply promotion code
-                metadata: {
-                  free_access: 'true',
-                  discount_code: discountCode.trim(),
-                  email: email,
-                  first_name: firstName,
-                  last_name: lastName,
-                  market_code: validMarketCode
-                }
-              });
-
-              logStep("Created invoice with promotion code", {
-                invoiceId: invoice.id,
-                promotionCodeId: promotionCode.id,
-                amountDue: invoice.amount_due,
-                total: invoice.total
-              });
-
-              // Finalize the invoice to apply the discount and track usage
-              const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-
-              logStep("Finalized invoice", {
-                invoiceId: finalizedInvoice.id,
-                amountDue: finalizedInvoice.amount_due,
-                status: finalizedInvoice.status
-              });
-
-              // If amount is $0, mark as paid
-              if (finalizedInvoice.amount_due === 0) {
-                await stripe.invoices.pay(finalizedInvoice.id);
-                logStep("Marked $0 invoice as paid - promotion code usage tracked", {
-                  invoiceId: finalizedInvoice.id
-                });
-              }
-
-            } catch (stripeError) {
-              logStep("Failed to create invoice with promotion code", { error: stripeError.message });
-              // Check if it's because the promotion code reached its limit or doesn't apply
-              if (stripeError.message.includes('promotion') || stripeError.message.includes('coupon') || stripeError.message.includes('discount')) {
-                return new Response(JSON.stringify({
-                  success: false,
-                  error: "This discount code has reached its usage limit, doesn't apply to this product, or is no longer valid."
-                }), {
-                  headers: { ...corsHeaders, "Content-Type": "application/json" },
-                  status: 400,
-                });
-              }
-              throw stripeError;
-            }
-
-            // Create user immediately for free access
-            const supabaseService = createClient(
-              Deno.env.get("SUPABASE_URL") ?? "",
-              Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-            );
-
-            const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
-              email,
-              password,
-              user_metadata: {
-                first_name: firstName,
-                last_name: lastName,
-              },
-              email_confirm: true,
-            });
-
-            if (authError) {
-              if (authError.message.includes('already been registered')) {
-                return new Response(JSON.stringify({
-                  success: false,
-                  error: "An account with this email already exists. Please sign in instead."
-                }), {
-                  headers: { ...corsHeaders, "Content-Type": "application/json" },
-                  status: 400,
-                });
-              }
-              throw new Error(`Failed to create user: ${authError.message}`);
-            }
-
-            const newUser = authData.user;
-            if (!newUser) throw new Error("Failed to create user for free access");
-
-            // Create subscription for free access
-            await supabaseService.from('user_subscriptions').insert({
-              user_id: newUser.id,
-              subscription_type: 'free',
-              status: 'active',
-              amount_paid: 0,
-              currency: marketConfig.currency,
-              expires_at: null,
-              welcome_email_sent: false,
-              updated_at: new Date().toISOString(),
-            });
-
-            // Send welcome email
-            try {
-              await supabaseService.functions.invoke('send-welcome-email-idempotent', {
-                body: {
-                  user_id: newUser.id,
-                  email: email,
-                  firstName: firstName,
-                  isPaid: false
-                }
-              });
-            } catch (emailError) {
-              logStep("Failed to send welcome email", { error: emailError });
-            }
-
-            return new Response(JSON.stringify({
-              success: true,
-              freeAccess: true,
-              message: "Account created successfully! Your discount code gave you free access.",
-              userId: newUser.id,
-            }), {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 200,
-            });
-          } else {
-            // For all other discounts, store to apply to Stripe session
-            promotionCodeToApply = promotionCode.id;
-            logStep("Will apply partial discount to Stripe session", { 
-              discountCode: discountCode.trim(),
-              promotionCodeId: promotionCodeToApply,
-              percentOff: promotionCode.coupon.percent_off 
-            });
-          }
         } else {
-          logStep("Discount code not found in Stripe", { discountCode: discountCode.trim() });
+          logStep("Discount code not found - user can enter it in Stripe UI", {
+            discountCode: discountCode.trim()
+          });
         }
       } catch (error) {
-        logStep("Error validating discount code", { 
+        logStep("Error looking up discount code - will let Stripe handle validation", {
           discountCode: discountCode.trim(),
-          error: error.message 
+          error: error.message
         });
       }
     }
 
-    // Continue with Stripe checkout for paid access
+    // Continue with Stripe checkout for all orders (paid and free)
 
     // Create Checkout Session with user data in metadata
     const sessionConfig: any = {
@@ -314,7 +175,7 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/auth`,
       locale: "en",
       payment_method_types: ["card"],
-      allow_promotion_codes: true, // Let Stripe handle ALL discount code validation
+      allow_promotion_codes: true, // ALWAYS allow users to enter/modify promotion codes in Stripe UI
       metadata: {
         email,
         first_name: firstName,
@@ -327,19 +188,20 @@ serve(async (req) => {
       billing_address_collection: 'auto'
     };
 
-    // Apply promotion code if we found one
+    // Pre-apply promotion code if we found one (user can still change it in Stripe UI)
     if (promotionCodeToApply) {
       sessionConfig.discounts = [{ promotion_code: promotionCodeToApply }];
-      logStep("Applied promotion code to Stripe session", { 
+      logStep("Pre-applied promotion code to session", {
         promotionCodeId: promotionCodeToApply,
         discountCode: discountCode.trim()
       });
     }
-    
-    logStep("Final session config", { 
+
+    logStep("Creating checkout session", {
       allowPromotionCodes: sessionConfig.allow_promotion_codes,
       hasPreAppliedDiscount: !!sessionConfig.discounts,
-      discountCode: discountCode || "none"
+      priceId: priceId,
+      market: validMarketCode
     });
 
     const session = await stripe.checkout.sessions.create(sessionConfig);

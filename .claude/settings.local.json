@@ -25,7 +25,9 @@
       "Bash(taskkill:*)",
       "Bash(sed:*)",
       "Bash(cp:*)",
-      "Bash(node test-checkout.js)"
+      "Bash(node test-checkout.js)",
+      "Bash(nslookup:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

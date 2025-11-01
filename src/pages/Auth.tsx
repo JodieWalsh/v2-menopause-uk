@@ -222,27 +222,26 @@ const Auth = () => {
         console.error("Checkout creation failed:", data);
         console.error("Full response data:", JSON.stringify(data, null, 2));
         const errorMsg = data?.error || "Failed to create checkout session";
-        
+
         toast({
           title: "Unable to Process",
-          description: errorMsg.includes("already") 
-            ? "An account with this email already exists. Please sign in instead." 
-            : "Unable to process your request. Please try again.",
+          description: errorMsg.includes("already")
+            ? "An account with this email already exists. Please sign in instead."
+            : errorMsg,
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      // Check if this is free access or paid access
-      if (data.freeAccess) {
-        console.log("Free access granted, redirecting to welcome");
-      } else if (data.url) {
+      // All successful responses should have a checkout URL
+      // This includes both paid and free (100% discount) orders
+      if (data.url) {
         console.log("Checkout session created, redirecting to Stripe:", data.url);
-        
+
         toast({
-          title: "Redirecting to Payment",
-          description: "Taking you to our secure payment page...",
+          title: "Redirecting to Checkout",
+          description: "Taking you to our secure checkout page...",
         });
 
         // Store form data so it can be restored if user presses back
@@ -259,44 +258,14 @@ const Auth = () => {
         return;
       }
 
-      // Handle free access case
-      if (data.freeAccess) {
-        // Handle free access case - user is created but we need to sign them in
-        toast({
-          title: "Account Created Successfully!",
-          description: "Welcome! You have free access.",
-        });
-        
-        // Sign in the user automatically for free access
-        try {
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email: formData.email.trim(),
-            password: formData.password,
-          });
-          
-          if (signInError) {
-            console.error("Free access sign-in error:", signInError);
-            toast({
-              title: "Please Sign In",
-              description: "Your account was created successfully. Please sign in to continue.",
-              variant: "default",
-            });
-            // Stay on auth page for manual sign-in
-          } else {
-            // Clean up any stored credentials and form data
-            localStorage.removeItem('temp_user_email');
-            localStorage.removeItem('temp_user_password');
-            sessionStorage.removeItem('signup_form_data');
-            navigate('/welcome');
-          }
-        } catch (authError) {
-          console.error("Free access authentication error:", authError);
-          // Stay on auth page for manual sign-in
-        }
-      } else {
-        // Fallback to payment page
-        navigate('/payment');
-      }
+      // If we get here, something unexpected happened
+      console.error("Unexpected response - no URL provided:", data);
+      toast({
+        title: "Unexpected Error",
+        description: "Unable to create checkout session. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
 
     } catch (err) {
       console.error("Unexpected error during signup:", err);
