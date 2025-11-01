@@ -194,51 +194,27 @@ const Auth = () => {
       });
       
       console.log("create-checkout-v2 full result:", result);
-      let data = result.data;
-      const error = result.error;
+      console.log("Data:", result.data);
+      console.log("Error:", result.error);
 
-      // If there's an error with a response, try to get the actual error message
-      if (error) {
-        console.error("Error object:", error);
-        console.error("Error keys:", Object.keys(error));
+      // Check for errors - with Supabase Functions, error responses might be in 'data'
+      if (result.error || (result.data && typeof result.data === 'object' && 'success' in result.data && !result.data.success)) {
+        console.error("Error or unsuccessful response detected");
 
-        // Try to read from the response if available
-        if (result.error && typeof result.error === 'object') {
-          console.log("Full error object:", JSON.stringify(error, null, 2));
+        // Try to get error message from data first (function's JSON response)
+        let errorMessage = "Failed to create checkout session. Please try again.";
+
+        if (result.data && typeof result.data === 'object' && 'error' in result.data) {
+          errorMessage = result.data.error;
+          console.log("Got error message from data:", errorMessage);
+        } else if (result.error) {
+          errorMessage = result.error.message || errorMessage;
+          console.log("Got error message from error object:", errorMessage);
         }
-
-        // If context.body exists, try to parse it
-        if (error.context?.body) {
-          try {
-            const errorBody = JSON.parse(error.context.body);
-            console.error("Error body from function:", errorBody);
-
-            toast({
-              title: "Unable to Process",
-              description: errorBody.error || error.message || "Failed to create checkout session",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
-          } catch (parseError) {
-            console.error("Could not parse error body:", parseError);
-          }
-        }
-      }
-
-      // Check for function errors
-      if (error || (data && !data.success)) {
-        console.error("Edge function error:", error);
-        console.error("Function response data:", data);
-
-        // Get the actual error message from the function response
-        const errorMsg = data?.error || error?.message || "Failed to create checkout session";
-
-        console.error("Error message:", errorMsg);
 
         toast({
           title: "Unable to Process",
-          description: errorMsg,
+          description: errorMessage,
           variant: "destructive",
         });
         setIsLoading(false);
