@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ const Welcome = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { market } = useMarket();
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const initializePage = async () => {
@@ -74,6 +75,14 @@ const Welcome = () => {
     navigate('/consultation/summary');
   };
 
+  // Set video to show frame at 1 second as the poster/thumbnail
+  const handleVideoLoadedMetadata = () => {
+    if (videoRef.current) {
+      // Seek to 1 second to show a better thumbnail frame
+      videoRef.current.currentTime = 1;
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -115,10 +124,12 @@ const Welcome = () => {
           </CardHeader>
           <CardContent>
             <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-              <video 
-                controls 
+              <video
+                ref={videoRef}
+                controls
+                preload="metadata"
+                onLoadedMetadata={handleVideoLoadedMetadata}
                 className="w-full h-full object-cover"
-                poster="/placeholder-video-poster.jpg"
               >
                 <source src={market.videos.welcome} type="video/mp4" />
                 Your browser does not support the video tag.
