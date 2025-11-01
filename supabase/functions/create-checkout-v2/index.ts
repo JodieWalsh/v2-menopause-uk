@@ -126,10 +126,10 @@ serve(async (req) => {
 
     let promotionCodeToApply = null;
 
-    // If discount code provided, try to look it up to pre-apply it
-    // But don't error if not found - let Stripe validate it during checkout
+    // If discount code provided, validate it exists before creating checkout
+    // This gives immediate feedback to users if they entered an invalid/expired code
     if (discountCode && discountCode.trim() !== "") {
-      logStep("Attempting to pre-apply discount code", { discountCode: discountCode.trim() });
+      logStep("Validating discount code", { discountCode: discountCode.trim() });
 
       try {
         const promotionCodes = await stripe.promotionCodes.list({
@@ -140,21 +140,34 @@ serve(async (req) => {
 
         if (promotionCodes.data.length > 0) {
           promotionCodeToApply = promotionCodes.data[0].id;
-          logStep("Found promotion code - will pre-apply to session", {
+          logStep("Found valid promotion code - will pre-apply to session", {
             discountCode: discountCode.trim(),
             promotionCodeId: promotionCodeToApply,
             percentOff: promotionCodes.data[0].coupon.percent_off,
             amountOff: promotionCodes.data[0].coupon.amount_off
           });
         } else {
-          logStep("Discount code not found - user can enter it in Stripe UI", {
-            discountCode: discountCode.trim()
+          // Code not found - return error immediately so user knows
+          logStep("Discount code not found or inactive", { discountCode: discountCode.trim() });
+          return new Response(JSON.stringify({
+            success: false,
+            error: `The discount code "${discountCode.trim()}" is not valid or has expired. Please check the code and try again.`
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
           });
         }
       } catch (error) {
-        logStep("Error looking up discount code - will let Stripe handle validation", {
+        logStep("Error validating discount code", {
           discountCode: discountCode.trim(),
           error: error.message
+        });
+        return new Response(JSON.stringify({
+          success: false,
+          error: `Unable to validate discount code "${discountCode.trim()}". Please try again or proceed without a discount code.`
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
         });
       }
     }
