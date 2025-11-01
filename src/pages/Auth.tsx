@@ -192,35 +192,32 @@ const Auth = () => {
         }
       });
       
-      console.log("create-checkout-public result:", result);
-      console.log("SUCCESS: Using create-checkout-public function - users created ONLY AFTER payment");
+      console.log("create-checkout-v2 result:", result);
       const data = result.data;
       const error = result.error;
 
-      if (error) {
+      // Check for function errors (data contains actual error from function)
+      if (error || (data && !data.success)) {
         console.error("Edge function error:", error);
-        const errorMessage = error.message || "Failed to create checkout session";
-        
-        // Provide user-friendly error messages
-        let friendlyMessage = errorMessage;
-        if (errorMessage.includes("email")) {
-          friendlyMessage = "There's an issue with the email address. Please check and try again.";
-        } else if (errorMessage.includes("discount")) {
-          friendlyMessage = "The discount code is invalid or has expired.";
-        }
-        
+        console.error("Function response data:", data);
+
+        // Get the actual error message from the function response
+        const errorMsg = data?.error || error?.message || "Failed to create checkout session";
+
+        console.error("Error message:", errorMsg);
+
         toast({
           title: "Unable to Process",
-          description: friendlyMessage,
+          description: errorMsg,
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
+      // Verify we have a successful response with URL
       if (!data || !data.success) {
         console.error("Checkout creation failed:", data);
-        console.error("Full response data:", JSON.stringify(data, null, 2));
         const errorMsg = data?.error || "Failed to create checkout session";
 
         toast({
