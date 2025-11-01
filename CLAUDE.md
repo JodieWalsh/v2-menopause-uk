@@ -693,6 +693,115 @@ This prevents premature user creation if someone abandons checkout mid-flow.
 
 **Status:** ✅ Deployed and ready for testing
 
+---
+
+### Session 8 (Welcome Email Domain Fix - November 2, 2025)
+
+#### Problem Reported
+User reported that the "Start Your Assessment Now" button in the welcome email was not working. The button was sending all users to the same domain regardless of which market they signed up from (UK/US/AU).
+
+#### Root Cause Analysis
+**Welcome Email Function (`send-welcome-email-idempotent`):**
+- Button link used: `${Deno.env.get('SITE_URL')}/welcome`
+- This used a single environment variable for all markets
+- All users were directed to the same domain
+
+**Webhook Function:**
+- Extracted `market_code` from Stripe session metadata
+- But didn't pass it to the welcome email function
+- Email function had no way to know which market the user came from
+
+#### Solution Implemented
+
+**1. Updated Stripe Webhook (`stripe-webhook/index.ts`):**
+```typescript
+// Extract market code from session metadata
+const marketCode = metadata.market_code || 'UK';
+
+// Pass it to welcome email function
+await supabaseService.functions.invoke('send-welcome-email-idempotent', {
+  body: {
+    user_id: user.id,
+    email: user.email,
+    firstName: user.user_metadata?.first_name,
+    isPaid: session.amount_total > 0,
+    marketCode: marketCode // NEW: Pass market code
+  }
+});
+```
+
+**2. Updated Welcome Email Function (`send-welcome-email-idempotent/index.ts`):**
+```typescript
+// Accept marketCode parameter
+const { user_id, email, firstName, isPaid, marketCode = 'UK' } = await req.json();
+
+// Map market code to correct domain
+const MARKET_DOMAINS = {
+  'UK': 'https://menopause.the-empowered-patient.org',
+  'US': 'https://menopause.the-empowered-patient.com',
+  'AU': 'https://menopause.the-empowered-patient.com.au'
+};
+
+const siteUrl = MARKET_DOMAINS[marketCode] || MARKET_DOMAINS['UK'];
+
+// Use market-specific URL in email button
+<a href="${siteUrl}/welcome">Start Your Assessment Now</a>
+```
+
+#### Files Modified
+- `supabase/functions/stripe-webhook/index.ts` - Extract and pass marketCode (2 locations)
+- `supabase/functions/send-welcome-email-idempotent/index.ts` - Accept marketCode and use correct domain
+
+#### Deployment
+- ✅ **stripe-webhook** deployed to Supabase
+- ✅ **send-welcome-email-idempotent** deployed to Supabase
+- ✅ Git commit: c160b8c
+
+#### Expected Results
+
+**UK Market Users:**
+- Receive welcome email with button linking to: https://menopause.the-empowered-patient.org/welcome
+
+**US Market Users:**
+- Receive welcome email with button linking to: https://menopause.the-empowered-patient.com/welcome
+
+**Australian Market Users:**
+- Receive welcome email with button linking to: https://menopause.the-empowered-patient.com.au/welcome
+
+#### Testing Instructions
+
+To test, complete a signup on each market:
+
+**Test 1 - UK Market:**
+1. Sign up at: https://menopause.the-empowered-patient.org/auth?tab=signup
+2. Complete payment (or use valid 100% discount code)
+3. Check email inbox
+4. Click "Start Your Assessment Now" button
+5. ✅ Should go to: https://menopause.the-empowered-patient.org/welcome
+
+**Test 2 - US Market:**
+1. Sign up at: https://menopause.the-empowered-patient.com/auth?tab=signup
+2. Complete payment
+3. Check email
+4. Click button
+5. ✅ Should go to: https://menopause.the-empowered-patient.com/welcome
+
+**Test 3 - AU Market:**
+1. Sign up at: https://menopause.the-empowered-patient.com.au/auth?tab=signup
+2. Complete payment
+3. Check email
+4. Click button
+5. ✅ Should go to: https://menopause.the-empowered-patient.com.au/welcome
+
+#### Session 8 Summary
+**Problem:** Welcome email button sent all users to same domain
+**Root Cause:** marketCode not passed from webhook to email function
+**Solution:** Pass marketCode and map to correct domain URL
+**Impact:** Users now directed to their correct market domain
+**Status:** ✅ Deployed and ready for testing
+
+---
+
 #### Technical Details
 - **Files Updated**:
   - `supabase/functions/create-checkout-public/index.ts` (Stripe price IDs)
