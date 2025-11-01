@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Heart, Play, ArrowRight } from "lucide-react";
+import { Heart, Play, ArrowRight, ExternalLink, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout/Layout";
@@ -189,7 +189,7 @@ const Welcome = () => {
         </Card>
 
         {/* Information Card */}
-        <Card>
+        <Card className="mb-8">
           <CardHeader>
             <CardTitle>What to Expect</CardTitle>
           </CardHeader>
@@ -219,6 +219,110 @@ const Welcome = () => {
                   Your information is encrypted and stored securely. We respect your privacy completely.
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Menopause Information Resources */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Links to Information about Menopause
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-6">
+              Explore trusted resources from leading health organizations to learn more about menopause and women's health.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Cleveland Clinic */}
+              <a
+                href="https://my.clevelandclinic.org/health/diseases/21841-menopause"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    Cleveland Clinic
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Comprehensive menopause information from one of America's top hospitals
+                  </p>
+                </div>
+              </a>
+
+              {/* Australian Menopause Society */}
+              <a
+                href="https://menopause.org.au/health-info/fact-sheets"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    Australian Menopause Society
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Evidence-based fact sheets and resources for Australian women
+                  </p>
+                </div>
+              </a>
+
+              {/* Jean Hailes */}
+              <a
+                href="https://www.jeanhailes.org.au/health-a-z/menopause"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    Jean Hailes
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Trusted women's health information from Australia's leading organization
+                  </p>
+                </div>
+              </a>
+
+              {/* NHS UK */}
+              <a
+                href="https://www.nhs.uk/conditions/menopause/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    NHS UK
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Official NHS guidance on menopause symptoms and treatments
+                  </p>
+                </div>
+              </a>
             </div>
           </CardContent>
         </Card>
