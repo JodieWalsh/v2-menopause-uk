@@ -194,22 +194,29 @@ const Auth = () => {
       });
       
       console.log("create-checkout-v2 full result:", result);
-      console.log("Data:", result.data);
-      console.log("Error:", result.error);
 
-      // Check for errors - with Supabase Functions, error responses might be in 'data'
-      if (result.error || (result.data && typeof result.data === 'object' && 'success' in result.data && !result.data.success)) {
-        console.error("Error or unsuccessful response detected");
+      // Check for errors - if there's an error, read the response body
+      if (result.error) {
+        console.error("Error detected, attempting to read response body");
 
-        // Try to get error message from data first (function's JSON response)
         let errorMessage = "Failed to create checkout session. Please try again.";
 
-        if (result.data && typeof result.data === 'object' && 'error' in result.data) {
-          errorMessage = result.data.error;
-          console.log("Got error message from data:", errorMessage);
-        } else if (result.error) {
-          errorMessage = result.error.message || errorMessage;
-          console.log("Got error message from error object:", errorMessage);
+        // The actual response is in result.error.context (for newer Supabase clients)
+        // or in a response property
+        const response = (result as any).response;
+
+        if (response) {
+          try {
+            // Read the response body to get the actual error message
+            const errorData = await response.json();
+            console.log("Parsed error response:", errorData);
+
+            if (errorData && errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch (parseError) {
+            console.error("Could not parse error response:", parseError);
+          }
         }
 
         toast({
@@ -220,6 +227,8 @@ const Auth = () => {
         setIsLoading(false);
         return;
       }
+
+      const data = result.data;
 
       // Verify we have a successful response with URL
       if (!data || !data.success) {
