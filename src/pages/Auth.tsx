@@ -177,26 +177,56 @@ const Auth = () => {
     
     try {
       console.log("Creating Stripe checkout session...");
-      
-      // Use create-checkout-public function only (no fallback to prevent user creation before payment)
-      console.log("Using create-checkout-public function...");
-      
+
+      const requestBody = {
+        email: formData.email.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        password: formData.password,
+        discountCode: formData.discountCode.trim() || undefined,
+        marketCode: market.code
+      };
+
+      console.log("Request body:", { ...requestBody, password: '***' }); // Hide password in logs
+
       const result = await supabase.functions.invoke('create-checkout-v2', {
-        body: {
-          email: formData.email.trim(),
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          password: formData.password,
-          discountCode: formData.discountCode.trim() || undefined,
-          marketCode: market.code
-        }
+        body: requestBody
       });
       
-      console.log("create-checkout-v2 result:", result);
-      const data = result.data;
+      console.log("create-checkout-v2 full result:", result);
+      let data = result.data;
       const error = result.error;
 
-      // Check for function errors (data contains actual error from function)
+      // If there's an error with a response, try to get the actual error message
+      if (error) {
+        console.error("Error object:", error);
+        console.error("Error keys:", Object.keys(error));
+
+        // Try to read from the response if available
+        if (result.error && typeof result.error === 'object') {
+          console.log("Full error object:", JSON.stringify(error, null, 2));
+        }
+
+        // If context.body exists, try to parse it
+        if (error.context?.body) {
+          try {
+            const errorBody = JSON.parse(error.context.body);
+            console.error("Error body from function:", errorBody);
+
+            toast({
+              title: "Unable to Process",
+              description: errorBody.error || error.message || "Failed to create checkout session",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          } catch (parseError) {
+            console.error("Could not parse error body:", parseError);
+          }
+        }
+      }
+
+      // Check for function errors
       if (error || (data && !data.success)) {
         console.error("Edge function error:", error);
         console.error("Function response data:", data);
