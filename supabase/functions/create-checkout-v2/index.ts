@@ -175,7 +175,6 @@ serve(async (req) => {
       cancel_url: `${req.headers.get("origin")}/auth`,
       locale: "en",
       payment_method_types: ["card"],
-      allow_promotion_codes: true, // ALWAYS allow users to enter/modify promotion codes in Stripe UI
       metadata: {
         email,
         first_name: firstName,
@@ -188,13 +187,18 @@ serve(async (req) => {
       billing_address_collection: 'auto'
     };
 
-    // Pre-apply promotion code if we found one (user can still change it in Stripe UI)
+    // Stripe doesn't allow both 'discounts' and 'allow_promotion_codes' in the same session
+    // If we found a promotion code, pre-apply it. Otherwise, allow users to enter codes in Stripe UI.
     if (promotionCodeToApply) {
       sessionConfig.discounts = [{ promotion_code: promotionCodeToApply }];
       logStep("Pre-applied promotion code to session", {
         promotionCodeId: promotionCodeToApply,
         discountCode: discountCode.trim()
       });
+    } else {
+      // If no code to pre-apply, allow users to enter codes in Stripe UI
+      sessionConfig.allow_promotion_codes = true;
+      logStep("Enabled promotion code field in Stripe UI");
     }
 
     logStep("Creating checkout session", {
