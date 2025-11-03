@@ -171,10 +171,15 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     
     if (response) {
       // Map multiple choice answers to scores (0-3)
-      if (response.includes('normal') || response.includes('not feel') || response.includes('No') || response.includes('just my usual') || response.includes('same')) score = 0;
-      else if (response.includes('mild') || response.includes('small amount') || response.includes('Some occasional')) score = 1;
-      else if (response.includes('moderate') || response.includes('Regular')) score = 2;
-      else if (response.includes('severe') || response.includes('Severe') || response.includes('much more') || response.includes('quite a few')) score = 3;
+      // IMPORTANT: Check in reverse order (severe first) to avoid false matches
+      // e.g., "severe mood fluctuations compared to normal" contains both "severe" and "normal"
+      // Convert to lowercase for case-insensitive matching
+      const responseLower = response.toLowerCase();
+
+      if (responseLower.includes('severe') || responseLower.includes('much more') || responseLower.includes('quite a few')) score = 3;
+      else if (responseLower.includes('moderate') || responseLower.includes('regular')) score = 2;
+      else if (responseLower.includes('mild') || responseLower.includes('small amount') || responseLower.includes('some occasional')) score = 1;
+      else if (responseLower.includes('normal') || responseLower.includes('not feel') || responseLower.includes('no,') || responseLower.includes('just my usual') || responseLower.includes('same')) score = 0;
     }
     
     totalScore += score;
