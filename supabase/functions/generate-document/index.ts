@@ -170,16 +170,144 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     console.log(`Greene Scale - Question: ${question.id}, Response: ${response}`);
     
     if (response) {
-      // Map multiple choice answers to scores (0-3)
-      // IMPORTANT: Check in reverse order (severe first) to avoid false matches
-      // e.g., "severe mood fluctuations compared to normal" contains both "severe" and "normal"
-      // Convert to lowercase for case-insensitive matching
-      const responseLower = response.toLowerCase();
+      // Direct mapping of exact answer text to scores (0-3)
+      // Based on the specific answer options in Module1.tsx
+      const scoreMap: { [key: string]: number } = {
+        // Hot flushes
+        "No hot flushes at all": 0,
+        "Some occasional hot flushes with only a very mild impact on my life": 1,
+        "Regular hot flushes with a moderate impact on my life": 2,
+        "Severe hot flushes that are having a serious impact on my life": 3,
 
-      if (responseLower.includes('severe') || responseLower.includes('much more') || responseLower.includes('quite a few')) score = 3;
-      else if (responseLower.includes('moderate') || responseLower.includes('regular')) score = 2;
-      else if (responseLower.includes('mild') || responseLower.includes('small amount') || responseLower.includes('some occasional')) score = 1;
-      else if (responseLower.includes('normal') || responseLower.includes('not feel') || responseLower.includes('no,') || responseLower.includes('just my usual') || responseLower.includes('same')) score = 0;
+        // Light headedness
+        "No, I have not been experiencing any new feeling of light headedness": 0,
+        "Yes I have experienced some mild new light headedness": 1,
+        "I have been experiencing light headedness that is having a moderate impact on my life": 2,
+        "I have been experiencing new light headedness which is severe": 3,
+
+        // Headaches
+        "No, I have not had more headaches than normal": 0,
+        "I have had some extra headaches - a mild amount more than normal": 1,
+        "I have had a moderate number of extra headaches with a moderate impact on my life": 2,
+        "I have been having quite a few extra headaches": 3,
+
+        // Irritability
+        "No - just my usual amount of irritability": 0,
+        "I have been mildly more irritable": 1,
+        "I have been moderately more irritable": 2,
+        "Yes, I have been severely more irritable": 3,
+
+        // Depression
+        "No, I have not felt any extra depression": 0,
+        "Yes I have been mildly more depressed": 1,
+        "I have been moderately more depressed than previously": 2,
+        "My depression is much more severe than previously": 3,
+
+        // Unloved
+        "No, I have felt as loved as normal": 0,
+        "I have felt mildly more unloved than previously": 1,
+        "I have felt moderately more unloved than previously": 2,
+        "I have felt severely more unloved than previously": 3,
+
+        // Anxiety
+        "No - my anxiety level has been the same": 0,
+        "Yes I am a small amount more anxious than previously. Mild": 1,
+        "I am moderately more anxious than previously": 2,
+        "I am severely more anxious than previously": 3,
+
+        // Mood fluctuations
+        "No, my mood fluctuates as normal": 0,
+        "I have a mild increase in mood fluctuations": 1,
+        "My mood is fluctuating quite a bit more than normal": 2,
+        "I am having severe mood fluctuations compared to normal": 3,
+
+        // Sleeplessness
+        "No, my sleep is the same as normal": 0,
+        "I am having a mild amount of extra sleeplessness compared to normal": 1,
+        "I am having a moderate amount of extra sleeplessness compared to normal": 2,
+        "My sleep has been severely affected": 3,
+
+        // Tiredness
+        "No, I am experiencing the same amount of tiredness as before": 0,
+        "I have been mildly more tired than previously": 1,
+        "I have been moderately more tired than previously": 2,
+        "I have been severely more tired than previously": 3,
+
+        // Backaches
+        "No, I have not been experiencing any new backaches": 0,
+        "I have been experiencing some mild new backaches compared to normal": 1,
+        "I have been having moderately more back aches than usual": 2,
+        "I have been having many more backaches than normal which are affecting my life": 3,
+
+        // Joint pains
+        "No, I have not been experiencing any new joint pains": 0,
+        "I have had some mild new joint pains": 1,
+        "I have had some joint pains which are moderately affecting my life": 2,
+        "I have had new joint pains which are severely affecting my life": 3,
+
+        // Muscle pains
+        "No, I have not been suffering from any new muscle pains": 0,
+        "I have been experiencing some new mild muscle pains": 1,
+        "I have been experiencing some new muscle pains which are having a moderate impact on my life": 2,
+        "I have been experiencing some muscle pains which are having a severe impact on my life": 3,
+
+        // Facial hair
+        "No, I have not noticed any new facial hair": 0,
+        "I have noticed a mild increase in facial hair": 1,
+        "I have noticed a moderate increase in facial hair": 2,
+        "I have noticed a severe increase in facial hair": 3,
+
+        // Skin dryness
+        "No, my skin has felt the same as it normally does": 0,
+        "My skin is experiencing some mild extra dryness": 1,
+        "My skin is moderately more dry than previously": 2,
+        "My skin is severely more dry than previously": 3,
+
+        // Crawling skin
+        "No, I have not noticed any new feelings a crawling under or on my skin": 0,
+        "I have had some new mild feelings of crawling under my skin": 1,
+        "I have had some moderate feelings of crawling under my skin": 2,
+        "I have been experiencing some severe feelings of crawling under my skin": 3,
+
+        // Sex drive
+        "No, my sex drive is the same a normal": 0,
+        "I have had a mild reduction in my sex drive": 1,
+        "I have experienced a moderate reduction in my sex drive": 2,
+        "I have experienced a severe reduction in my sex drive": 3,
+
+        // Vaginal dryness
+        "No, my vagina feels the same as normal": 0,
+        "I have been experiencing some mild vaginal dryness or irritation": 1,
+        "My vagina is moderately more irritated or dry than normal": 2,
+        "My vagina is severely more dry or irritated than normal": 3,
+
+        // Intercourse comfort
+        "No, intercourse is the same level of comfort as always": 0,
+        "Intercourse is mildly more uncomfortable than normal": 1,
+        "Intercourse is moderately more uncomfortable than normal": 2,
+        "Intercourse is severely more uncomfortable than normal": 3,
+
+        // Urination frequency
+        "No, my urine frequency is the same as it normally is": 0,
+        "I have had a mild increase in the frequency of urination": 1,
+        "My urine frequency has increased moderately": 2,
+        "My urine frequency has increased severely": 3,
+
+        // Brain fog
+        "No, I do not feel any more foggy than normal": 0,
+        "I have had a mild increase in brain fog": 1,
+        "My brain fog has increased moderately": 2,
+        "My brain fog has increased severely": 3
+      };
+
+      // Use exact match for scoring
+      if (scoreMap.hasOwnProperty(response)) {
+        score = scoreMap[response];
+      } else {
+        // If response doesn't match exactly, log it for debugging
+        console.log(`Greene Scale - Unmatched response for ${question.id}: "${response}"`);
+        score = 0;
+      }
     }
     
     totalScore += score;
