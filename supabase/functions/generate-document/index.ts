@@ -982,7 +982,6 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         <div class="page-header">
             <div style="text-align: center;">
                 <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
-                <div style="font-size: 10pt; font-weight: 600; color: #2c5f61; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">MENOPAUSE UK</div>
             </div>
             <h2 class="page-title">Your Top Symptoms & Assessment</h2>
         </div>
@@ -1029,7 +1028,6 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         <div class="page-header">
             <div style="text-align: center;">
                 <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
-                <div style="font-size: 10pt; font-weight: 600; color: #2c5f61; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">MENOPAUSE UK</div>
             </div>
             <h2 class="page-title">Detailed Responses</h2>
         </div>
