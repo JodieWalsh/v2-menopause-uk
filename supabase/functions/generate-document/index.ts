@@ -943,15 +943,13 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         <div class="page-header">
             <div style="text-align: center;">
                 <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
-                <div style="font-size: 10pt; font-weight: 600; color: #2c5f61; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px;">MENOPAUSE UK</div>
             </div>
-            <h2 class="page-title">Welcome and Next Steps</h2>
         </div>
-        
+
         <div style="margin-bottom: 30px;">
             <h3 style="font-size: 18pt; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
             <p style="font-size: 14pt; line-height: 1.6; margin-bottom: 20px;">
-                Thank you for completing your menopause consultation. This comprehensive document contains all of your responses and will help facilitate a productive discussion with your healthcare provider.
+                Thank you for completing your menopause assessment. This comprehensive document contains all of your responses and will help facilitate a productive discussion with your healthcare provider.
             </p>
             
             <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
