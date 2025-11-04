@@ -766,7 +766,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         }
         
         .question-title {
-            font-size: 14pt;
+            font-size: 12pt;
             font-weight: 600;
             color: #333333;
             margin-bottom: 12px;
@@ -778,7 +778,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             padding: 15px;
             border-radius: 8px;
             border-left: 5px solid #A8DADC;
-            font-size: 14pt;
+            font-size: 12pt;
             line-height: 1.5;
             color: #333333;
             margin-bottom: 15px;
@@ -989,16 +989,16 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         
         <!-- Top Three Symptoms Section -->
         <div style="margin-bottom: 25px;">
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
+            <h3 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
             <div class="question-block" style="background: #F8FFFE; border: 1px solid #A8DADC; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-                <h4 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 10px;">What are your top three symptoms that you desperately need help with?</h4>
-                <div style="font-size: 14pt; line-height: 1.5; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
+                <h4 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 10px;">What are your top three symptoms that you desperately need help with?</h4>
+                <div style="font-size: 12pt; line-height: 1.5; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
             </div>
         </div>
 
         <!-- Modified Greene Scale Section -->
         <div style="margin-top: 15px;">
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 10px; border-bottom: 2px solid #A8DADC; padding-bottom: 8px;">The Modified Greene Scale</h3>
+            <h3 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 10px; border-bottom: 2px solid #A8DADC; padding-bottom: 8px;">The Modified Greene Scale</h3>
 
             <table class="greene-scale-table" style="font-size: 8pt; margin-top: 10px;">
                 <thead>
