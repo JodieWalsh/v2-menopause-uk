@@ -465,7 +465,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         body {
             font-family: 'Open Sans', sans-serif;
             font-size: 14pt;
-            line-height: 1.7;
+            line-height: 1.5;
             color: #333333;
             background: #FFFFFF;
             margin: 0;
@@ -712,31 +712,32 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             padding-top: 10px;
         }
         
-        /* Modified Greene Scale Table - Reduced size for better fit */
+        /* Modified Greene Scale Table - Optimized to fit on one page */
         .greene-scale-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            margin: 10px 0;
             background: #FFFFFF;
+            page-break-inside: avoid;
         }
-        
+
         .greene-scale-table th {
             background: #A8DADC;
             color: #333333;
             font-weight: 600;
-            padding: 6px 4px;
+            padding: 4px 3px;
             text-align: center;
             border: 1px solid #333333;
             font-size: 8pt;
-            line-height: 1.2;
+            line-height: 1.1;
         }
-        
+
         .greene-scale-table td {
-            padding: 5px 4px;
+            padding: 3px 2px;
             border: 1px solid #A0A0A0;
             font-size: 8pt;
             vertical-align: middle;
-            line-height: 1.3;
+            line-height: 1.2;
         }
         
         .greene-scale-table tr:nth-child(even) {
@@ -765,20 +766,20 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         }
         
         .question-title {
-            font-size: 18pt;
+            font-size: 14pt;
             font-weight: 600;
             color: #333333;
-            margin-bottom: 15px;
-            line-height: 1.5;
+            margin-bottom: 12px;
+            line-height: 1.4;
         }
-        
+
         .answer-content {
             background: #F5F5F5;
-            padding: 25px;
+            padding: 15px;
             border-radius: 8px;
             border-left: 5px solid #A8DADC;
-            font-size: 16pt;
-            line-height: 1.7;
+            font-size: 14pt;
+            line-height: 1.5;
             color: #333333;
             margin-bottom: 15px;
             max-width: none;
@@ -947,13 +948,13 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         </div>
 
         <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 18pt; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
-            <p style="font-size: 14pt; line-height: 1.6; margin-bottom: 20px;">
+            <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
+            <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 20px;">
                 Thank you for completing your menopause assessment. This comprehensive document contains all of your responses and will help facilitate a productive discussion with your healthcare provider.
             </p>
-            
-            <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
-            <p style="font-size: 14pt; line-height: 1.6; margin-bottom: 20px;">
+
+            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
+            <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 20px;">
                 Please review your responses in this document and bring it with you to your menopause consultation appointment. Your healthcare provider will use this information to better understand your symptoms and health history.
             </p>
         </div>
@@ -962,15 +963,15 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Helpful Hints</h3>
             
             <div style="margin-bottom: 25px; padding: 20px; background: #F5F5F5; border-radius: 8px; border-left: 4px solid #A8DADC;">
-                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 1:</strong> As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.</p>
-                
-                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
-                
-                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
-                
-                <p style="font-size: 13pt; line-height: 1.6; margin-bottom: 15px;"><strong>Helpful hint 4:</strong> If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.</p>
-                
-                <p style="font-size: 13pt; line-height: 1.6;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.</p>
+
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
+
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
+
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.</p>
+
+                <p style="font-size: 14pt; line-height: 1.5;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
             </div>
         </div>
         
@@ -987,34 +988,34 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         </div>
         
         <!-- Top Three Symptoms Section -->
-        <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
-            <div class="question-block" style="background: #F8FFFE; border: 1px solid #A8DADC; border-radius: 8px; padding: 20px; margin-bottom: 25px;">
-                <h4 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 12px;">What are your top three symptoms that you desperately need help with?</h4>
-                <div style="font-size: 14pt; line-height: 1.6; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
+        <div style="margin-bottom: 25px;">
+            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
+            <div class="question-block" style="background: #F8FFFE; border: 1px solid #A8DADC; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                <h4 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 10px;">What are your top three symptoms that you desperately need help with?</h4>
+                <div style="font-size: 14pt; line-height: 1.5; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
             </div>
         </div>
 
         <!-- Modified Greene Scale Section -->
-        <div style="margin-top: 20px;">
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">The Modified Greene Scale</h3>
-            
-            <table class="greene-scale-table" style="font-size: 7pt;">
+        <div style="margin-top: 15px;">
+            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 10px; border-bottom: 2px solid #A8DADC; padding-bottom: 8px;">The Modified Greene Scale</h3>
+
+            <table class="greene-scale-table" style="font-size: 8pt; margin-top: 10px;">
                 <thead>
                     <tr>
-                        <th style="width: 40%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">Question</th>
-                        <th style="width: 20%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">Score before MHT</th>
-                        <th style="width: 20%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">3 months after starting MHT</th>
-                        <th style="width: 20%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">6 months after starting MHT</th>
+                        <th style="width: 40%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">Question</th>
+                        <th style="width: 20%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">Score before MHT</th>
+                        <th style="width: 20%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">3 months after starting MHT</th>
+                        <th style="width: 20%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">6 months after starting MHT</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${greeneScaleRows}
                     <tr class="total-row">
-                        <td style="padding: 4px 3px; font-size: 7pt;"><strong>Total Score</strong></td>
-                        <td style="text-align: center; padding: 4px 3px; font-size: 7pt;"><strong>${totalScore}</strong></td>
-                        <td style="text-align: center; padding: 4px 3px; font-size: 7pt;"></td>
-                        <td style="text-align: center; padding: 4px 3px; font-size: 7pt;"></td>
+                        <td style="padding: 3px 2px; font-size: 8pt;"><strong>Total Score</strong></td>
+                        <td style="text-align: center; padding: 3px 2px; font-size: 8pt;"><strong>${totalScore}</strong></td>
+                        <td style="text-align: center; padding: 3px 2px; font-size: 8pt;"></td>
+                        <td style="text-align: center; padding: 3px 2px; font-size: 8pt;"></td>
                     </tr>
                 </tbody>
             </table>
