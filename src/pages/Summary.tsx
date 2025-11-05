@@ -175,6 +175,8 @@ export default function Summary() {
       // Debug logging
       console.log('Responses being sent to generate-document:', responseMap);
       console.log('Number of responses:', Object.keys(responseMap).length);
+      console.log('DEBUG: market.code being sent:', market.code);
+      console.log('DEBUG: Full market object:', market);
 
       // Generate the document and send email
       const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
