@@ -9,6 +9,7 @@ import { Layout } from "@/components/layout/Layout";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Edit } from "lucide-react";
 import { useResponses } from "@/contexts/ResponseContext";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface Response {
   question_id: string;
@@ -29,6 +30,7 @@ export default function Summary() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { responses: contextResponses, isLoading: contextLoading } = useResponses();
+  const { market } = useMarket();
 
   const moduleQuestions: ModuleQuestions = {
     module_1: {
@@ -176,7 +178,7 @@ export default function Summary() {
 
       // Generate the document and send email
       const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
-        body: { responses: responseMap, email }
+        body: { responses: responseMap, email, market_code: market.code }
       });
 
       if (generateError) throw generateError;

@@ -13,9 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    const { responses } = await req.json();
+    const { responses, market_code = 'UK' } = await req.json();
     console.log("Received responses:", JSON.stringify(responses, null, 2));
     console.log("Number of responses:", Object.keys(responses).length);
+    console.log("Market code:", market_code);
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -37,7 +38,7 @@ serve(async (req) => {
 
     // Generate document content
     const userName = user.user_metadata?.first_name || 'Patient';
-    const htmlContent = generateBrandedHTMLDocument(responses, userName);
+    const htmlContent = generateBrandedHTMLDocument(responses, userName, market_code);
     
     // Check for recent email sends to prevent duplicates (within last 2 minutes)
     // Using a simple in-memory cache approach instead of database table for now
@@ -114,7 +115,7 @@ serve(async (req) => {
   }
 });
 
-function generateBrandedHTMLDocument(responses: any, userName: string): string {
+function generateBrandedHTMLDocument(responses: any, userName: string, marketCode: string = 'UK'): string {
   // Format date as "19th July, 2025"
   const formatDate = (date: Date): string => {
     const day = date.getDate();
@@ -706,9 +707,9 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             left: 20mm;
             right: 20mm;
             text-align: center;
-            font-size: 9pt;
-            color: #A0A0A0;
-            border-top: 1px solid #F5F5F5;
+            font-size: 10pt;
+            color: #333333;
+            border-top: 1px solid #E0E0E0;
             padding-top: 10px;
         }
         
@@ -969,7 +970,10 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
 
                 <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
 
-                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.</p>
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> ${marketCode === 'US'
+                  ? 'Please assess whether you think that your doctor will determine that you are due for a mammogram and if it is obvious that you are going to need one, book it in. Please speak with your insurer to determine how much this will cost you.'
+                  : 'If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.'
+                }</p>
 
                 <p style="font-size: 14pt; line-height: 1.5;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
             </div>
