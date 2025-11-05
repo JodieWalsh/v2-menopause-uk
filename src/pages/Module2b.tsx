@@ -19,7 +19,7 @@ export default function Module2b() {
   const questions = [
     {
       id: "last_menstrual_period",
-      question: "Do you know the date of the start of your last menstrual period? Please note this down. If not, give an estimate of a month and a year.",
+      question: "Note: we are going to ask some questions which are sensitive in some cultures and regions. If these answers are too sensitive for you, please just write the answers down on a piece of paper separately and keep it with you, ready for you to give the information to your doctor when they ask.\n\nDo you know the date of the start of your last menstrual period? Please note this down. If not, give an estimate of a month and a year.",
     },
     {
       id: "period_changes",
