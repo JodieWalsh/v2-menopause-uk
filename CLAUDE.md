@@ -1,5 +1,8 @@
 # Menopause UK Consultation Platform - Claude Code Documentation
 
+## App Description (40 words)
+A comprehensive menopause assessment tool helping women prepare for healthcare appointments. Complete detailed symptom tracking and the Modified Greene Scale assessment, then receive a professionally formatted, personalized document to bring to your doctor for more effective and productive conversations.
+
 ## Project Overview
 A React-based web application for menopause consultations and assessments, built with TypeScript, Vite, and Supabase. The platform provides a multi-module consultation flow with payment integration via Stripe and supports multiple geographic markets (UK/US/AU).
 
