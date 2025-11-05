@@ -153,6 +153,11 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
 
   console.log('DEBUG: Selected helpful hint 4:', helpfulHint4.substring(0, 50) + '...');
 
+  // Market-specific helpful hint 1 (GP vs doctor)
+  const helpfulHint1 = marketCode === 'US'
+    ? 'As well as collecting all this information it is likely that your doctor or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.'
+    : 'As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.';
+
   // Modified Greene Scale questions mapping
   const greeneScaleQuestions = [
     { id: 'hot_flushes', label: 'Hot Flushes' },
@@ -980,7 +985,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
             <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Helpful Hints</h3>
             
             <div style="margin-bottom: 25px; padding: 20px; background: #F5F5F5; border-radius: 8px; border-left: 4px solid #A8DADC;">
-                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.</p>
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> ${helpfulHint1}</p>
 
                 <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
 
