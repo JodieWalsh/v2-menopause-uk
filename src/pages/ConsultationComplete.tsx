@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useMarket } from "@/contexts/MarketContext";
 
 const ConsultationComplete = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { market } = useMarket();
 
   useEffect(() => {
     const getUser = async () => {
@@ -96,11 +98,14 @@ const ConsultationComplete = () => {
       }
 
       const userName = `${user?.user_metadata?.first_name} ${user?.user_metadata?.last_name}`.trim();
-      
+
+      console.log('DEBUG: Downloading with market.code:', market.code);
+
       // Generate the same styled HTML document as the email
       const { data, error } = await supabase.functions.invoke('generate-document', {
-        body: { 
-          responses: assessment.responses
+        body: {
+          responses: assessment.responses,
+          market_code: market.code
         }
       });
       
