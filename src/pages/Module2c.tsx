@@ -196,14 +196,27 @@ export default function Module2c() {
 
         <div className="mt-8">
           <h3 className="text-lg font-semibold text-foreground mb-4">Bowel Cancer History</h3>
-          
+
           <InfoBox>
-            This is not so relevant for the management of your menopausal symptoms, however all GPs will want to know that all screening is up to date.
-            <br /><br />
-            Before your appointment make sure that you have done your bowel prep kit. If you have not you can request one here: <br />
-            <a href="https://www.health.gov.au/our-work/national-bowel-cancer-screening-program" className="text-primary underline" target="_blank" rel="noopener noreferrer">
-              https://www.health.gov.au/our-work/national-bowel-cancer-screening-program
-            </a>
+            {market.code === 'US' ? (
+              <>
+                This is not so relevant for the management of your menopausal symptoms, however all doctors will want to know that your screening is up to date.
+                <br /><br />
+                Depending on your age, family history and other circumstances this may include an at home test, or an in hospital test like a colonoscopy. Please look at this website for what you may expect, and organise in advance what you can, if necessary. <br />
+                <a href="https://www.cancer.org/cancer/types/colon-rectal-cancer/detection-diagnosis-staging/acs-recommendations.html" className="text-primary underline" target="_blank" rel="noopener noreferrer">
+                  https://www.cancer.org/cancer/types/colon-rectal-cancer/detection-diagnosis-staging/acs-recommendations.html
+                </a>
+              </>
+            ) : (
+              <>
+                This is not so relevant for the management of your menopausal symptoms, however all GPs will want to know that all screening is up to date.
+                <br /><br />
+                Before your appointment make sure that you have done your bowel prep kit. If you have not you can request one here: <br />
+                <a href="https://www.health.gov.au/our-work/national-bowel-cancer-screening-program" className="text-primary underline" target="_blank" rel="noopener noreferrer">
+                  https://www.health.gov.au/our-work/national-bowel-cancer-screening-program
+                </a>
+              </>
+            )}
           </InfoBox>
 
           <TextQuestion
