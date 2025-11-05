@@ -116,6 +116,9 @@ serve(async (req) => {
 });
 
 function generateBrandedHTMLDocument(responses: any, userName: string, marketCode: string = 'UK'): string {
+  // Debug logging for marketCode
+  console.log('generateBrandedHTMLDocument called with marketCode:', marketCode);
+
   // Format date as "19th July, 2025"
   const formatDate = (date: Date): string => {
     const day = date.getDate();
@@ -442,10 +445,8 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
       
       return sectionHeader + questionBlocks;
     }).join('');
-    
-    const pageFooter = shouldAddPageBreak ? `<div class="page-footer">Page ${moduleIndex + 3}</div>` : '';
-    
-    return modulePageStart + (shouldAddPageBreak ? '' : moduleHeader) + sectionContent + pageFooter;
+
+    return modulePageStart + (shouldAddPageBreak ? '' : moduleHeader) + sectionContent;
   }).join('');
 
   return `
@@ -701,6 +702,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
             color: #333333;
         }
         
+        /* Page footer removed per user request
         .page-footer {
             position: absolute;
             bottom: 15mm;
@@ -712,6 +714,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
             border-top: 1px solid #E0E0E0;
             padding-top: 10px;
         }
+        */
         
         /* Modified Greene Scale Table - Optimized to fit on one page */
         .greene-scale-table {
@@ -978,8 +981,6 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
                 <p style="font-size: 14pt; line-height: 1.5;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
             </div>
         </div>
-        
-        <div class="page-footer">Page 1</div>
     </div>
 
     <!-- Page 2: Top Symptoms and Modified Greene Scale -->
@@ -1024,8 +1025,6 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
                 </tbody>
             </table>
         </div>
-        
-        <div class="page-footer">Page 2</div>
     </div>
 
     <!-- Page 3+: Long Answer Questions -->
@@ -1038,8 +1037,6 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         </div>
         
         ${questionSections}
-        
-        <div class="page-footer">Page 3</div>
     </div>
 </body>
 </html>`;
