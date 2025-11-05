@@ -139,7 +139,14 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
   };
   
   const currentDate = formatDate(new Date());
-  
+
+  // Market-specific helpful hint 4
+  const helpfulHint4 = marketCode === 'US'
+    ? 'Please assess whether you think that your doctor will determine that you are due for a mammogram and if it is obvious that you are going to need one, book it in. Please speak with your insurer to determine how much this will cost you.'
+    : 'If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.';
+
+  console.log('Helpful hint 4 will use:', marketCode === 'US' ? 'US version' : 'AU/UK version');
+
   // Modified Greene Scale questions mapping
   const greeneScaleQuestions = [
     { id: 'hot_flushes', label: 'Hot Flushes' },
@@ -973,10 +980,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
 
                 <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
 
-                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> ${marketCode === 'US'
-                  ? 'Please assess whether you think that your doctor will determine that you are due for a mammogram and if it is obvious that you are going to need one, book it in. Please speak with your insurer to determine how much this will cost you.'
-                  : 'If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.'
-                }</p>
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> ${helpfulHint4}</p>
 
                 <p style="font-size: 14pt; line-height: 1.5;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
             </div>
