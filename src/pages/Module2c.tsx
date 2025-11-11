@@ -207,6 +207,15 @@ export default function Module2c() {
                   https://www.cancer.org/cancer/types/colon-rectal-cancer/detection-diagnosis-staging/acs-recommendations.html
                 </a>
               </>
+            ) : market.code === 'UK' ? (
+              <>
+                This is not so relevant for the management of your menopausal symptoms, however all GPs will want to know that all screening is up to date.
+                <br /><br />
+                If you are 50 years or over, please ensure that you have done your bowel cancer screening before you attend your GP appointment, or are in the process of doing it. If you have not, you can find out how to request a bowel cancer screening on this website. <br />
+                <a href="https://www.nhs.uk/tests-and-treatments/bowel-cancer-screening/" className="text-primary underline" target="_blank" rel="noopener noreferrer">
+                  www.nhs.uk/tests-and-treatments/bowel-cancer-screening/
+                </a>
+              </>
             ) : (
               <>
                 This is not so relevant for the management of your menopausal symptoms, however all GPs will want to know that all screening is up to date.
