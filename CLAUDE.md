@@ -1138,8 +1138,213 @@ score = scoreMap[response] || 0;
 
 **Status:**
 - ✅ Greene Scale exact answer mapping deployed to Supabase
-- ⏳ Welcome page changes ready for deployment
-- ⏳ User testing pending
+- ✅ Welcome page changes deployed
+- ✅ All Session 9 work completed
+
+---
+
+### Session 10 (Document Optimization & US Localization - November 5, 2025)
+
+#### Document Font Size Optimization
+
+**Problem Reported:**
+User requested font size optimization for the generated assessment document:
+- Modified Greene Scale table font size was good but needed to fit on one page
+- Rest of the document text was too large
+- Target: 14pt for general text, keep Greene Scale small and compact
+
+**Initial Changes (14pt across the board):**
+- Body text: 14pt
+- Question titles: 18pt → 14pt
+- Answer content: 16pt → 14pt
+- Top symptoms section: 14pt
+- Line-height: 1.7 → 1.5 (tighter spacing)
+- Modified Greene Scale: Kept at 8pt
+
+**Further Optimization (12pt for main content):**
+User requested additional 2-point reduction for document sections (excluding introduction and Greene Scale):
+- Question titles: 14pt → **12pt**
+- Answer content: 14pt → **12pt**
+- Top Three Symptoms: 14pt → **12pt**
+- Modified Greene Scale heading: 14pt → **12pt**
+- Introduction section (Page 1): **Kept at 14pt** as requested
+- Greene Scale table: **Kept at 8pt** as requested
+
+**Files Modified:**
+- `supabase/functions/generate-document/index.ts` - Font size optimizations
+
+**Git Commits:**
+- Commit 2b6047d: "Optimize document font sizes to 14pt and ensure Greene Scale fits on one page"
+- Commit e5f964a: "Reduce document font sizes by 2pt (excluding introduction and Greene Scale table)"
+
+#### Page Number Removal
+
+**Problem:**
+User reported page numbers were appearing in faint gray script at the bottom of pages, which looked strange and was cutting off content (Helpful hint 5).
+
+**Root Cause:**
+- Page footers with `position: absolute` were overlapping content
+- Faint styling: color `#A0A0A0`, font-size 9pt
+
+**Solution:**
+- Removed all `<div class="page-footer">` elements from pages 1, 2, and 3+
+- Commented out `.page-footer` CSS styling
+- Fixed cut-off text issue by eliminating absolute positioning
+
+**Files Modified:**
+- `supabase/functions/generate-document/index.ts` - Removed page footers
+
+**Git Commit:**
+- Commit 15528ca: "Remove all page numbers and add debug logging for marketCode"
+
+#### US-Specific Content Localization
+
+**Problem 1: Bowel Cancer Screening (Module 2c)**
+
+User requested US-specific text for bowel cancer screening section on the assessment page.
+
+**Changes:**
+- **US Version**: American Cancer Society link with colonoscopy information
+- **UK/AU Version**: Unchanged (Australian government screening program)
+
+**US Text:**
+> "This is not so relevant for the management of your menopausal symptoms, however all doctors will want to know that your screening is up to date. Depending on your age, family history and other circumstances this may include an at home test, or an in hospital test like a colonoscopy. Please look at this website for what you may expect, and organise in advance what you can, if necessary.
+> https://www.cancer.org/cancer/types/colon-rectal-cancer/detection-diagnosis-staging/acs-recommendations.html"
+
+**Files Modified:**
+- `src/pages/Module2c.tsx` - Added conditional rendering based on `market.code`
+
+**Git Commit:**
+- Commit 3ca1f53: "Add US-specific bowel cancer screening text to Module 2c"
+
+**Problem 2: Helpful Hint 4 Not Working**
+
+**Critical Discovery:**
+The download button in `ConsultationComplete.tsx` was calling `generate-document` WITHOUT passing `market_code`, causing it to always default to UK/AU version. Email function was working correctly.
+
+**Root Cause:**
+```typescript
+// BEFORE (ConsultationComplete.tsx):
+const { data, error } = await supabase.functions.invoke('generate-document', {
+  body: {
+    responses: assessment.responses
+    // ❌ Missing market_code!
+  }
+});
+```
+
+**Solution:**
+- Added `useMarket` hook to `ConsultationComplete.tsx`
+- Passed `market_code: market.code` to download function
+- Fixed backend to use variable instead of inline conditional (template literal parsing issue)
+
+**Backend Fix:**
+```typescript
+// Created variables before template literal
+const helpfulHint4 = marketCode === 'US' ? usVersion : auUkVersion;
+// Then used: ${helpfulHint4}
+```
+
+**US Version (Helpful Hint 4):**
+> "Please assess whether you think that your doctor will determine that you are due for a mammogram and if it is obvious that you are going to need one, book it in. Please speak with your insurer to determine how much this will cost you."
+
+**UK/AU Version (Unchanged):**
+> "If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms."
+
+**Files Modified:**
+- `src/pages/Summary.tsx` - Added debug logging for market.code
+- `src/pages/ConsultationComplete.tsx` - Added market_code to download call
+- `supabase/functions/generate-document/index.ts` - Fixed conditional logic
+
+**Git Commits:**
+- Commit 9f1997f: "Add US-specific helpful hint 4 and fix page number styling"
+- Commit 1ce1dd0: "Fix Helpful hint 4 by using variable instead of inline conditional"
+- Commit 5c74c08: "Add extensive debug logging for marketCode issue"
+- Commit c6c0643: "Add frontend debug logging for market.code"
+- Commit 45120d8: "Fix download to use market-specific Helpful hint 4" ✅
+
+**Problem 3: "GP" vs "doctor" Terminology**
+
+User noticed that Helpful hint 1 used "GP" on the US domain but should use "doctor" instead.
+
+**Solution:**
+Created market-specific variable for Helpful hint 1:
+
+**US Version:**
+> "As well as collecting all this information it is likely that your **doctor** or nurse will also want to measure your height and weight..."
+
+**UK/AU Version:**
+> "As well as collecting all this information it is likely that your **GP** or nurse will also want to measure your height and weight..."
+
+**Files Modified:**
+- `supabase/functions/generate-document/index.ts` - Added `helpfulHint1` variable
+
+**Git Commit:**
+- Commit bfb8059: "Replace 'GP' with 'doctor' in Helpful hint 1 for US domain only"
+
+#### Sensitivity Note for Module 2b
+
+**Problem:**
+User wanted to add a sensitivity note before asking about menstrual history, acknowledging cultural sensitivities.
+
+**Solution:**
+Added note to the first question in Module 2b (last menstrual period question):
+
+**New Text:**
+> "Note: we are going to ask some questions which are sensitive in some cultures and regions. If these answers are too sensitive for you, please just write the answers down on a piece of paper separately and keep it with you, ready for you to give the information to your doctor when they ask.
+>
+> Do you know the date of the start of your last menstrual period? Please note this down. If not, give an estimate of a month and a year."
+
+**Applies To:** All three domains (UK/US/AU)
+
+**Files Modified:**
+- `src/pages/Module2b.tsx` - Updated question text
+
+**Git Commit:**
+- Commit 5e191a1: "Add sensitivity note to Module 2b menstrual period question"
+
+#### Session 10 Summary
+
+**Problems Solved:**
+1. Document font sizes too large - needed professional, compact appearance
+2. Page numbers appearing and cutting off content
+3. Helpful hint 4 not working for US domain (download issue)
+4. "GP" terminology incorrect for US market
+5. Bowel cancer screening info not US-specific
+6. Missing sensitivity acknowledgment for cultural differences
+
+**Solutions Implemented:**
+1. Optimized font sizes throughout document (12pt main content, 14pt intro)
+2. Removed all page numbers from document
+3. Fixed download function to pass market_code correctly
+4. Created market-specific helpful hints (1 and 4)
+5. Added US-specific bowel cancer screening text
+6. Added cultural sensitivity note to Module 2b
+
+**Impact:**
+- ✅ Professional, streamlined document appearance
+- ✅ No cut-off content issues
+- ✅ US market fully localized with appropriate terminology and resources
+- ✅ Both download AND email now use correct market-specific content
+- ✅ Cultural sensitivity acknowledged upfront
+- ✅ Better user experience across all markets
+
+**Key Technical Learning:**
+The download function was a separate code path from email that wasn't passing market_code. Always check ALL functions that call backend services when adding new parameters!
+
+**Files Modified (Session 10):**
+- `supabase/functions/generate-document/index.ts` - Font sizes, page numbers, market-specific hints
+- `src/pages/Summary.tsx` - Debug logging for market.code
+- `src/pages/ConsultationComplete.tsx` - Added market_code to download
+- `src/pages/Module2c.tsx` - US bowel cancer text
+- `src/pages/Module2b.tsx` - Sensitivity note
+
+**Deployment Status:**
+- ✅ All backend changes deployed to Supabase
+- ✅ All frontend changes deployed to Vercel
+- ✅ All three domains updated and working
+
+**Status:** ✅ All Session 10 work completed and deployed
 
 ---
 
@@ -1252,6 +1457,10 @@ score = scoreMap[response] || 0;
 - **Welcome Page Video**: Shows 1-second frame as thumbnail ✅ (Session 9)
 - **Menopause Resources**: Added links to Cleveland Clinic, AMS, Jean Hailes, NHS UK ✅ (Session 9)
 - **Greene Scale Scoring**: Uses exact answer mapping (no clever logic!) - all 21 questions 100% accurate ✅ (Session 9)
+- **Document Optimization**: Font sizes optimized (12pt main, 14pt intro), page numbers removed ✅ (Session 10)
+- **US Localization**: Fully localized with doctor terminology, insurance info, ACS links ✅ (Session 10)
+- **Download Function**: Now passes market_code correctly (was missing!) ✅ (Session 10)
+- **Cultural Sensitivity**: Added sensitivity note to Module 2b for menstrual questions ✅ (Session 10)
 - **Stripe Pricing Fix**: Auth.tsx sends marketCode correctly ✅ (Session 6)
 - **Videos**: All three markets updated with new videos ✅ (Session 6)
 - **Deployment**: Working via Vercel manual webhook ✅
@@ -1259,18 +1468,23 @@ score = scoreMap[response] || 0;
 - **Git commits**: No longer include Co-Authored-By line (prevents Vercel warnings) ✅
 - **Performance**: All major bottlenecks eliminated
 - **Email system**: Beautiful formatting, responses flowing through perfectly
-- **Multi-market**: Fully implemented, pricing working correctly
+- **Multi-market**: Fully implemented, pricing working correctly, download AND email both work
 - **Code quality**: All syntax errors resolved, clean architecture following best practices
 - **Important**: Auth.tsx uses create-checkout-v2 function (not create-checkout-public)
 - **Critical**: Greene Scale uses exact string matching - update scoreMap if answer text changes
+- **Critical**: Always pass market_code to ALL functions that call generate-document (Summary.tsx AND ConsultationComplete.tsx)
 
 ### Important Files to Check First
 - `CLAUDE.md` (this file) - Complete project documentation
 - `src/pages/Welcome.tsx` - Welcome page with video thumbnail + menopause resources (Session 9)
-- `supabase/functions/generate-document/index.ts` - Greene Scale scoring logic (Session 9)
+- `supabase/functions/generate-document/index.ts` - **CRITICAL**: Document generation with market-specific content (Sessions 9 & 10)
+- `src/pages/ConsultationComplete.tsx` - **CRITICAL**: Download function - must pass market_code (Session 10)
+- `src/pages/Summary.tsx` - **CRITICAL**: Email function - must pass market_code (Session 10)
+- `src/pages/Module2b.tsx` - Sensitivity note for menstrual questions (Session 10)
+- `src/pages/Module2c.tsx` - US-specific bowel cancer screening text (Session 10)
 - `supabase/functions/send-welcome-email-idempotent/index.ts` - Market-aware welcome email (Session 8)
 - `supabase/functions/stripe-webhook/index.ts` - Payment webhook with marketCode (Session 8)
-- `src/pages/Auth.tsx` - **CRITICAL**: Signup page that calls create-checkout-v2 with marketCode
+- `src/pages/Auth.tsx` - Signup page that calls create-checkout-v2 with marketCode
 - `src/config/markets.ts` - Market configuration with video URLs and pricing
 - `supabase/functions/create-checkout-v2/index.ts` - Active checkout function (has correct pricing)
 - `src/contexts/ResponseContext.tsx` - Core optimization work
@@ -1294,7 +1508,7 @@ score = scoreMap[response] || 0;
 - **Result**: Sub-second response times throughout app
 
 ## Current Status Summary
-🚀 **DEPLOYED TO PRODUCTION** (November 4, 2025 - Session 9)
+🚀 **DEPLOYED TO PRODUCTION** (November 5, 2025 - Session 10)
 
 - ✅ All performance issues resolved
 - ✅ Beautiful email system working perfectly
@@ -1308,17 +1522,22 @@ score = scoreMap[response] || 0;
 - ✅ **Welcome page video thumbnail** shows engaging 1-second frame
 - ✅ **Menopause resources section** added with 4 trusted organizations
 - ✅ **Greene Scale scoring bug fixed** - all 21 questions now score correctly
+- ✅ **Document font sizes optimized** - 12pt main content, 14pt introduction, professional appearance
+- ✅ **Page numbers removed** from document - no more cut-off content
+- ✅ **US market fully localized** - "doctor" terminology, insurance info, ACS links
+- ✅ **Download function fixed** - now passes market_code correctly (was critical bug!)
+- ✅ **Cultural sensitivity note** added to Module 2b menstrual questions
 - ✅ **Vercel deployment working** (manual webhook trigger)
 - ✅ **UK domain live**: menopause.the-empowered-patient.org (£10 GBP)
-- ✅ **US domain live**: menopause.the-empowered-patient.com ($10 USD)
+- ✅ **US domain live**: menopause.the-empowered-patient.com ($10 USD) - fully localized!
 - ✅ **AU domain live**: menopause.the-empowered-patient.com.au ($10 AUD)
 - ✅ **All landing page videos updated** with new October 2025 versions
 - ✅ Clean, maintainable codebase following Stripe best practices
-- ✅ Excellent user experience
+- ✅ Excellent user experience across all markets
 - ✅ Backend functions deployed to Supabase
 - ✅ CSS styling fully restored
 
-**Platform Status**: All 3 domains live. Stripe promotion codes working correctly. Welcome email routes to correct domains. Greene Scale scoring 100% accurate. Welcome page has video thumbnail and menopause resources. Ready for user testing.
+**Platform Status**: All 3 domains live and fully functional. Document download AND email both working with correct market-specific content. US domain completely localized with appropriate medical terminology and resources. Greene Scale scoring 100% accurate. Document professionally formatted and compact. Cultural sensitivity acknowledged. Ready for production use.
 
 ### Quick Deployment Reference
 1. See `VERCEL_DEPLOYMENT.md` for step-by-step instructions
