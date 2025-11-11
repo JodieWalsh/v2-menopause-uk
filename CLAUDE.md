@@ -1348,6 +1348,188 @@ The download function was a separate code path from email that wasn't passing ma
 
 ---
 
+### Session 11 (UK Domain Refinements & Affiliate Integration - November 11, 2025)
+
+#### UK-Specific Module 2c Bowel Cancer Text
+
+**Problem Reported:**
+User needed to update the bowel cancer screening text in Module 2c to be UK-specific, separate from the Australian text.
+
+**User Request:**
+Change from Australian government screening program link to NHS UK link with UK-specific guidance for patients aged 50+.
+
+**Solution Implemented:**
+Added three-way conditional rendering in Module 2c:
+- **UK Version**: NHS UK bowel cancer screening link with age 50+ guidance
+- **US Version**: American Cancer Society colonoscopy information (unchanged)
+- **AU Version**: Australian government screening program (unchanged)
+
+**UK Text Added:**
+> "This is not so relevant for the management of your menopausal symptoms, however all GPs will want to know that all screening is up to date.
+>
+> If you are 50 years or over, please ensure that you have done your bowel cancer screening before you attend your GP appointment, or are in the process of doing it. If you have not, you can find out how to request a bowel cancer screening on this website.
+> www.nhs.uk/tests-and-treatments/bowel-cancer-screening/"
+
+**Files Modified:**
+- `src/pages/Module2c.tsx` - Lines 200-229, added UK-specific conditional
+
+**Git Commits:**
+- Commit f277e44: "Add UK-specific bowel cancer screening text to Module 2c"
+
+**Deployment:**
+- ✅ Deployed to Vercel (Job ID: S8V1xeAkEFMuNuibFnqW)
+
+---
+
+#### UK-Specific Document Helpful Hint 4
+
+**Problem Reported:**
+User noticed the generated document (PDF/email) was showing Australian mammogram text on UK domain. The text mentioned "over 40 in Australia" which was incorrect for UK patients.
+
+**User Request:**
+Change Helpful hint 4 in the UK document to reflect UK NHS mammogram screening (age 50+ with automatic invitation).
+
+**Solution Implemented:**
+Split the helpful hint 4 into three market-specific versions in the generate-document function:
+
+**UK Version (NEW):**
+> "If you are aged over 50 then you eligible and will be invited for a free mammogram. Your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms."
+
+**US Version (Unchanged):**
+> "Please assess whether you think that your doctor will determine that you are due for a mammogram and if it is obvious that you are going to need one, book it in. Please speak with your insurer to determine how much this will cost you."
+
+**AU Version (Unchanged):**
+> "If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms."
+
+**Code Changes:**
+```typescript
+// BEFORE: Two versions (US vs AU/UK combined)
+const auUkVersion = '...';
+const helpfulHint4 = marketCode === 'US' ? usVersion : auUkVersion;
+
+// AFTER: Three versions (US, UK, AU)
+const usVersion = '...';
+const ukVersion = '...';
+const auVersion = '...';
+const helpfulHint4 = marketCode === 'US' ? usVersion : (marketCode === 'UK' ? ukVersion : auVersion);
+```
+
+**Files Modified:**
+- `supabase/functions/generate-document/index.ts` - Lines 149-153
+
+**Git Commits:**
+- Commit 50117eb: "Add UK-specific helpful hint 4 for mammogram screening in document"
+
+**Deployment:**
+- ✅ Deployed to Supabase using access token
+- ✅ Pushed to GitHub
+
+---
+
+#### Endorsely Affiliate Tracking Integration
+
+**Background:**
+User decided to implement Endorsely.com as an affiliate marketing platform to attract affiliates to promote the menopause assessment tool.
+
+**What is Endorsely:**
+- Affiliate marketing platform specifically designed for SaaS companies
+- Integrates with Stripe for automatic commission tracking
+- Uses simple `?via=affiliate-name` URL parameters for referral tracking
+- Free until $20,000/month in affiliate revenue
+- Features:
+  - One-click Stripe integration
+  - Automatic commission calculations
+  - 90-day attribution window (customizable)
+  - PayPal mass payments for affiliates
+  - Comprehensive analytics (clicks, conversions, EPC, lifetime value)
+
+**Integration Instructions Provided:**
+Endorsely provided a tracking script to be placed in the `<head>` section of all pages:
+```html
+<script async src="https://assets.endorsely.com/endorsely.js" data-endorsely="5d898cbf-22ee-47af-aab4-048b232c4851"></script>
+```
+
+**Solution Implemented:**
+Added the Endorsely tracking script to `index.html` in the `<head>` section, ensuring it loads on all pages across all three market domains.
+
+**How It Works:**
+1. **Affiliate Links**: Affiliates share links like `menopause.the-empowered-patient.com?via=affiliate-name`
+2. **Click Tracking**: Script automatically captures affiliate click data
+3. **Attribution**: Tracks conversions within 90-day window (default)
+4. **Stripe Integration**: User will connect Stripe in Endorsely dashboard (one-click)
+5. **Automatic Commissions**: When referred users purchase, affiliates are credited automatically
+
+**Benefits:**
+- Works across all three domains (UK/US/AU)
+- Integrates seamlessly with existing Stripe checkout
+- No changes needed to payment flow
+- Tracks customer lifetime value (recurring/retention focus)
+- Simple affiliate experience with clean URLs
+
+**Files Modified:**
+- `index.html` - Lines 25-26, added Endorsely tracking script
+
+**Git Commits:**
+- Commit e723af7: "Add Endorsely affiliate tracking script to website"
+
+**Deployment:**
+- ✅ Committed to git
+- ✅ Pushed to GitHub
+- ✅ Deployed to Vercel (Job ID: AyZ6ZPWOliaTPJhivVKL)
+
+**Status:**
+- ✅ Tracking script now live on all pages
+- ✅ Works on UK, US, and AU domains
+- ⏳ User still needs to complete Stripe connection in Endorsely dashboard
+
+---
+
+#### Session 11 Summary
+
+**Problems Solved:**
+1. UK domain showing incorrect Australian bowel cancer screening text in Module 2c
+2. UK domain showing incorrect Australian mammogram text in generated document (Helpful hint 4)
+3. No affiliate tracking capability for marketing partners
+
+**Solutions Implemented:**
+1. Added UK-specific bowel cancer screening text with NHS link (Module 2c)
+2. Created UK-specific helpful hint 4 for mammogram screening (age 50+ with NHS invitation)
+3. Integrated Endorsely affiliate tracking across all three domains
+
+**Impact:**
+- ✅ UK domain now fully localized with appropriate NHS resources
+- ✅ All three markets (UK/US/AU) now have accurate, region-specific healthcare guidance
+- ✅ Affiliate marketing capability enabled across all domains
+- ✅ Ready to recruit and track affiliate partners
+- ✅ Seamless integration with existing Stripe payment flow
+
+**Key Technical Details:**
+- Module 2c now has three-way conditional for bowel cancer text (UK/US/AU)
+- generate-document function now has three separate versions of helpful hint 4
+- Endorsely tracking script loads asynchronously on all pages
+- Tracking works with `?via=` query parameters in URLs
+
+**Files Modified (Session 11):**
+- `src/pages/Module2c.tsx` - UK bowel cancer screening text
+- `supabase/functions/generate-document/index.ts` - UK helpful hint 4
+- `index.html` - Endorsely tracking script
+
+**Deployment Status:**
+- ✅ All changes deployed to Vercel
+- ✅ Supabase function deployed
+- ✅ All three domains updated and working
+- ✅ Affiliate tracking live
+
+**Next Steps for Affiliate Program:**
+1. Complete Stripe integration in Endorsely dashboard (one-click)
+2. Set commission rates for affiliates
+3. Create affiliate onboarding materials
+4. Start recruiting affiliate partners
+
+**Status:** ✅ All Session 11 work completed and deployed
+
+---
+
 #### Technical Details
 - **Files Updated**:
   - `supabase/functions/create-checkout-public/index.ts` (Stripe price IDs)
@@ -1459,8 +1641,10 @@ The download function was a separate code path from email that wasn't passing ma
 - **Greene Scale Scoring**: Uses exact answer mapping (no clever logic!) - all 21 questions 100% accurate ✅ (Session 9)
 - **Document Optimization**: Font sizes optimized (12pt main, 14pt intro), page numbers removed ✅ (Session 10)
 - **US Localization**: Fully localized with doctor terminology, insurance info, ACS links ✅ (Session 10)
+- **UK Localization**: Fully localized with NHS links, UK-specific screening guidance ✅ (Session 11)
 - **Download Function**: Now passes market_code correctly (was missing!) ✅ (Session 10)
 - **Cultural Sensitivity**: Added sensitivity note to Module 2b for menstrual questions ✅ (Session 10)
+- **Affiliate Tracking**: Endorsely integrated across all domains ✅ (Session 11)
 - **Stripe Pricing Fix**: Auth.tsx sends marketCode correctly ✅ (Session 6)
 - **Videos**: All three markets updated with new videos ✅ (Session 6)
 - **Deployment**: Working via Vercel manual webhook ✅
@@ -1468,20 +1652,22 @@ The download function was a separate code path from email that wasn't passing ma
 - **Git commits**: No longer include Co-Authored-By line (prevents Vercel warnings) ✅
 - **Performance**: All major bottlenecks eliminated
 - **Email system**: Beautiful formatting, responses flowing through perfectly
-- **Multi-market**: Fully implemented, pricing working correctly, download AND email both work
+- **Multi-market**: ALL THREE MARKETS fully localized with region-specific healthcare resources
 - **Code quality**: All syntax errors resolved, clean architecture following best practices
 - **Important**: Auth.tsx uses create-checkout-v2 function (not create-checkout-public)
 - **Critical**: Greene Scale uses exact string matching - update scoreMap if answer text changes
 - **Critical**: Always pass market_code to ALL functions that call generate-document (Summary.tsx AND ConsultationComplete.tsx)
+- **Critical**: Module 2c and generate-document both have three-way conditionals (UK/US/AU) for healthcare screening info
 
 ### Important Files to Check First
 - `CLAUDE.md` (this file) - Complete project documentation
+- `index.html` - **NEW**: Endorsely affiliate tracking script (Session 11)
 - `src/pages/Welcome.tsx` - Welcome page with video thumbnail + menopause resources (Session 9)
-- `supabase/functions/generate-document/index.ts` - **CRITICAL**: Document generation with market-specific content (Sessions 9 & 10)
+- `supabase/functions/generate-document/index.ts` - **CRITICAL**: Document generation with THREE-WAY market-specific content (Sessions 9, 10, 11)
 - `src/pages/ConsultationComplete.tsx` - **CRITICAL**: Download function - must pass market_code (Session 10)
 - `src/pages/Summary.tsx` - **CRITICAL**: Email function - must pass market_code (Session 10)
 - `src/pages/Module2b.tsx` - Sensitivity note for menstrual questions (Session 10)
-- `src/pages/Module2c.tsx` - US-specific bowel cancer screening text (Session 10)
+- `src/pages/Module2c.tsx` - **THREE-WAY**: UK/US/AU bowel cancer screening text (Sessions 10 & 11)
 - `supabase/functions/send-welcome-email-idempotent/index.ts` - Market-aware welcome email (Session 8)
 - `supabase/functions/stripe-webhook/index.ts` - Payment webhook with marketCode (Session 8)
 - `src/pages/Auth.tsx` - Signup page that calls create-checkout-v2 with marketCode
@@ -1508,7 +1694,7 @@ The download function was a separate code path from email that wasn't passing ma
 - **Result**: Sub-second response times throughout app
 
 ## Current Status Summary
-🚀 **DEPLOYED TO PRODUCTION** (November 5, 2025 - Session 10)
+🚀 **DEPLOYED TO PRODUCTION** (November 11, 2025 - Session 11)
 
 - ✅ All performance issues resolved
 - ✅ Beautiful email system working perfectly
@@ -1525,10 +1711,12 @@ The download function was a separate code path from email that wasn't passing ma
 - ✅ **Document font sizes optimized** - 12pt main content, 14pt introduction, professional appearance
 - ✅ **Page numbers removed** from document - no more cut-off content
 - ✅ **US market fully localized** - "doctor" terminology, insurance info, ACS links
+- ✅ **UK market fully localized** - NHS links, UK-specific screening guidance (Session 11)
 - ✅ **Download function fixed** - now passes market_code correctly (was critical bug!)
 - ✅ **Cultural sensitivity note** added to Module 2b menstrual questions
+- ✅ **Endorsely affiliate tracking integrated** - ready for affiliate marketing (Session 11)
 - ✅ **Vercel deployment working** (manual webhook trigger)
-- ✅ **UK domain live**: menopause.the-empowered-patient.org (£10 GBP)
+- ✅ **UK domain live**: menopause.the-empowered-patient.org (£10 GBP) - fully localized!
 - ✅ **US domain live**: menopause.the-empowered-patient.com ($10 USD) - fully localized!
 - ✅ **AU domain live**: menopause.the-empowered-patient.com.au ($10 AUD)
 - ✅ **All landing page videos updated** with new October 2025 versions
@@ -1537,7 +1725,7 @@ The download function was a separate code path from email that wasn't passing ma
 - ✅ Backend functions deployed to Supabase
 - ✅ CSS styling fully restored
 
-**Platform Status**: All 3 domains live and fully functional. Document download AND email both working with correct market-specific content. US domain completely localized with appropriate medical terminology and resources. Greene Scale scoring 100% accurate. Document professionally formatted and compact. Cultural sensitivity acknowledged. Ready for production use.
+**Platform Status**: All 3 domains live and fully functional. ALL THREE MARKETS now fully localized with region-specific healthcare resources (NHS UK for UK, ACS for US, Australian govt for AU). Document download AND email both working with correct market-specific content. Greene Scale scoring 100% accurate. Document professionally formatted and compact. Cultural sensitivity acknowledged. Affiliate tracking integrated and ready for marketing partners. Ready for production use and affiliate recruitment.
 
 ### Quick Deployment Reference
 1. See `VERCEL_DEPLOYMENT.md` for step-by-step instructions
