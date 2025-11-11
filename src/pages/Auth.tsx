@@ -178,13 +178,18 @@ const Auth = () => {
     try {
       console.log("Creating Stripe checkout session...");
 
+      // Capture Endorsely affiliate referral if present
+      const endorselyReferral = (window as any).endorsely_referral;
+      console.log("Endorsely referral captured:", endorselyReferral);
+
       const requestBody = {
         email: formData.email.trim(),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         password: formData.password,
         discountCode: formData.discountCode.trim() || undefined,
-        marketCode: market.code
+        marketCode: market.code,
+        endorselyReferral: endorselyReferral || undefined
       };
 
       console.log("Request body:", { ...requestBody, password: '***' }); // Hide password in logs

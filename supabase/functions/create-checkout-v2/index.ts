@@ -36,8 +36,12 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { email, firstName, lastName, password, discountCode, marketCode = 'UK' } = await req.json();
-    
+    const { email, firstName, lastName, password, discountCode, marketCode = 'UK', endorselyReferral } = await req.json();
+
+    if (endorselyReferral) {
+      logStep("Endorsely referral detected", { referralId: endorselyReferral });
+    }
+
     // Validate required fields
     if (!email || !firstName || !lastName || !password) {
       logStep("Missing required fields", { email: !!email, firstName: !!firstName, lastName: !!lastName, password: !!password });
@@ -194,7 +198,8 @@ serve(async (req) => {
         last_name: lastName,
         password, // Store password temporarily in Stripe metadata
         discount_code_applied: discountCode || "none",
-        market_code: validMarketCode
+        market_code: validMarketCode,
+        endorsely_referral: endorselyReferral || undefined
       },
       automatic_tax: { enabled: false },
       billing_address_collection: 'auto'
