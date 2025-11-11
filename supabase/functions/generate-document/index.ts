@@ -147,9 +147,10 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
   console.log('DEBUG: marketCode == "US":', marketCode == 'US');
 
   const usVersion = 'Please assess whether you think that your doctor will determine that you are due for a mammogram and if it is obvious that you are going to need one, book it in. Please speak with your insurer to determine how much this will cost you.';
-  const auUkVersion = 'If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.';
+  const ukVersion = 'If you are aged over 50 then you eligible and will be invited for a free mammogram. Your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.';
+  const auVersion = 'If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.';
 
-  const helpfulHint4 = marketCode === 'US' ? usVersion : auUkVersion;
+  const helpfulHint4 = marketCode === 'US' ? usVersion : (marketCode === 'UK' ? ukVersion : auVersion);
 
   console.log('DEBUG: Selected helpful hint 4:', helpfulHint4.substring(0, 50) + '...');
 
