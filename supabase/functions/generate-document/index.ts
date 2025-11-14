@@ -13,9 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    const { responses } = await req.json();
+    const { responses, market_code = 'UK' } = await req.json();
     console.log("Received responses:", JSON.stringify(responses, null, 2));
     console.log("Number of responses:", Object.keys(responses).length);
+    console.log("Market code:", market_code);
     
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -37,10 +38,27 @@ serve(async (req) => {
 
     // Generate document content
     const userName = user.user_metadata?.first_name || 'Patient';
-    const htmlContent = generateBrandedHTMLDocument(responses, userName);
+    const htmlContent = generateBrandedHTMLDocument(responses, userName, market_code);
     
-    // The responses are already saved individually in user_responses table during the assessment
-    // No need to save to a separate assessments table
+    // Check for recent email sends to prevent duplicates (within last 2 minutes)
+    // Using a simple in-memory cache approach instead of database table for now
+    const requestId = `${user.id}_${Math.floor(Date.now() / (2 * 60 * 1000))}`; // 2-minute window
+    
+    // Simple duplicate check using request timestamp in user metadata or session
+    const lastEmailTime = user.user_metadata?.last_document_email_time;
+    const currentTime = Date.now();
+    
+    if (lastEmailTime && (currentTime - lastEmailTime) < 2 * 60 * 1000) {
+      console.log('Recent email found, skipping duplicate send within 2 minutes');
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Document email was recently sent, skipping duplicate",
+        documentContent: htmlContent
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     // Send HTML email directly (PDF generation temporarily disabled due to missing API key)
     console.log('Sending HTML document email directly (PDF generation disabled)');
@@ -58,6 +76,14 @@ serve(async (req) => {
       console.error('HTML email sending failed:', emailError);
       throw new Error(`Failed to send document email: ${emailError.message || JSON.stringify(emailError)}`);
     }
+
+    // Update user metadata to record the email send time
+    await supabaseClient.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...user.user_metadata,
+        last_document_email_time: currentTime
+      }
+    });
 
     console.log('HTML document email sent successfully');
 
@@ -89,7 +115,10 @@ serve(async (req) => {
   }
 });
 
-function generateBrandedHTMLDocument(responses: any, userName: string): string {
+function generateBrandedHTMLDocument(responses: any, userName: string, marketCode: string = 'UK'): string {
+  // Debug logging for marketCode
+  console.log('generateBrandedHTMLDocument called with marketCode:', marketCode);
+
   // Format date as "19th July, 2025"
   const formatDate = (date: Date): string => {
     const day = date.getDate();
@@ -110,7 +139,26 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
   };
   
   const currentDate = formatDate(new Date());
-  
+
+  // Market-specific helpful hint 4
+  console.log('DEBUG: marketCode value:', marketCode);
+  console.log('DEBUG: marketCode type:', typeof marketCode);
+  console.log('DEBUG: marketCode === "US":', marketCode === 'US');
+  console.log('DEBUG: marketCode == "US":', marketCode == 'US');
+
+  const usVersion = 'Please assess whether you think that your doctor will determine that you are due for a mammogram and if it is obvious that you are going to need one, book it in. Please speak with your insurer to determine how much this will cost you.';
+  const ukVersion = 'If you are aged over 50 then you eligible and will be invited for a free mammogram. Your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.';
+  const auVersion = 'If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.';
+
+  const helpfulHint4 = marketCode === 'US' ? usVersion : (marketCode === 'UK' ? ukVersion : auVersion);
+
+  console.log('DEBUG: Selected helpful hint 4:', helpfulHint4.substring(0, 50) + '...');
+
+  // Market-specific helpful hint 1 (GP vs doctor)
+  const helpfulHint1 = marketCode === 'US'
+    ? 'As well as collecting all this information it is likely that your doctor or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.'
+    : 'As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.';
+
   // Modified Greene Scale questions mapping
   const greeneScaleQuestions = [
     { id: 'hot_flushes', label: 'Hot Flushes' },
@@ -145,11 +193,144 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     console.log(`Greene Scale - Question: ${question.id}, Response: ${response}`);
     
     if (response) {
-      // Map multiple choice answers to scores (0-3)
-      if (response.includes('normal') || response.includes('not feel') || response.includes('No') || response.includes('just my usual') || response.includes('same')) score = 0;
-      else if (response.includes('mild') || response.includes('small amount') || response.includes('Some occasional')) score = 1;
-      else if (response.includes('moderate') || response.includes('Regular')) score = 2;
-      else if (response.includes('severe') || response.includes('Severe') || response.includes('much more') || response.includes('quite a few')) score = 3;
+      // Direct mapping of exact answer text to scores (0-3)
+      // Based on the specific answer options in Module1.tsx
+      const scoreMap: { [key: string]: number } = {
+        // Hot flushes
+        "No hot flushes at all": 0,
+        "Some occasional hot flushes with only a very mild impact on my life": 1,
+        "Regular hot flushes with a moderate impact on my life": 2,
+        "Severe hot flushes that are having a serious impact on my life": 3,
+
+        // Light headedness
+        "No, I have not been experiencing any new feeling of light headedness": 0,
+        "Yes I have experienced some mild new light headedness": 1,
+        "I have been experiencing light headedness that is having a moderate impact on my life": 2,
+        "I have been experiencing new light headedness which is severe": 3,
+
+        // Headaches
+        "No, I have not had more headaches than normal": 0,
+        "I have had some extra headaches - a mild amount more than normal": 1,
+        "I have had a moderate number of extra headaches with a moderate impact on my life": 2,
+        "I have been having quite a few extra headaches": 3,
+
+        // Irritability
+        "No - just my usual amount of irritability": 0,
+        "I have been mildly more irritable": 1,
+        "I have been moderately more irritable": 2,
+        "Yes, I have been severely more irritable": 3,
+
+        // Depression
+        "No, I have not felt any extra depression": 0,
+        "Yes I have been mildly more depressed": 1,
+        "I have been moderately more depressed than previously": 2,
+        "My depression is much more severe than previously": 3,
+
+        // Unloved
+        "No, I have felt as loved as normal": 0,
+        "I have felt mildly more unloved than previously": 1,
+        "I have felt moderately more unloved than previously": 2,
+        "I have felt severely more unloved than previously": 3,
+
+        // Anxiety
+        "No - my anxiety level has been the same": 0,
+        "Yes I am a small amount more anxious than previously. Mild": 1,
+        "I am moderately more anxious than previously": 2,
+        "I am severely more anxious than previously": 3,
+
+        // Mood fluctuations
+        "No, my mood fluctuates as normal": 0,
+        "I have a mild increase in mood fluctuations": 1,
+        "My mood is fluctuating quite a bit more than normal": 2,
+        "I am having severe mood fluctuations compared to normal": 3,
+
+        // Sleeplessness
+        "No, my sleep is the same as normal": 0,
+        "I am having a mild amount of extra sleeplessness compared to normal": 1,
+        "I am having a moderate amount of extra sleeplessness compared to normal": 2,
+        "My sleep has been severely affected": 3,
+
+        // Tiredness
+        "No, I am experiencing the same amount of tiredness as before": 0,
+        "I have been mildly more tired than previously": 1,
+        "I have been moderately more tired than previously": 2,
+        "I have been severely more tired than previously": 3,
+
+        // Backaches
+        "No, I have not been experiencing any new backaches": 0,
+        "I have been experiencing some mild new backaches compared to normal": 1,
+        "I have been having moderately more back aches than usual": 2,
+        "I have been having many more backaches than normal which are affecting my life": 3,
+
+        // Joint pains
+        "No, I have not been experiencing any new joint pains": 0,
+        "I have had some mild new joint pains": 1,
+        "I have had some joint pains which are moderately affecting my life": 2,
+        "I have had new joint pains which are severely affecting my life": 3,
+
+        // Muscle pains
+        "No, I have not been suffering from any new muscle pains": 0,
+        "I have been experiencing some new mild muscle pains": 1,
+        "I have been experiencing some new muscle pains which are having a moderate impact on my life": 2,
+        "I have been experiencing some muscle pains which are having a severe impact on my life": 3,
+
+        // Facial hair
+        "No, I have not noticed any new facial hair": 0,
+        "I have noticed a mild increase in facial hair": 1,
+        "I have noticed a moderate increase in facial hair": 2,
+        "I have noticed a severe increase in facial hair": 3,
+
+        // Skin dryness
+        "No, my skin has felt the same as it normally does": 0,
+        "My skin is experiencing some mild extra dryness": 1,
+        "My skin is moderately more dry than previously": 2,
+        "My skin is severely more dry than previously": 3,
+
+        // Crawling skin
+        "No, I have not noticed any new feelings a crawling under or on my skin": 0,
+        "I have had some new mild feelings of crawling under my skin": 1,
+        "I have had some moderate feelings of crawling under my skin": 2,
+        "I have been experiencing some severe feelings of crawling under my skin": 3,
+
+        // Sex drive
+        "No, my sex drive is the same a normal": 0,
+        "I have had a mild reduction in my sex drive": 1,
+        "I have experienced a moderate reduction in my sex drive": 2,
+        "I have experienced a severe reduction in my sex drive": 3,
+
+        // Vaginal dryness
+        "No, my vagina feels the same as normal": 0,
+        "I have been experiencing some mild vaginal dryness or irritation": 1,
+        "My vagina is moderately more irritated or dry than normal": 2,
+        "My vagina is severely more dry or irritated than normal": 3,
+
+        // Intercourse comfort
+        "No, intercourse is the same level of comfort as always": 0,
+        "Intercourse is mildly more uncomfortable than normal": 1,
+        "Intercourse is moderately more uncomfortable than normal": 2,
+        "Intercourse is severely more uncomfortable than normal": 3,
+
+        // Urination frequency
+        "No, my urine frequency is the same as it normally is": 0,
+        "I have had a mild increase in the frequency of urination": 1,
+        "My urine frequency has increased moderately": 2,
+        "My urine frequency has increased severely": 3,
+
+        // Brain fog
+        "No, I do not feel any more foggy than normal": 0,
+        "I have had a mild increase in brain fog": 1,
+        "My brain fog has increased moderately": 2,
+        "My brain fog has increased severely": 3
+      };
+
+      // Use exact match for scoring
+      if (scoreMap.hasOwnProperty(response)) {
+        score = scoreMap[response];
+      } else {
+        // If response doesn't match exactly, log it for debugging
+        console.log(`Greene Scale - Unmatched response for ${question.id}: "${response}"`);
+        score = 0;
+      }
     }
     
     totalScore += score;
@@ -252,7 +433,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     <!-- ${module} Page -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
+            <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: block; border: 0; outline: none; text-decoration: none;">
             <h2 class="page-title">${module}</h2>
         </div>
     ` : '';
@@ -283,10 +464,8 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
       
       return sectionHeader + questionBlocks;
     }).join('');
-    
-    const pageFooter = shouldAddPageBreak ? `<div class="page-footer">Page ${moduleIndex + 3}</div>` : '';
-    
-    return modulePageStart + (shouldAddPageBreak ? '' : moduleHeader) + sectionContent + pageFooter;
+
+    return modulePageStart + (shouldAddPageBreak ? '' : moduleHeader) + sectionContent;
   }).join('');
 
   return `
@@ -306,17 +485,20 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         
         body {
             font-family: 'Open Sans', sans-serif;
-            font-size: 11pt;
-            line-height: 1.6;
+            font-size: 14pt;
+            line-height: 1.5;
             color: #333333;
             background: #FFFFFF;
+            margin: 0;
+            padding: 0;
         }
         
         .page {
-            width: 210mm;
-            min-height: 297mm;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 100vh;
             margin: 0 auto;
-            padding: 20mm;
+            padding: 40px;
             background: #FFFFFF;
             page-break-after: always;
             position: relative;
@@ -363,7 +545,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             text-align: center;
             position: relative;
             z-index: 2;
-            max-width: 600px;
+            max-width: 800px;
             width: 100%;
             flex-grow: 1;
             gap: 50px;
@@ -390,7 +572,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             border: 1px solid rgba(168, 218, 220, 0.2);
             backdrop-filter: blur(10px);
             width: 100%;
-            max-width: 500px;
+            max-width: 700px;
         }
         
         .patient-name {
@@ -534,48 +716,51 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         }
         
         .page-title {
-            font-size: 18pt;
+            font-size: 22pt;
             font-weight: 700;
             color: #333333;
         }
         
+        /* Page footer removed per user request
         .page-footer {
             position: absolute;
             bottom: 15mm;
             left: 20mm;
             right: 20mm;
             text-align: center;
-            font-size: 9pt;
-            color: #A0A0A0;
-            border-top: 1px solid #F5F5F5;
+            font-size: 10pt;
+            color: #333333;
+            border-top: 1px solid #E0E0E0;
             padding-top: 10px;
         }
+        */
         
-        /* Modified Greene Scale Table - Reduced size for better fit */
+        /* Modified Greene Scale Table - Optimized to fit on one page */
         .greene-scale-table {
             width: 100%;
             border-collapse: collapse;
-            margin: 15px 0;
+            margin: 10px 0;
             background: #FFFFFF;
+            page-break-inside: avoid;
         }
-        
+
         .greene-scale-table th {
             background: #A8DADC;
             color: #333333;
             font-weight: 600;
-            padding: 6px 4px;
+            padding: 4px 3px;
             text-align: center;
             border: 1px solid #333333;
             font-size: 8pt;
-            line-height: 1.2;
+            line-height: 1.1;
         }
-        
+
         .greene-scale-table td {
-            padding: 5px 4px;
+            padding: 3px 2px;
             border: 1px solid #A0A0A0;
             font-size: 8pt;
             vertical-align: middle;
-            line-height: 1.3;
+            line-height: 1.2;
         }
         
         .greene-scale-table tr:nth-child(even) {
@@ -594,7 +779,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         
         /* Question blocks */
         .question-block {
-            margin-bottom: 25px;
+            margin-bottom: 35px;
             page-break-inside: avoid;
         }
         
@@ -607,18 +792,21 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             font-size: 12pt;
             font-weight: 600;
             color: #333333;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             line-height: 1.4;
         }
-        
+
         .answer-content {
             background: #F5F5F5;
             padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid #A8DADC;
-            font-size: 11pt;
-            line-height: 1.6;
+            border-radius: 8px;
+            border-left: 5px solid #A8DADC;
+            font-size: 12pt;
+            line-height: 1.5;
             color: #333333;
+            margin-bottom: 15px;
+            max-width: none;
+            width: 100%;
         }
         
         .section-divider {
@@ -633,72 +821,83 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
             .page {
                 width: 100%;
                 min-width: 320px;
-                padding: 15mm;
+                padding: 20px;
                 margin: 0;
+            }
+            
+            body {
+                font-size: 16pt;
             }
             
             .page-header {
                 flex-direction: column;
                 text-align: center;
-                gap: 10px;
+                gap: 15px;
+                margin-bottom: 25px;
             }
             
             .header-logo {
-                width: 40px;
+                width: 60px;
             }
             
             .page-title {
-                font-size: 14pt;
+                font-size: 20pt;
             }
             
             .greene-scale-table {
-                font-size: 7pt;
-                margin: 10px 0;
+                font-size: 12pt;
+                margin: 15px 0;
             }
             
             .greene-scale-table th,
             .greene-scale-table td {
-                padding: 3px 2px;
-                font-size: 7pt;
-                line-height: 1.1;
+                padding: 8px 6px;
+                font-size: 12pt;
+                line-height: 1.3;
             }
             
             .question-title {
-                font-size: 10pt;
+                font-size: 18pt;
+                margin-bottom: 15px;
             }
             
             .answer-content {
-                font-size: 9pt;
-                padding: 10px;
+                font-size: 16pt;
+                padding: 18px;
+                line-height: 1.8;
             }
         }
         
         @media screen and (max-width: 480px) {
             .page {
-                padding: 10mm;
+                padding: 15px;
+            }
+            
+            body {
+                font-size: 15pt;
             }
             
             .greene-scale-table {
-                font-size: 6pt;
+                font-size: 11pt;
             }
             
             .greene-scale-table th,
             .greene-scale-table td {
-                padding: 2px 1px;
-                font-size: 6pt;
+                padding: 6px 4px;
+                font-size: 11pt;
             }
             
             .page-title {
-                font-size: 12pt;
+                font-size: 18pt;
             }
             
             .question-title {
-                font-size: 9pt;
+                font-size: 16pt;
             }
             
             .answer-content {
-                font-size: 8pt;
-                padding: 8px;
+                font-size: 15pt;
+                padding: 15px;
             }
         }
         
@@ -766,18 +965,19 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
     <!-- Page 1: Welcome Message and Helpful Hints -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
-            <h2 class="page-title">Welcome and Next Steps</h2>
+            <div style="text-align: center;">
+                <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
+            </div>
         </div>
-        
+
         <div style="margin-bottom: 30px;">
             <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
-            <p style="font-size: 12pt; line-height: 1.6; margin-bottom: 20px;">
-                Thank you for completing your menopause consultation. This comprehensive document contains all of your responses and will help facilitate a productive discussion with your healthcare provider.
+            <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 20px;">
+                Thank you for completing your menopause assessment. This comprehensive document contains all of your responses and will help facilitate a productive discussion with your healthcare provider.
             </p>
-            
+
             <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
-            <p style="font-size: 12pt; line-height: 1.6; margin-bottom: 20px;">
+            <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 20px;">
                 Please review your responses in this document and bring it with you to your menopause consultation appointment. Your healthcare provider will use this information to better understand your symptoms and health history.
             </p>
         </div>
@@ -785,76 +985,74 @@ function generateBrandedHTMLDocument(responses: any, userName: string): string {
         <div style="margin-top: 30px;">
             <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Helpful Hints</h3>
             
-            <div style="margin-bottom: 20px; padding: 15px; background: #F5F5F5; border-radius: 6px; border-left: 4px solid #A8DADC;">
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.</p>
-                
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
-                
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
-                
-                <p style="font-size: 11pt; line-height: 1.6; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> If you are aged over 40 in Australia then you eligible for a free mammogram. If you are over 50 your GP will encourage you to have one as part of normal screening, so book in for it before you even have your consultation with your GP for your menopause symptoms.</p>
-                
-                <p style="font-size: 11pt; line-height: 1.6;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
+            <div style="margin-bottom: 25px; padding: 20px; background: #F5F5F5; border-radius: 8px; border-left: 4px solid #A8DADC;">
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> ${helpfulHint1}</p>
+
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
+
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
+
+                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> ${helpfulHint4}</p>
+
+                <p style="font-size: 14pt; line-height: 1.5;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
             </div>
         </div>
-        
-        <div class="page-footer">Page 1</div>
     </div>
 
     <!-- Page 2: Top Symptoms and Modified Greene Scale -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
+            <div style="text-align: center;">
+                <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
+            </div>
             <h2 class="page-title">Your Top Symptoms & Assessment</h2>
         </div>
         
         <!-- Top Three Symptoms Section -->
         <div style="margin-bottom: 25px;">
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
-            <div class="question-block" style="background: #F8FFFE; border: 1px solid #A8DADC; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+            <h3 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Your Top Three Symptoms</h3>
+            <div class="question-block" style="background: #F8FFFE; border: 1px solid #A8DADC; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
                 <h4 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 10px;">What are your top three symptoms that you desperately need help with?</h4>
-                <div style="font-size: 11pt; line-height: 1.6; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
+                <div style="font-size: 12pt; line-height: 1.5; color: #333333;">${responses['top_three_symptoms'] || 'No answer provided yet'}</div>
             </div>
         </div>
 
         <!-- Modified Greene Scale Section -->
-        <div style="margin-top: 20px;">
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 15px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">The Modified Greene Scale</h3>
-            
-            <table class="greene-scale-table" style="font-size: 7pt;">
+        <div style="margin-top: 15px;">
+            <h3 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 10px; border-bottom: 2px solid #A8DADC; padding-bottom: 8px;">The Modified Greene Scale</h3>
+
+            <table class="greene-scale-table" style="font-size: 8pt; margin-top: 10px;">
                 <thead>
                     <tr>
-                        <th style="width: 40%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">Question</th>
-                        <th style="width: 20%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">Score before MHT</th>
-                        <th style="width: 20%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">3 months after starting MHT</th>
-                        <th style="width: 20%; padding: 4px 3px; font-size: 7pt; line-height: 1.1;">6 months after starting MHT</th>
+                        <th style="width: 40%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">Question</th>
+                        <th style="width: 20%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">Score before MHT</th>
+                        <th style="width: 20%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">3 months after starting MHT</th>
+                        <th style="width: 20%; padding: 3px 2px; font-size: 8pt; line-height: 1.1;">6 months after starting MHT</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${greeneScaleRows}
                     <tr class="total-row">
-                        <td style="padding: 4px 3px; font-size: 7pt;"><strong>Total Score</strong></td>
-                        <td style="text-align: center; padding: 4px 3px; font-size: 7pt;"><strong>${totalScore}</strong></td>
-                        <td style="text-align: center; padding: 4px 3px; font-size: 7pt;"></td>
-                        <td style="text-align: center; padding: 4px 3px; font-size: 7pt;"></td>
+                        <td style="padding: 3px 2px; font-size: 8pt;"><strong>Total Score</strong></td>
+                        <td style="text-align: center; padding: 3px 2px; font-size: 8pt;"><strong>${totalScore}</strong></td>
+                        <td style="text-align: center; padding: 3px 2px; font-size: 8pt;"></td>
+                        <td style="text-align: center; padding: 3px 2px; font-size: 8pt;"></td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        
-        <div class="page-footer">Page 2</div>
     </div>
 
     <!-- Page 3+: Long Answer Questions -->
     <div class="page">
         <div class="page-header">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="Logo" class="header-logo" style="max-width: 60px !important; height: auto !important;">
+            <div style="text-align: center;">
+                <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="Menopause UK" class="header-logo" style="max-width: 80px !important; height: auto !important; display: inline-block; border: 0; outline: none; text-decoration: none;">
+            </div>
             <h2 class="page-title">Detailed Responses</h2>
         </div>
         
         ${questionSections}
-        
-        <div class="page-footer">Page 3</div>
     </div>
 </body>
 </html>`;

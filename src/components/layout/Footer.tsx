@@ -11,7 +11,6 @@ export const Footer = () => {
       { href: "/consultation/module-1", label: "Assessment" },
     ],
     support: [
-      { href: "/help", label: "Help Center" },
       { href: "/contact", label: "Contact Us" },
       { href: "/faq", label: "FAQ" },
     ],

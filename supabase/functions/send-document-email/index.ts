@@ -31,7 +31,7 @@ serve(async (req) => {
       html: `
         <div style="font-family: 'Open Sans', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #FFFFFF;">
           <div style="text-align: center; margin-bottom: 30px; background: #F5F5F5; padding: 30px; border-radius: 8px; border: 1px solid #A8DADC;">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="The Empowered Patient Logo" style="width: 120px; height: auto; margin-bottom: 20px;">
+            <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="The Empowered Patient Logo" style="width: 120px; height: auto; margin-bottom: 20px;">
             <h1 style="color: #333333; font-size: 24px; margin-bottom: 10px; font-weight: 700;">The Empowered Patient</h1>
             <p style="color: #A0A0A0; font-size: 16px;">Your Menopause Consultation Document</p>
           </div>
@@ -57,7 +57,7 @@ serve(async (req) => {
           </div>
           
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #F5F5F5;">
-            <img src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/logos-tep//revised_logo.png" alt="The Empowered Patient Logo" style="width: 80px; height: auto; margin-bottom: 15px;">
+            <img src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" alt="The Empowered Patient Logo" style="width: 80px; height: auto; margin-bottom: 15px;">
             <p style="color: #A0A0A0; font-size: 12px; margin-bottom: 5px;">
               You have 12 months access to this tool from your purchase date.
             </p>

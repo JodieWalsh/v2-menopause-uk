@@ -87,21 +87,28 @@ serve(async (req) => {
     // Handle checkout.session.completed event
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      logStep("Processing checkout.session.completed", { 
-        sessionId: session.id, 
+      logStep("Processing checkout.session.completed", {
+        sessionId: session.id,
         customerId: session.customer,
         paymentStatus: session.payment_status,
         amountTotal: session.amount_total,
         currency: session.currency
       });
 
-      if (session.payment_status === "paid") {
+      // Handle BOTH paid orders and free orders (100% discount = no_payment_required)
+      // This is Stripe's official best practice for handling all checkout completions
+      if (session.payment_status === "paid" || session.payment_status === "no_payment_required") {
+        const isFree = session.payment_status === "no_payment_required";
+        logStep(isFree ? "Processing FREE order (100% discount)" : "Processing PAID order", {
+          amountTotal: session.amount_total
+        });
         // Extract user data from session metadata
         const metadata = session.metadata || {};
         const email = metadata.email;
         const firstName = metadata.first_name;
         const lastName = metadata.last_name;
         const password = metadata.password;
+        const marketCode = metadata.market_code || 'UK'; // Default to UK if not specified
 
         if (!email) {
           logStep("No email found in metadata");
@@ -169,16 +176,17 @@ serve(async (req) => {
           .single();
 
         if (!existingSub) {
-          // Create subscription
+          // Create subscription (free or paid based on amount)
+          const subscriptionType = session.amount_total === 0 ? "free" : "paid";
           const { error: subError } = await supabaseService
             .from("user_subscriptions")
             .insert({
               user_id: user.id,
-              subscription_type: "paid",
+              subscription_type: subscriptionType,
               status: "active",
               stripe_customer_id: session.customer as string || null,
               stripe_session_id: session.id,
-              amount_paid: session.amount_total || 0, // Keep in pence as integer
+              amount_paid: session.amount_total || 0, // Keep in pence/cents as integer
               currency: session.currency || "gbp",
               expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               welcome_email_sent: false, // Will be set to true by email function after successful send
@@ -206,7 +214,8 @@ serve(async (req) => {
                 user_id: user.id,
                 email: user.email!,
                 firstName: user.user_metadata?.first_name,
-                isPaid: session.amount_total > 0 // True for paid, false for £0.00 payments
+                isPaid: session.amount_total > 0, // True for paid, false for £0.00 payments
+                marketCode: marketCode // Pass market code so email uses correct domain
               }
             });
 
@@ -235,16 +244,17 @@ serve(async (req) => {
           }
         } else {
           logStep("Subscription already exists, updating to active status", { userId: user.id, existingStatus: existingSub.status });
-          
+
           // Update existing subscription to active status and reset email flag for email function
+          const subscriptionType = session.amount_total === 0 ? "free" : "paid";
           const { error: updateError } = await supabaseService
             .from("user_subscriptions")
             .update({
-              subscription_type: "paid",
+              subscription_type: subscriptionType,
               status: "active",
               stripe_customer_id: session.customer as string || null,
               stripe_session_id: session.id,
-              amount_paid: session.amount_total || 0, // Keep in pence as integer
+              amount_paid: session.amount_total || 0, // Keep in pence/cents as integer
               currency: session.currency || "gbp",
               expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
               updated_at: new Date().toISOString(),
@@ -273,7 +283,8 @@ serve(async (req) => {
                 user_id: user.id,
                 email: user.email!,
                 firstName: user.user_metadata?.first_name,
-                isPaid: session.amount_total > 0
+                isPaid: session.amount_total > 0,
+                marketCode: marketCode // Pass market code so email uses correct domain
               }
             });
 

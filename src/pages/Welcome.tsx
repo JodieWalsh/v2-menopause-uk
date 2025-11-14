@@ -1,539 +1,331 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Heart, Play, ArrowRight } from "lucide-react";
+import { Heart, Play, ArrowRight, ExternalLink, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout/Layout";
+import { useMarket } from "@/contexts/MarketContext";
 
 const Welcome = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { market } = useMarket();
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    let mounted = true;
-
-    const checkAuthWithRetry = async () => {
-      console.log("Welcome page: checking authentication with retry...");
-      
-      // Check if we're in a popup window (opened from payment)
-      // This needs to happen BEFORE any authentication checks
+    const initializePage = async () => {
+      // Handle popup window
       if (window.opener && window.opener !== window) {
-        console.log("Welcome page: Detected popup window, sending payment success message to parent");
-        
-        // Show a brief message in the popup
-        if (mounted) {
-          setLoading(false);
-        }
-        
         try {
-          // Send message to parent window that payment was successful
-          window.opener.postMessage({
-            type: 'PAYMENT_SUCCESS',
-            timestamp: Date.now()
-          }, window.location.origin);
-          
-          console.log("Welcome page: Sent PAYMENT_SUCCESS message to parent window");
-          
-          // Close this popup window after a short delay
-          setTimeout(() => {
-            console.log("Welcome page: Closing popup window");
-            window.close();
-          }, 2000);
-          
-          return; // Don't continue with normal auth flow in popup
+          window.opener.postMessage({ type: 'PAYMENT_SUCCESS', timestamp: Date.now() }, window.location.origin);
+          setTimeout(() => window.close(), 1000);
+          return;
         } catch (error) {
-          console.error("Error communicating with parent window:", error);
-          // Still try to close the popup even if messaging failed
-          setTimeout(() => {
-            window.close();
-          }, 3000);
+          setTimeout(() => window.close(), 2000);
         }
       }
-      
-      // Check if coming from payment success
+
+      // Clean up URL params
       const urlParams = new URLSearchParams(window.location.search);
-      const paymentVerified = urlParams.get('payment_verified');
-      const sessionId = urlParams.get('session_id');
-      
-      // If coming from payment, verify payment first
-      if (paymentVerified === 'true' && sessionId) {
-        console.log("Welcome page: Verifying payment for session:", sessionId);
-        try {
-          const { data, error } = await supabase.functions.invoke('verify-payment', {
-            body: { session_id: sessionId }
-          });
-          
-          if (error) throw error;
-          
-          if (data?.verified) {
-            console.log("Welcome page: Payment verified successfully");
-            // Clean up URL parameters
-            window.history.replaceState({}, document.title, '/welcome');
-            // Force a slight delay to ensure subscription is properly created
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } else {
-            console.error('Welcome page: Payment verification failed:', data);
-          }
-        } catch (error) {
-          console.error('Welcome page: Payment verification error:', error);
-          // Don't redirect on error, let user try to continue
-        }
+      if (urlParams.get('payment_verified') === 'true') {
+        window.history.replaceState({}, document.title, '/welcome');
       }
-      
-      // First try to get existing session
+
+      // Simple auth check
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && mounted) {
-        console.log("Welcome page: Found existing session:", session.user.email);
+      if (session?.user) {
         setUser(session.user);
-        await loadProgress();
-        setLoading(false);
-        return;
-      }
-      
-      // Try multiple times to get the user - sometimes it takes a moment after external redirect
-      for (let attempt = 1; attempt <= 10; attempt++) {
-        if (!mounted) return;
-        
-        console.log(`Welcome page: Auth check attempt ${attempt}`);
-        
-        // Try both getUser and getSession on each attempt
-        const [userResult, sessionResult] = await Promise.all([
-          supabase.auth.getUser(),
-          supabase.auth.getSession()
-        ]);
-        
-        const user = userResult.data?.user || sessionResult.data?.session?.user;
-        const error = userResult.error || sessionResult.error;
-        
-        console.log(`Welcome page attempt ${attempt}: user data:`, user, "error:", error);
-        
-        // If we get a 403, try to refresh the session
-        if (error && (error.message?.includes('403') || error.message?.includes('Forbidden') || error.status === 403)) {
-          console.log(`Welcome page attempt ${attempt}: Got 403 error, trying session refresh...`);
-          try {
-            const { data: refreshResult, error: refreshError } = await supabase.auth.refreshSession();
-            if (refreshResult?.session?.user && !refreshError) {
-              console.log("Welcome page: Session refresh successful:", refreshResult.session.user.email);
-              setUser(refreshResult.session.user);
-              await loadProgress();
-              setLoading(false);
-              return;
-            } else {
-              console.log("Welcome page: Session refresh failed:", refreshError);
-            }
-          } catch (refreshErr) {
-            console.log("Welcome page: Session refresh error:", refreshErr);
-          }
-        }
-        
-        if (user && !error && mounted) {
-          console.log("Welcome page: User authenticated:", user.email);
-          console.log("🆔 User ID for subscription check:", user.id);
-          setUser(user);
-          
-          // Check subscription even for normal authentication
-          console.log("Welcome page: Checking subscription for authenticated user...");
-          const subscription = await checkSubscriptionWithRetry(user.id, 3); // Fewer retries for normal auth
-          
-          if (subscription) {
-            console.log("Welcome page: Subscription confirmed for authenticated user");
-            await loadProgress();
-            setLoading(false);
-            return;
-          } else {
-            console.log("Welcome page: No subscription found for authenticated user");
-            setLoading(false);
-            return;
-          }
-        }
-        
-        // Wait progressively longer between retries
-        if (attempt < 10) {
-          const waitTime = Math.min(attempt * 500, 3000); // Max 3 seconds
-          console.log(`Welcome page: Waiting ${waitTime}ms before retry ${attempt + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-      }
-      
-      if (mounted) {
-        // Try to restore session from stored credentials if we just came from payment
-        const storedEmail = localStorage.getItem('payment_user_email');
-        const storedPassword = localStorage.getItem('payment_user_password');
-        
-        if (storedEmail && storedPassword) {
-          console.log("Welcome page: Found stored credentials, attempting to restore session...");
-          try {
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: storedEmail,
-              password: storedPassword,
-            });
-            
-            if (signInData.user && !signInError) {
-              console.log("Welcome page: Session restored successfully:", signInData.user.email);
-              // Clear stored credentials for security
-              localStorage.removeItem('payment_user_email');
-              localStorage.removeItem('payment_user_password');
-              
-              setUser(signInData.user);
-              
-              // Check for subscription with retry logic (payment just completed)
-              console.log("Welcome page: Checking for subscription after payment...");
-              const subscription = await checkSubscriptionWithRetry(signInData.user.id);
-              
-              if (subscription) {
-                console.log("Welcome page: Subscription confirmed, user has access");
-                await loadProgress();
-                setLoading(false);
-                
-                toast({
-                  title: "Payment Successful! 🎉",
-                  description: "Welcome back! You can now start your assessment.",
-                  variant: "default",
-                });
-              } else {
-                console.log("Welcome page: No subscription found after retries");
-                setLoading(false);
-                
-                toast({
-                  title: "Payment Processing",
-                  description: "Your payment is being processed. Please refresh in a moment or contact support if this persists.",
-                  variant: "default",
-                });
-              }
-              return;
-            } else {
-              console.log("Welcome page: Session restoration failed:", signInError);
-              // Clear invalid credentials
-              localStorage.removeItem('payment_user_email');
-              localStorage.removeItem('payment_user_password');
-            }
-          } catch (restoreError) {
-            console.log("Welcome page: Session restoration error:", restoreError);
-            // Clear credentials on error
-            localStorage.removeItem('payment_user_email');
-            localStorage.removeItem('payment_user_password');
-          }
-        }
-        
-        console.log("Welcome page: No authenticated user after retries, redirecting to auth");
+        // Load progress in background without blocking UI
+        setTimeout(() => loadProgress(session.user.id), 0);
+      } else {
+        // No user found, redirect to auth
         navigate('/auth');
       }
     };
 
-    // Set up auth state listener to handle session changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-      
-      console.log("Welcome page: Auth state changed:", event, session?.user?.email);
-      
-      if (event === 'SIGNED_OUT' || !session) {
-        console.log("Welcome page: User signed out, redirecting to auth");
-        navigate('/auth');
-      } else if (event === 'SIGNED_IN' && session.user) {
-        console.log("Welcome page: User signed in:", session.user.email);
-        setUser(session.user);
-        
-        // Check if this might be a post-payment sign-in
-        const isPostPayment = localStorage.getItem('payment_user_email') === session.user.email;
-        
-        if (isPostPayment) {
-          console.log("Welcome page: Post-payment sign-in detected, checking subscription...");
-          const subscription = await checkSubscriptionWithRetry(session.user.id);
-          
-          if (subscription) {
-            console.log("Welcome page: Subscription confirmed for signed-in user");
-            await loadProgress();
-            setLoading(false);
-            
-            toast({
-              title: "Welcome! 🎉",
-              description: "Your subscription is active. You can start your assessment.",
-              variant: "default",
-            });
-          } else {
-            console.log("Welcome page: No subscription found for signed-in user");
-            setLoading(false);
-          }
-        } else {
-          // Normal sign-in, load progress normally
-          await loadProgress();
-          setLoading(false);
-        }
-      } else if (event === 'TOKEN_REFRESHED' && session.user) {
-        console.log("Welcome page: Token refreshed:", session.user.email);
-        setUser(session.user);
-        setLoading(false);
-      }
-    });
-
-    checkAuthWithRetry();
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    initializePage();
   }, [navigate]);
 
-  const loadProgress = async () => {
+  const loadProgress = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('user_progress')
         .select('*')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
-      
-      if (error) throw error;
+        .eq('user_id', userId);
       
       const completedModules = data?.filter(p => p.completed)?.length || 0;
-      const totalModules = 3;
-      setProgress((completedModules / totalModules) * 100);
+      const totalModules = 9; // module_1, module_2a, module_2b, module_2c, module_2d, module_3, module_4, module_5, module_6
+      const progressPercentage = Math.min((completedModules / totalModules) * 100, 100);
+      setProgress(progressPercentage);
     } catch (error) {
       console.error('Error loading progress:', error);
     }
   };
 
-  const checkSubscriptionWithRetry = async (userId: string, maxAttempts: number = 10) => {
-    console.log(`🔍 Checking subscription for user: ${userId}`);
-    
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        console.log(`📋 Attempt ${attempt}: Querying user_subscriptions table...`);
-        
-        // First, let's check ALL subscriptions for this user (not just active ones)
-        const { data: allSubs, error: allError } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', userId);
-
-        console.log(`📊 All subscriptions for user ${userId}:`, allSubs);
-        console.log(`❌ Query error (if any):`, allError);
-
-        // Check for active subscriptions
-        const { data: activeSub, error: activeError } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .single();
-
-        console.log(`✅ Active subscription query result:`, activeSub);
-        console.log(`❌ Active subscription error:`, activeError);
-
-        if (activeSub && !activeError) {
-          console.log(`🎉 Active subscription found on attempt ${attempt}:`, activeSub);
-          return activeSub;
-        }
-
-        // TEMPORARY FIX: Also accept pending subscriptions that are recent (within last 10 minutes)
-        // This handles the case where webhook hasn't processed the payment yet
-        const { data: recentPendingSub, error: recentPendingError } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('status', 'pending')
-          .gte('created_at', new Date(Date.now() - 10 * 60 * 1000).toISOString()) // Last 10 minutes
-          .single();
-
-        console.log(`⏳ Recent pending subscription:`, recentPendingSub);
-
-        if (recentPendingSub && !recentPendingError) {
-          console.log(`🎉 Recent pending subscription found on attempt ${attempt} - granting access:`, recentPendingSub);
-          
-          // Grant access but show a note about processing
-          toast({
-            title: "Payment Received! 🎉",
-            description: "Your payment is being processed. You have full access to the assessment.",
-            variant: "default",
-          });
-          
-          return recentPendingSub;
-        }
-
-        // Also check for pending subscriptions that might exist
-        const { data: pendingSub, error: pendingError } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('status', 'pending')
-          .single();
-
-        console.log(`⏳ Pending subscription:`, pendingSub);
-        if (pendingSub) {
-          console.log(`⏳ Found pending subscription, continuing to wait for activation...`);
-        }
-
-        if (activeError && activeError.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error(`❌ Subscription check error on attempt ${attempt}:`, activeError);
-        } else {
-          console.log(`🔍 No active subscription found on attempt ${attempt}`);
-        }
-
-        // Wait before retrying (progressive backoff)
-        if (attempt < maxAttempts) {
-          const waitTime = Math.min(attempt * 1000, 5000); // Max 5 seconds
-          console.log(`⏰ Waiting ${waitTime}ms before subscription retry ${attempt + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-
-      } catch (error) {
-        console.error(`💥 Subscription check failed on attempt ${attempt}:`, error);
-        if (attempt < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
-    }
-
-    console.log(`❌ No subscription found after ${maxAttempts} attempts`);
-    return null;
-  };
-
-  const handleStartConsultation = () => {
+  const handleStartAssessment = () => {
     navigate('/consultation/module-1');
   };
 
-  if (loading) {
+  const handleContinueAssessment = () => {
+    navigate('/consultation/summary');
+  };
+
+  // Set video to show frame at 1 second as the poster/thumbnail
+  const handleVideoLoadedMetadata = () => {
+    if (videoRef.current) {
+      // Seek to 1 second to show a better thumbnail frame
+      videoRef.current.currentTime = 1;
+    }
+  };
+
+  if (!user) {
     return (
-      <Layout>
-        <div className="section-padding flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading your consultation...</p>
-          </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
-      </Layout>
+      </div>
     );
   }
 
+  const userName = user?.user_metadata?.first_name || 'there';
+  const hasStartedAssessment = progress > 0;
+
   return (
     <Layout>
-      <div className="section-padding">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl">
-        {/* Header */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground mb-2">
-            Welcome, {user?.user_metadata?.first_name || user?.email}!
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Welcome Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <Heart className="h-4 w-4" />
+            Welcome
+          </div>
+          <h1 className="text-4xl font-serif font-bold text-foreground mb-4">
+            Welcome {userName}! 👋
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
-            You're now ready to start your journey to an empowered doctor's visit. 
-            We'll guide you through a series of questions to help you prepare.
+          <p className="text-xl text-muted-foreground">
+            You're all set to begin your personalized menopause consultation preparation.
           </p>
         </div>
 
-        {/* Welcome Video Placeholder */}
-        <Card className="card-gradient mb-6 sm:mb-8">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="font-serif text-center text-lg sm:text-xl">Welcome Message</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6">
-            <video
-              className="w-full rounded-lg aspect-video"
-              controls
-              preload="metadata"
-              playsInline
-              onLoadedMetadata={(e) => {
-                const video = e.target as HTMLVideoElement;
-                video.currentTime = 0.2;
-              }}
-            >
-              <source src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/videos-tep//Welcome%20Menopause%20Australia%20descript%20video.mp4" type="video/mp4" />
-              <p className="text-center p-8 text-muted-foreground">
-                Your browser does not support the video tag.
-              </p>
-            </video>
-          </CardContent>
-        </Card>
-
-        {/* Introductory Text */}
-        <Card className="card-gradient mb-6 sm:mb-8">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="font-serif text-center text-lg sm:text-xl">
-              Menopause Basics
+        {/* Video Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5" />
+              Quick Introduction Video
             </CardTitle>
           </CardHeader>
-          <CardContent className="prose prose-slate max-w-none p-4 sm:p-6">
-            <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
-              For more information on menopause, here are three dependable sources.
-            </p>
-
-            <div className="space-y-4 sm:space-y-6 mb-4 sm:mb-6">
-              <div className="bg-primary/10 p-4 sm:p-6 rounded-lg">
-                <h4 className="text-base sm:text-lg font-semibold text-foreground mb-2">Balance Menopause</h4>
-                <p className="text-sm sm:text-base text-muted-foreground mb-2">
-                  This is a British site with a great layout and easy to read information.
-                </p>
-                <a 
-                  href="https://www.balance-menopause.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:text-primary/80 underline text-sm sm:text-base"
-                >
-                  www.balance-menopause.com
-                </a>
-              </div>
-              
-              <div className="bg-primary/10 p-4 sm:p-6 rounded-lg">
-                <h4 className="text-base sm:text-lg font-semibold text-foreground mb-2">Jean Hailles</h4>
-                <p className="text-sm sm:text-base text-muted-foreground mb-2">
-                  An Australian based site with strong evidence based ethos.
-                </p>
-                <a 
-                  href="https://www.jeanhailes.org.au" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:text-primary/80 underline text-sm sm:text-base"
-                >
-                  www.jeanhailes.org.au
-                </a>
-              </div>
-              
-              <div className="bg-primary/10 p-4 sm:p-6 rounded-lg">
-                <h4 className="text-base sm:text-lg font-semibold text-foreground mb-2">Australian Menopause Society</h4>
-                <p className="text-sm sm:text-base text-muted-foreground mb-2">
-                  Also Australian and very evidence based organisation. They even have studies that you can join!
-                </p>
-                <a 
-                  href="https://www.menopause.org.au" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:text-primary/80 underline text-sm sm:text-base"
-                >
-                  www.menopause.org.au
-                </a>
-              </div>
+          <CardContent>
+            <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+              <video
+                ref={videoRef}
+                controls
+                preload="metadata"
+                onLoadedMetadata={handleVideoLoadedMetadata}
+                className="w-full h-full object-cover"
+              >
+                <source src={market.videos.welcome} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
             </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              This quick video will help you understand what to expect during your assessment.
+            </p>
+          </CardContent>
+        </Card>
 
-            <div className="bg-muted p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
-              <h4 className="text-sm sm:text-base font-semibold text-foreground mb-2">Fun Facts About Menopause</h4>
-              <ul className="space-y-1 sm:space-y-2 text-xs sm:text-sm text-muted-foreground">
-                <li>• Did you know some women don't even notice they've hit menopause?</li>
-                <li>• The term "menopause" comes from Greek—"men" meaning month and "pause" meaning stop.</li>
-                <li>• Some animals don't experience menopause at all—like elephants or whales!</li>
-              </ul>
+        {/* Progress Card */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Your Assessment Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span>Progress</span>
+                <span>{Math.round(progress)}% complete</span>
+              </div>
+              <Progress value={progress} className="h-3" />
+            </div>
+            
+            {hasStartedAssessment ? (
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Great progress! You can continue where you left off or review your responses.
+                </p>
+                <div className="flex gap-3">
+                  <Button onClick={handleContinueAssessment} className="flex-1">
+                    Continue Assessment
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/consultation/summary')}
+                    className="flex-1"
+                  >
+                    Review Responses
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Ready to start? Your comprehensive menopause assessment will take about 30 minutes to complete.
+                </p>
+                <Button onClick={handleStartAssessment} size="lg" className="w-full">
+                  Start Your Assessment
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Information Card */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>What to Expect</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-2">📝 Comprehensive Assessment</h3>
+                <p className="text-sm text-muted-foreground">
+                  We'll ask about your symptoms, medical history, and health goals to create a complete picture.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">📋 Personalized Report</h3>
+                <p className="text-sm text-muted-foreground">
+                  You'll receive a detailed report to take to your doctor appointment.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">⏰ Take Your Time</h3>
+                <p className="text-sm text-muted-foreground">
+                  You can save your progress and come back anytime. No need to rush!
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold mb-2">🔒 Secure & Private</h3>
+                <p className="text-sm text-muted-foreground">
+                  Your information is encrypted and stored securely. We respect your privacy completely.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Call to Action */}
-        <div className="text-center">
-          <Button 
-            onClick={handleStartConsultation}
-            variant="hero" 
-            size="lg" 
-            className="w-full sm:w-auto sm:min-w-80 touch-target"
-          >
-            Start Your Consultation
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-4">
-            This guided assessment will take approximately 45 minutes to complete
-          </p>
-        </div>
-        </div>
+        {/* Menopause Information Resources */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              Links to Information about Menopause
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-6">
+              Explore trusted resources from leading health organizations to learn more about menopause and women's health.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* Cleveland Clinic */}
+              <a
+                href="https://my.clevelandclinic.org/health/diseases/21841-menopause"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    Cleveland Clinic
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Comprehensive menopause information from one of America's top hospitals
+                  </p>
+                </div>
+              </a>
+
+              {/* Australian Menopause Society */}
+              <a
+                href="https://menopause.org.au/health-info/fact-sheets"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    Australian Menopause Society
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Evidence-based fact sheets and resources for Australian women
+                  </p>
+                </div>
+              </a>
+
+              {/* Jean Hailes */}
+              <a
+                href="https://www.jeanhailes.org.au/health-a-z/menopause"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    Jean Hailes
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Trusted women's health information from Australia's leading organization
+                  </p>
+                </div>
+              </a>
+
+              {/* NHS UK */}
+              <a
+                href="https://www.nhs.uk/conditions/menopause/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-4 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <div className="flex-shrink-0 mt-1">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <ExternalLink className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+                    NHS UK
+                  </h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    Official NHS guidance on menopause symptoms and treatments
+                  </p>
+                </div>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );

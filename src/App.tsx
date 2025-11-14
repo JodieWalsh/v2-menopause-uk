@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { MarketProvider } from "@/contexts/MarketContext";
+import { ResponseProvider } from "@/contexts/ResponseContext";
 
 // Eager load critical pages to avoid chunk failures
 import Landing from "./pages/Landing";
@@ -29,6 +31,10 @@ const ConsultationComplete = React.lazy(() => import("./pages/ConsultationComple
 const Index = React.lazy(() => import("./pages/Index"));
 const Profile = React.lazy(() => import("./pages/Profile"));
 const Contact = React.lazy(() => import("./pages/Contact"));
+const Privacy = React.lazy(() => import("./pages/Privacy"));
+const Terms = React.lazy(() => import("./pages/Terms"));
+const Disclaimer = React.lazy(() => import("./pages/Disclaimer"));
+const FAQ = React.lazy(() => import("./pages/FAQ"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 
 // Enhanced loading component with better UX
@@ -94,11 +100,13 @@ class ErrorBoundary extends React.Component<
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback />}>
+      <MarketProvider>
+        <ResponseProvider>
+          <Toaster />
+          <Sonner />
+        <BrowserRouter>
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
             <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
@@ -173,12 +181,18 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/faq" element={<FAQ />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </Suspense>
-        </ErrorBoundary>
-      </BrowserRouter>
+          </Suspense>
+          </ErrorBoundary>
+          </BrowserRouter>
+        </ResponseProvider>
+      </MarketProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

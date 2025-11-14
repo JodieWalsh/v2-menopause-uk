@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layout } from "@/components/layout/Layout";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Edit } from "lucide-react";
+import { useResponses } from "@/contexts/ResponseContext";
+import { useMarket } from "@/contexts/MarketContext";
 
 interface Response {
   question_id: string;
@@ -23,12 +25,12 @@ interface ModuleQuestions {
 }
 
 export default function Summary() {
-  const [responses, setResponses] = useState<Response[]>([]);
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { responses: contextResponses, isLoading: contextLoading } = useResponses();
+  const { market } = useMarket();
 
   const moduleQuestions: ModuleQuestions = {
     module_1: {
@@ -58,7 +60,7 @@ export default function Summary() {
         "intercourse_comfort": "Over the past months have you found intercourse more uncomfortable than previously?",
         "urination_frequency": "Over the past months has there been an increase in the frequency of urination?",
         "brain_fog": "Over the past months has there been an increase in brain fog?",
-        "top_three_symptoms": "What are your top three symptoms that are bothering you the most?"
+        "top_three_symptoms": "What are your top three symptoms that you desperately need help with?"
       }
     },
     module_2a: {
@@ -130,44 +132,29 @@ export default function Summary() {
   };
 
   useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+    const loadUserEmail = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          navigate('/auth');
+          return;
+        }
+        setEmail(session.user.email || "");
+      } catch (error) {
+        console.error('Error loading user data:', error);
         navigate('/auth');
-        return;
       }
-
-      setEmail(user.email || "");
-
-      const { data: userResponses, error } = await supabase
-        .from('user_responses')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      setResponses(userResponses || []);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load your responses. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+    
+    loadUserEmail();
+  }, [navigate]);
 
   const handleSendEmail = async () => {
+    if (isSending) return; // Prevent double-clicks
     setIsSending(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         toast({
           title: "Authentication Error",
           description: "Please log in to continue",
@@ -184,10 +171,16 @@ export default function Summary() {
 
       // Add email to the response map
       responseMap['user_email'] = email;
+      
+      // Debug logging
+      console.log('Responses being sent to generate-document:', responseMap);
+      console.log('Number of responses:', Object.keys(responseMap).length);
+      console.log('DEBUG: market.code being sent:', market.code);
+      console.log('DEBUG: Full market object:', market);
 
       // Generate the document and send email
       const { data, error: generateError } = await supabase.functions.invoke('generate-document', {
-        body: { responses: responseMap, email }
+        body: { responses: responseMap, email, market_code: market.code }
       });
 
       if (generateError) throw generateError;
@@ -215,7 +208,18 @@ export default function Summary() {
     return `/consultation/${moduleName.replace('_', '-')}`;
   };
 
-  if (isLoading) {
+  // Convert context responses to the format expected by this component
+  const responses: Response[] = contextResponses.map(r => ({
+    question_id: r.question_id,
+    response_value: r.response_value,
+    module_name: r.module_name
+  }));
+  
+  // Debug logging
+  console.log('Context responses:', contextResponses);
+  console.log('Transformed responses:', responses);
+
+  if (contextLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -248,6 +252,42 @@ export default function Summary() {
           </p>
         </div>
 
+        {/* Priority Question - Top Three Symptoms */}
+        {(() => {
+          const topSymptomsResponse = responses.find(r => r.question_id === 'top_three_symptoms');
+          return (
+            <Card className="mb-6 border-primary/20 bg-primary/5">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl text-primary">Your Top Priority Symptoms</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    What matters most to you, matters most to us
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/consultation/module-1')}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Response
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-white/50 rounded-lg p-4 border">
+                  <p className="font-medium text-sm text-muted-foreground mb-2">
+                    What are your top three symptoms that you desperately need help with?
+                  </p>
+                  <p className="text-foreground text-lg leading-relaxed">
+                    {topSymptomsResponse?.response_value || 'No answer provided yet'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {/* Display responses by module */}
         <div className="space-y-6 mb-8">
           {Object.entries(moduleQuestions).map(([moduleKey, moduleData]) => {
@@ -270,6 +310,9 @@ export default function Summary() {
                 <CardContent>
                   <div className="space-y-3">
                     {Object.entries(moduleData.questions).map(([questionId, questionText]) => {
+                      // Skip the top_three_symptoms question since we're displaying it prominently above
+                      if (questionId === 'top_three_symptoms') return null;
+                      
                       const userResponse = moduleResponses.find(r => r.question_id === questionId);
                       return (
                         <div key={questionId} className="border-b border-border pb-2 last:border-b-0">

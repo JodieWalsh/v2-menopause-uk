@@ -7,8 +7,11 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { useResourcePreloader } from "@/hooks/useResourcePreloader";
+import { useMarket } from "@/contexts/MarketContext";
 
 const Landing = () => {
+  const { market } = useMarket();
+  
   // Preload critical resources for better performance
   useResourcePreloader({
     resources: [
@@ -47,16 +50,16 @@ const Landing = () => {
               </div>
               
               <h1 className="responsive-heading font-serif font-bold text-foreground mb-4 sm:mb-6 leading-tight">
-                Navigate Menopause with Confidence: Save Time, Money, and Stress
+                Ready to talk with your doctor about Menopause?
               </h1>
-              
+
               <p className="text-base sm:text-lg text-foreground drop-shadow-lg mb-6 sm:mb-8 leading-relaxed max-w-2xl mx-auto">
-                Our new tool helps you be fully ready for your doctors visit, so you feel confident, heard, and get the right care with fewer doctor visits.
+                Our new tool helps you be fully ready for your {market.content.terminology.doctor} visit, so you feel confident, heard, and get the right care with fewer {market.content.terminology.doctor} visits. Save time, money and stress.
               </p>
               
               <div className="flex justify-center">
                 <Button variant="hero" size="xl" className="group touch-target" asChild>
-                  <Link to="/register">
+                  <Link to="/auth?tab=signup">
                     Start Your Assessment
                     <Heart className="ml-2 h-5 w-5 group-hover:scale-110 transition-transform" />
                   </Link>
@@ -71,9 +74,9 @@ const Landing = () => {
                 <div className="relative rounded-2xl lg:rounded-3xl overflow-hidden shadow-elegant">
                   <div className="aspect-[4/5] bg-gradient-to-br from-primary-light via-background to-secondary-light">
                     <OptimizedImage
-                      src="https://oconnpquknkpxmcoqvmo.supabase.co/storage/v1/object/public/photos-for-tep//Ladies%20laughing%20(1).png"
-                      alt="Women laughing together, representing support and empowerment"
-                      className="w-full h-full brightness-75 contrast-90 saturate-75"
+                      src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/photos/Ladies%20laughing.png"
+                      alt="Women laughing together, representing support and empowerment in menopause journey"
+                      className="w-full h-full object-cover brightness-95 contrast-100 saturate-95"
                       priority={true}
                       aspectRatio="4/5"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -102,7 +105,7 @@ const Landing = () => {
                 controls
                 preload="metadata"
                 playsInline
-                src="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK%20v2.mp4#t=0.5"
+                src={`${market.videos.landing}#t=0.5`}
                 onLoadedMetadata={(e) => {
                   const video = e.target as HTMLVideoElement;
                   video.currentTime = 0.5;
@@ -115,7 +118,7 @@ const Landing = () => {
               >
                 <p className="text-center p-8 text-muted-foreground">
                   Your browser doesn't support HTML video. 
-                  <a href="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/videos//VSL1%20Menopause%20UK%20v2.mp4" 
+                  <a href={market.videos.landing} 
                      className="text-primary hover:underline ml-1">
                     Download the video
                   </a>
@@ -134,7 +137,7 @@ const Landing = () => {
               How It Works: Your Path to a Productive Consultation
             </h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Three simple steps to transform your doctor's visit experience
+              Three simple steps to transform your {market.content.terminology.doctor} visit experience
             </p>
           </div>
           
@@ -174,7 +177,7 @@ const Landing = () => {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-secondary/60 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
                   <Heart className="h-6 w-6 sm:h-8 sm:w-8 text-secondary-foreground" />
                 </div>
-                <h3 className="text-lg sm:text-xl font-serif font-semibold mb-3 sm:mb-4">3. Share with Doctor</h3>
+                <h3 className="text-lg sm:text-xl font-serif font-semibold mb-3 sm:mb-4">3. Share with {market.content.terminology.doctor === 'GP' ? 'Your GP' : 'Doctor'}</h3>
                 <p className="text-sm sm:text-base text-muted-foreground">
                   Bring your document to your appointment for more focused, 
                   productive discussions and better healthcare outcomes.
@@ -261,8 +264,8 @@ const Landing = () => {
           <Card className="max-w-sm sm:max-w-md mx-auto card-gradient p-6 sm:p-8 text-center">
             <CardContent className="p-0">
               <div className="mb-6">
-                <div className="text-3xl sm:text-4xl font-bold text-foreground mb-2">£19</div>
-                <div className="text-sm sm:text-base text-muted-foreground">GBP</div>
+                <div className="text-3xl sm:text-4xl font-bold text-foreground mb-2">{market.pricing.display}</div>
+                <div className="text-sm sm:text-base text-muted-foreground">{market.currency.code}</div>
               </div>
               <ul className="space-y-3 mb-6 sm:mb-8 text-left">
                 <li className="flex items-center gap-2">
@@ -271,7 +274,7 @@ const Landing = () => {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Doctor-focused document</span>
+                  <span className="text-sm sm:text-base text-muted-foreground">{market.content.terminology.doctor === 'GP' ? 'GP' : 'Doctor'}-focused document</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
@@ -287,13 +290,20 @@ const Landing = () => {
                 </li>
               </ul>
               <Button variant="hero" size="lg" className="w-full touch-target" asChild>
-                <Link to="/register">
+                <Link to="/auth?tab=signup">
                   Get Access Now
                 </Link>
               </Button>
               <p className="text-xs sm:text-sm text-muted-foreground mt-4">
                 💳 Secure payment • 30-day satisfaction guarantee • Discount codes available
               </p>
+              {market.content.regulations.hasGovernmentSupport && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs sm:text-sm text-blue-800">
+                    🏥 <strong>Australian Government Support:</strong> {market.content.regulations.supportDetails}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
