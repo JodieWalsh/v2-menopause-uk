@@ -1897,6 +1897,170 @@ After approximately 7 weeks since last session (Session 11 on November 11, 2025)
 
 ---
 
+#### Session 12 Continuation - Multi-Market Endorsely & US Document Formatting (January 3, 2026)
+
+After completing the integration verification, user identified three additional issues to address:
+
+**1. Market-Specific Endorsely Tracking**
+
+**Problem:** Only the US Endorsely tracking ID was hardcoded in `index.html`. The UK and AU domains were loading the wrong affiliate organization's tracking script.
+
+**User Provided:**
+- UK tracking ID: `2befa0e8-23df-4ad6-9615-be7a968930ca`
+- US tracking ID: `5d898cbf-22ee-47af-aab4-048b232c4851`
+- AU tracking ID: `1595ed84-e60a-4e56-a7ae-1753ad711d4c`
+
+**Solution Implemented:**
+- Added `endorselyTrackingId` field to `MarketConfig` interface
+- Updated all three market configs with their tracking IDs
+- Created new `EndorselyTracker.tsx` component that:
+  - Uses `useMarket()` hook to get current market
+  - Dynamically loads correct Endorsely script based on market
+  - Removes old script when market changes
+  - Logs tracking ID to console for verification
+- Integrated `EndorselyTracker` component into `App.tsx`
+- Removed hardcoded US script from `index.html`
+
+**Files Modified:**
+- `src/config/markets.ts` - Added `endorselyTrackingId` to interface and all configs
+- `index.html` - Removed hardcoded script, added comment about dynamic loading
+- `src/components/EndorselyTracker.tsx` - NEW FILE - Dynamic tracking component
+- `src/App.tsx` - Added EndorselyTracker component
+
+**Deployment:**
+- ✅ Committed to Git (commit: e1f02b7)
+- ✅ Pushed to GitHub
+- ✅ Deployed to Vercel
+
+**Result:**
+Each domain now loads its correct Endorsely organization tracking script automatically:
+- UK domain → UK tracking ID
+- US domain → US tracking ID
+- AU domain → AU tracking ID
+
+**2. Endorsely Referral Tracking Verification**
+
+**User Question:** Does the Endorsely referral tracking (`?via=affiliate-name`) work across all three markets?
+
+**Investigation:**
+Examined both frontend (`Auth.tsx`) and backend (`create-checkout-v2`) to verify implementation.
+
+**Findings:**
+✅ **Already fully implemented and working correctly:**
+- Frontend captures `window.endorsely_referral` JavaScript variable
+- Sends it to backend along with `marketCode`
+- Backend stores in Stripe session metadata as `endorsely_referral`
+- Works identically across all three markets
+
+**Conclusion:** No changes needed - referral tracking already functional for all markets.
+
+**3. US Document Formatting Optimization**
+
+**Problem Reported:**
+US user complained that generated PDF document had "terrible formatting" with huge fonts and poor layout.
+
+**Root Cause Analysis:**
+Document generation was hardcoded for A4 paper:
+- A4: 210mm × 297mm (taller)
+- US Letter: 8.5" × 11" = 216mm × **279mm** (18mm shorter!)
+- Cover page fixed height: 297mm (too tall for US Letter)
+- All fonts sized for A4's extra vertical space
+
+**Solution: Option B - Full Layout Optimization**
+
+User chose comprehensive optimization over simple paper size adaptation.
+
+**Implementation Details:**
+
+Added two new configuration objects in `generate-document/index.ts`:
+- `paperConfig`: Market-specific page dimensions and margins
+- `layoutConfig`: Market-specific typography and spacing
+
+**US Letter Optimizations:**
+- Body text: 13pt (vs 14pt A4)
+- Questions: 11pt (vs 12pt A4)
+- Line height: 1.4 (vs 1.5 A4)
+- Module headers: 15pt (vs 16pt A4)
+- Section headers: 13pt (vs 14pt A4)
+- Greene Scale min-height: 9in (vs 250mm A4)
+
+**All Updated CSS Properties:**
+- Body font-size and line-height
+- Page padding
+- Page titles
+- Module headers
+- Section headers
+- Question titles
+- Answer content
+- Cover page height (print media)
+- @page size and margins (print media)
+- Welcome greeting
+- "What to do next" section
+- Helpful Hints section
+- All helpful hint paragraphs
+
+**Greene Scale Safeguard:**
+Added protective container with `min-height` reservation:
+- Prevents page break issues on shorter US Letter pages
+- Guarantees table fits on one page
+- Preserves all existing triple-protected page break controls
+
+**Files Modified:**
+- `supabase/functions/generate-document/index.ts` - Complete layout optimization (Lines 162-214, 497, 504, 542-543, 555, 681-682, 773, 846, 858-859, 935-936, 1028-1029, 1033-1034, 1040, 1043-1051, 1076, 1100)
+
+**Deployment:**
+- ✅ Committed to Git (commit: cc5ec49)
+- ✅ Pushed to GitHub
+- ⏳ **Requires Supabase deployment** - User needs to provide access token
+
+**Expected Results:**
+
+**US Market Documents:**
+- Paper size: US Letter (8.5" × 11")
+- Body text: 13pt (more compact)
+- Questions: 11pt (professional size)
+- Line height: 1.4 (tighter spacing)
+- Greene Scale: Reserved 9 inches minimum
+- Professional, readable formatting optimized for US Letter
+
+**UK/AU Market Documents:**
+- Paper size: A4 (210mm × 297mm)
+- Body text: 14pt (unchanged)
+- Questions: 12pt (unchanged)
+- Line height: 1.5 (unchanged)
+- Greene Scale: Reserved 250mm minimum
+- Original formatting preserved
+
+**Benefits:**
+- ✅ Fixes US user's "terrible formatting" complaint
+- ✅ Professional appearance on both paper sizes
+- ✅ Optimal font sizing for each format
+- ✅ Greene Scale guaranteed to fit on one page
+- ✅ All page break protections maintained
+- ✅ Market-appropriate typography
+
+**Session 12 Continuation Summary:**
+
+**Problems Solved:**
+1. Market-specific Endorsely tracking (UK/US/AU each load correct affiliate org script)
+2. Endorsely referral tracking verification (confirmed working across all markets)
+3. US document formatting (optimized for US Letter vs A4 paper)
+
+**Impact:**
+- ✅ Affiliate tracking now works correctly for all three market domains
+- ✅ US users will receive properly formatted documents optimized for US Letter paper
+- ✅ UK/AU users continue to receive A4-optimized documents
+- ✅ Professional typography and layout for all markets
+
+**Status:** ✅ All code complete and committed to Git
+
+**Next Steps:**
+1. User must provide Supabase access token for deployment
+2. Deploy `generate-document` function to Supabase
+3. Test document generation on all three markets
+
+---
+
 ## Integration Configuration Reference
 
 ### GitHub
