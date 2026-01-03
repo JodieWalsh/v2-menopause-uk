@@ -27,7 +27,8 @@
       "Bash(cp:*)",
       "Bash(node test-checkout.js)",
       "Bash(nslookup:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(deno check:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

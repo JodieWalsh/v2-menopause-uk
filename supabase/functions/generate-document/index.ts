@@ -159,6 +159,60 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
     ? 'As well as collecting all this information it is likely that your doctor or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.'
     : 'As well as collecting all this information it is likely that your GP or nurse will also want to measure your height and weight, blood pressure and pulse rate. So wear shoes that are easy to slip off and wear a loose shirt to make this process easier.';
 
+  // Market-specific paper size configuration
+  // US uses Letter size (8.5" x 11"), UK/AU use A4 (210mm x 297mm)
+  const paperConfig = marketCode === 'US'
+    ? {
+        pageSize: 'letter portrait',
+        pageMargins: '0.6in 0.75in 0.75in 0.75in',  // top right bottom left
+        coverHeight: '11in',
+        coverMinHeight: '11in',
+        maxWidth: '850px',
+        description: 'US Letter (8.5" x 11")'
+      }
+    : {
+        pageSize: 'A4 portrait',
+        pageMargins: '15mm 20mm 20mm 20mm',
+        coverHeight: '297mm',
+        coverMinHeight: '297mm',
+        maxWidth: '1000px',
+        description: 'A4 (210mm x 297mm)'
+      };
+
+  console.log(`Using paper format: ${paperConfig.description} for market: ${marketCode}`);
+
+  // Market-specific layout optimization
+  // US Letter is 18mm shorter than A4, so we use slightly smaller fonts and tighter spacing
+  const layoutConfig = marketCode === 'US'
+    ? {
+        bodyFontSize: '13pt',           // -1pt from A4 (7% reduction for 6% shorter paper)
+        questionFontSize: '11pt',       // -1pt from A4
+        answerFontSize: '11pt',         // -1pt from A4
+        lineHeight: '1.4',              // Tighter than A4's 1.5
+        sectionPadding: '35px',         // -5px from A4
+        pageTitleSize: '20pt',          // -2pt from A4
+        moduleHeaderSize: '15pt',       // -1pt from A4
+        sectionHeaderSize: '13pt',      // -1pt from A4
+        greeneScaleMinHeight: '9in',    // Reserve space for Greene Scale + top symptoms
+        greeneScaleTableSize: '8pt',    // Keep at 8pt (already optimal)
+        description: 'US Letter optimized layout'
+      }
+    : {
+        bodyFontSize: '14pt',           // Standard A4 size
+        questionFontSize: '12pt',       // Standard A4 size
+        answerFontSize: '12pt',         // Standard A4 size
+        lineHeight: '1.5',              // Standard spacing
+        sectionPadding: '40px',         // Standard padding
+        pageTitleSize: '22pt',          // Standard title size
+        moduleHeaderSize: '16pt',       // Standard header size
+        sectionHeaderSize: '14pt',      // Standard section size
+        greeneScaleMinHeight: '250mm',  // Reserve space for Greene Scale + top symptoms
+        greeneScaleTableSize: '8pt',    // Keep at 8pt (already optimal)
+        description: 'A4 standard layout'
+      };
+
+  console.log(`Using layout optimization: ${layoutConfig.description}`);
+
   // Modified Greene Scale questions mapping
   const greeneScaleQuestions = [
     { id: 'hot_flushes', label: 'Hot Flushes' },
@@ -440,14 +494,14 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
     
     const moduleHeader = `
       <div class="section-divider"></div>
-      <h2 style="font-size: 16pt; font-weight: 700; color: #333333; margin: 30px 0 20px 0; padding-bottom: 10px; border-bottom: 2px solid #A8DADC;">
+      <h2 style="font-size: ${layoutConfig.moduleHeaderSize}; font-weight: 700; color: #333333; margin: 30px 0 20px 0; padding-bottom: 10px; border-bottom: 2px solid #A8DADC;">
         ${module}
       </h2>
     `;
     
     const sectionContent = Object.entries(sections).map(([section, questions]) => {
       const sectionHeader = section !== 'General' ? `
-        <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin: 20px 0 15px 0;">
+        <h3 style="font-size: ${layoutConfig.sectionHeaderSize}; font-weight: 600; color: #333333; margin: 20px 0 15px 0;">
           ${section}
         </h3>
       ` : '';
@@ -485,8 +539,8 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         
         body {
             font-family: 'Open Sans', sans-serif;
-            font-size: 14pt;
-            line-height: 1.5;
+            font-size: ${layoutConfig.bodyFontSize};
+            line-height: ${layoutConfig.lineHeight};
             color: #333333;
             background: #FFFFFF;
             margin: 0;
@@ -495,10 +549,10 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         
         .page {
             width: 100%;
-            max-width: 1000px;
+            max-width: ${paperConfig.maxWidth};
             min-height: 100vh;
             margin: 0 auto;
-            padding: 40px;
+            padding: ${layoutConfig.sectionPadding};
             background: #FFFFFF;
             page-break-after: always;
             position: relative;
@@ -656,8 +710,8 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         /* Print optimizations */
         @media print {
             .cover-page {
-                height: 297mm;
-                min-height: 297mm;
+                height: ${paperConfig.coverHeight};
+                min-height: ${paperConfig.coverMinHeight};
                 background: #FFFFFF !important;
                 -webkit-print-color-adjust: exact;
                 color-adjust: exact;
@@ -716,7 +770,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         }
         
         .page-title {
-            font-size: 22pt;
+            font-size: ${layoutConfig.pageTitleSize};
             font-weight: 700;
             color: #333333;
         }
@@ -789,7 +843,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         }
         
         .question-title {
-            font-size: 12pt;
+            font-size: ${layoutConfig.questionFontSize};
             font-weight: 600;
             color: #333333;
             margin-bottom: 12px;
@@ -801,8 +855,8 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
             padding: 15px;
             border-radius: 8px;
             border-left: 5px solid #A8DADC;
-            font-size: 12pt;
-            line-height: 1.5;
+            font-size: ${layoutConfig.answerFontSize};
+            line-height: ${layoutConfig.lineHeight};
             color: #333333;
             margin-bottom: 15px;
             max-width: none;
@@ -904,14 +958,14 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         /* Print optimizations */
         @media print {
             body { margin: 0; padding: 0; }
-            .page { 
-                margin: 0; 
-                box-shadow: none; 
+            .page {
+                margin: 0;
+                box-shadow: none;
                 padding-top: 25mm;
             }
-            @page { 
-                size: A4 portrait; 
-                margin: 15mm 20mm 20mm 20mm;
+            @page {
+                size: ${paperConfig.pageSize};
+                margin: ${paperConfig.pageMargins};
             }
             
             .page-header {
@@ -971,30 +1025,30 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         </div>
 
         <div style="margin-bottom: 30px;">
-            <h3 style="font-size: 16pt; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
-            <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 20px;">
+            <h3 style="font-size: ${layoutConfig.moduleHeaderSize}; font-weight: 600; color: #333333; margin-bottom: 15px;">Hello ${userName},</h3>
+            <p style="font-size: ${layoutConfig.bodyFontSize}; line-height: ${layoutConfig.lineHeight}; margin-bottom: 20px;">
                 Thank you for completing your menopause assessment. This comprehensive document contains all of your responses and will help facilitate a productive discussion with your healthcare provider.
             </p>
 
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
-            <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 20px;">
+            <h3 style="font-size: ${layoutConfig.sectionHeaderSize}; font-weight: 600; color: #333333; margin: 25px 0 15px 0;">What to do next</h3>
+            <p style="font-size: ${layoutConfig.bodyFontSize}; line-height: ${layoutConfig.lineHeight}; margin-bottom: 20px;">
                 Please review your responses in this document and bring it with you to your menopause consultation appointment. Your healthcare provider will use this information to better understand your symptoms and health history.
             </p>
         </div>
 
         <div style="margin-top: 30px;">
-            <h3 style="font-size: 14pt; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Helpful Hints</h3>
+            <h3 style="font-size: ${layoutConfig.sectionHeaderSize}; font-weight: 600; color: #333333; margin-bottom: 20px; border-bottom: 2px solid #A8DADC; padding-bottom: 10px;">Helpful Hints</h3>
             
             <div style="margin-bottom: 25px; padding: 20px; background: #F5F5F5; border-radius: 8px; border-left: 4px solid #A8DADC;">
-                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> ${helpfulHint1}</p>
+                <p style="font-size: ${layoutConfig.bodyFontSize}; line-height: ${layoutConfig.lineHeight}; margin-bottom: 12px;"><strong>Helpful hint 1:</strong> ${helpfulHint1}</p>
 
-                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
+                <p style="font-size: ${layoutConfig.bodyFontSize}; line-height: ${layoutConfig.lineHeight}; margin-bottom: 12px;"><strong>Helpful hint 2:</strong> When booking your appointment please ensure that the medical receptionist knows that this appointment is for a Menopause Health Assessment.</p>
 
-                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
+                <p style="font-size: ${layoutConfig.bodyFontSize}; line-height: ${layoutConfig.lineHeight}; margin-bottom: 12px;"><strong>Helpful hint 3:</strong> Please note that if you have not had a cervical screening (what we used to call a pap smear) in the past 5 years then ensure you tell the medical receptionist this at the time of booking the appointment so that they can allow time and resources for this to be done on the day. This will again save you coming back another day!</p>
 
-                <p style="font-size: 14pt; line-height: 1.5; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> ${helpfulHint4}</p>
+                <p style="font-size: ${layoutConfig.bodyFontSize}; line-height: ${layoutConfig.lineHeight}; margin-bottom: 12px;"><strong>Helpful hint 4:</strong> ${helpfulHint4}</p>
 
-                <p style="font-size: 14pt; line-height: 1.5;"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
+                <p style="font-size: ${layoutConfig.bodyFontSize}; line-height: ${layoutConfig.lineHeight};"><strong>Helpful hint 5:</strong> Print out and bring this document with you to your consultation!</p>
             </div>
         </div>
     </div>
@@ -1018,6 +1072,8 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
         </div>
 
         <!-- Modified Greene Scale Section -->
+        <!-- Greene Scale container with min-height reservation to prevent page break issues -->
+        <div style="min-height: ${layoutConfig.greeneScaleMinHeight}; page-break-inside: avoid;">
         <div style="margin-top: 15px;">
             <h3 style="font-size: 12pt; font-weight: 600; color: #333333; margin-bottom: 10px; border-bottom: 2px solid #A8DADC; padding-bottom: 8px;">The Modified Greene Scale</h3>
 
@@ -1041,6 +1097,7 @@ function generateBrandedHTMLDocument(responses: any, userName: string, marketCod
                 </tbody>
             </table>
         </div>
+        </div> <!-- Close Greene Scale safeguard container -->
     </div>
 
     <!-- Page 3+: Long Answer Questions -->
