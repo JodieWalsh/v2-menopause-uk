@@ -26,6 +26,7 @@ export interface MarketConfig {
     };
   };
   domains: string[];
+  endorselyTrackingId: string;
 }
 
 export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
@@ -53,7 +54,8 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
         hasGovernmentSupport: false
       }
     },
-    domains: ['menopause.the-empowered-patient.org', 'localhost']
+    domains: ['menopause.the-empowered-patient.org', 'localhost'],
+    endorselyTrackingId: '2befa0e8-23df-4ad6-9615-be7a968930ca'
   },
   AU: {
     code: 'AU',
@@ -79,7 +81,8 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
         hasGovernmentSupport: false
       }
     },
-    domains: ['menopause.the-empowered-patient.com.au']
+    domains: ['menopause.the-empowered-patient.com.au'],
+    endorselyTrackingId: '1595ed84-e60a-4e56-a7ae-1753ad711d4c'
   },
   US: {
     code: 'US',
@@ -105,7 +108,8 @@ export const MARKET_CONFIGS: Record<MarketCode, MarketConfig> = {
         hasGovernmentSupport: false
       }
     },
-    domains: ['menopause.the-empowered-patient.com']
+    domains: ['menopause.the-empowered-patient.com'],
+    endorselyTrackingId: '5d898cbf-22ee-47af-aab4-048b232c4851'
   }
 };
 

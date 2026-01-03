@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { MarketProvider } from "@/contexts/MarketContext";
 import { ResponseProvider } from "@/contexts/ResponseContext";
+import { EndorselyTracker } from "@/components/EndorselyTracker";
 
 // Eager load critical pages to avoid chunk failures
 import Landing from "./pages/Landing";
@@ -101,6 +102,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <MarketProvider>
+        <EndorselyTracker />
         <ResponseProvider>
           <Toaster />
           <Sonner />
