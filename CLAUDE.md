@@ -2061,6 +2061,379 @@ Added protective container with `min-height` reservation:
 
 ---
 
+### Session 13 (Canada Market Planning & Social Media Optimization - January 4, 2026)
+
+This session continued immediately after Session 12, starting with deployment of the generate-document function and expanding into comprehensive Canada market planning and social media meta tag optimization.
+
+#### Part 1: Supabase Function Deployment (Session 12 Completion)
+
+**User Request:**
+Deploy the `generate-document` function to Supabase with provided access token to complete Session 12 US Letter optimization work.
+
+**Access Token Provided:**
+`sbp_887c5281cab6e6ef591ef9a474033c5811e9dabe`
+
+**Deployment:**
+- ✅ Exported SUPABASE_ACCESS_TOKEN environment variable
+- ✅ Deployed using `npx supabase functions deploy generate-document`
+- ✅ Successfully deployed to project `ppnunnmjvpiwrrrbluno`
+- ✅ US Letter document optimization now live
+
+**Result:**
+US market users now receive properly formatted documents optimized for US Letter paper (8.5" × 11") with 13pt body text and tighter spacing.
+
+---
+
+#### Part 2: Canada Market Comprehensive Analysis
+
+**User Request:**
+"I want to add Canada as a fourth market to this application (alongside UK, US, and AU). Before we start implementing anything, I need you to conduct a comprehensive audit of all market-specific content in the project."
+
+**Requirements Specified:**
+1. Analyze health screening guidelines (cervical, breast, colon cancer)
+2. Healthcare system references (insurance, billing, government programs)
+3. Terminology differences (doctor/GP, mum/mom, spellings)
+4. Government support and regulations
+5. Market configuration structure
+6. Paper size and formatting
+7. Cultural and regional content
+8. Provide detailed findings with file paths and line numbers
+9. Create implementation roadmap
+10. Include Canadian healthcare resources for research
+11. Estimate complexity
+
+**Methodology:**
+Comprehensive codebase audit using targeted grep searches:
+- Cervical screening references
+- Mammogram/breast cancer screening
+- Bowel/colon cancer screening
+- Insurance/billing/payment terminology
+- Healthcare provider terminology (doctor/GP)
+- Mom/Mum variations
+- Government support references
+- Paper size logic (A4 vs Letter)
+
+**Deliverable Created:**
+**`CANADA_MARKET_ANALYSIS.md`** - 1,050-line comprehensive audit document
+
+**Key Findings Summary:**
+
+**Items Requiring Canadian Adaptation: 47 total**
+
+**Category Breakdown:**
+- Health Screening Content: 18 items
+- Healthcare System References: 8 items
+- Terminology Differences: 6 items
+- Government Support: 3 items
+- Market Configuration: 6 items
+- Paper Size/Formatting: 3 items
+- Cultural/Regional Content: 3 items
+
+**Critical Canadian Healthcare Guidelines:**
+
+**Cervical Screening:**
+- Frequency: Every 3 years (ages 25-69)
+- Test: Pap test or HPV test
+- Coverage: Provincial health insurance
+- Current app mentions: "past 5 years" (incorrect for Canada)
+
+**Breast Cancer Screening:**
+- Frequency: Every 2 years (ages 50-74)
+- Test: Mammogram
+- Coverage: Provincial health insurance (free)
+- Program: Varies by province (BreastScreen Ontario, etc.)
+
+**Bowel Cancer Screening:**
+- Test: FIT (Fecal Immunochemical Test)
+- Frequency: Every 2 years (ages 50-74)
+- Coverage: Provincial health insurance (free)
+- Program: ColonCancerCheck, etc.
+
+**Healthcare System Differences:**
+
+**Insurance Model:**
+- **Canada**: Provincial health insurance (universal, government-funded)
+- **UK**: NHS (similar to Canada)
+- **US**: Private insurance (very different)
+- **AU**: Medicare (similar to Canada, but mentions specific rebate amounts)
+
+**Key Point:** Canada has NO private insurance requirement for basic healthcare. Should NOT use US insurance language.
+
+**Terminology Findings:**
+
+**Healthcare Provider:**
+- **Recommended for Canada**: "doctor" or "family doctor"
+- **UK/AU**: "GP" (General Practitioner)
+- **US**: "doctor"
+- **Decision**: Use "doctor" for Canada (same as US)
+
+**Mum vs Mom:**
+- **Canada**: "mom" (same as US)
+- **UK/AU**: "mum"
+
+**Paper Size:**
+- **Canada**: US Letter (8.5" × 11" / 216mm × 279mm)
+- **US**: Letter (same as Canada)
+- **UK/AU**: A4 (210mm × 297mm)
+- **Decision**: Canada uses Letter format (like US, NOT A4)
+
+**Market Configuration Requirements:**
+
+**Domain:** `menopause.the-empowered-patient.ca` (recommended)
+
+**Pricing:** $10 CAD (consistent with other markets)
+
+**Stripe:** Need new Canadian price ID for CAD currency
+
+**Endorsely:** Need separate Canadian organization/tracking ID
+
+**Videos:** Canadian-specific landing and welcome videos
+
+**Implementation Roadmap:**
+
+**Phase 1: Research & External Setup (2-3 hours)**
+- Research Canadian healthcare screening guidelines
+- Register .ca domain
+- Create Endorsely Canadian organization
+- Create Stripe CAD product/price
+- Confirm video URLs
+
+**Phase 2: Core Configuration (1-2 hours)**
+- Add 'CA' to MarketCode type
+- Add Canadian market config to markets.ts
+- Add Canadian content to marketContent.ts
+- Update market detection logic
+
+**Phase 3: Content Updates (4-6 hours)**
+- Update Module 2b cervical screening (3-year frequency)
+- Update Module 2c bowel cancer screening (FIT test guidance)
+- Update Module 6 helpful hints (remove AU-specific rebate)
+- Update generate-document helpful hints
+- Review all 18 screening content items
+
+**Phase 4: System References (2-3 hours)**
+- Update payment flow terminology
+- Update insurance/billing language
+- Ensure provincial health insurance language
+
+**Phase 5: Testing (2-3 hours)**
+- Test market detection on .ca domain
+- Test payment flow with CAD pricing
+- Test document generation (Letter paper)
+- Test all content variations
+
+**Phase 6: Deployment (1 hour)**
+- Deploy Supabase functions
+- Deploy to Vercel
+- Configure .ca domain DNS
+- Final verification
+
+**Total Estimated Time:** 13-18 hours
+
+**Canadian Healthcare Resources Provided:**
+1. Canadian Cancer Society - cervical screening
+2. Canadian Cancer Society - breast screening
+3. Canadian Cancer Society - colorectal screening
+4. Health Canada - cancer screening
+5. Canadian Task Force on Preventive Health Care
+6. Provincial health authorities (Ontario, BC, etc.)
+
+**Files Modified:**
+- `CANADA_MARKET_ANALYSIS.md` - CREATED (1,050 lines)
+
+**Git Commits:**
+- Commit 55b2ee8: "Create comprehensive Canada market analysis document"
+
+**Deployment:**
+- ✅ Committed to Git
+- ✅ Pushed to GitHub
+
+**Status:** ✅ Comprehensive analysis complete, ready for implementation when user approves
+
+---
+
+#### Part 3: Social Media Meta Tags Optimization
+
+**Problem Reported:**
+"When I share my website link on Instagram or other social media, it shows the Lovable logo as the preview image instead of my app's hero section. This looks unprofessional."
+
+**User Requirements:**
+1. Replace all Lovable branding with The Empowered Patient branding
+2. Use professional title and description
+3. Use existing app logo (temporary fix)
+4. Support all three markets (UK, US, AU)
+5. Option to upgrade to dedicated social image later
+
+**Initial Assessment:**
+Found extensive Lovable branding throughout `index.html`:
+- Title: "Menopause Prep"
+- Description: "Lovable Generated Project"
+- Author: "Lovable"
+- og:title: "menopause-doc-prep-pro"
+- og:image: Lovable logo URL
+- twitter:site: "@lovable_dev"
+- twitter:image: Lovable logo URL
+
+**Solution Options Presented:**
+- **Option 1:** Quick fix with current logo, can upgrade later
+- **Option 2:** Create dedicated 1200×630 social sharing image first
+- **Option 3:** Quick fix now + upgrade later ← **USER SELECTED**
+
+**First Implementation (Commit 1a6b2a4):**
+
+**Updated Meta Tags:**
+```html
+<!-- Professional Branding -->
+<title>The Empowered Patient - Prepare for Your Menopause Consultation</title>
+<meta name="description" content="Complete a comprehensive menopause health assessment and generate a professional document for your doctor appointment. Get prepared, get empowered." />
+<meta name="author" content="The Empowered Patient" />
+
+<!-- Open Graph (Facebook/Instagram/LinkedIn) -->
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://menopause.the-empowered-patient.org/" />
+<meta property="og:title" content="The Empowered Patient - Prepare for Your Menopause Consultation" />
+<meta property="og:description" content="Complete a comprehensive menopause health assessment and generate a professional document for your doctor appointment. Get prepared, get empowered." />
+<meta property="og:image" content="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="The Empowered Patient - Menopause Assessment Tool" />
+<meta property="og:site_name" content="The Empowered Patient" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:url" content="https://menopause.the-empowered-patient.org/" />
+<meta name="twitter:title" content="The Empowered Patient - Prepare for Your Menopause Consultation" />
+<meta name="twitter:description" content="Complete a comprehensive menopause health assessment and generate a professional document for your doctor appointment. Get prepared, get empowered." />
+<meta name="twitter:image" content="https://ppnunnmjvpiwrrrbluno.supabase.co/storage/v1/object/public/logos/website_logo_transparent.png" />
+<meta name="twitter:image:alt" content="The Empowered Patient - Menopause Assessment Tool" />
+```
+
+**Git Commit:**
+- Commit 1a6b2a4: "Update social media meta tags with professional branding"
+
+**Multi-Market Issue Identified:**
+
+**User Question:** "That looks amazing. Is it for all three markets?"
+
+**Analysis Revealed:**
+- `og:url` hardcoded to UK domain: `https://menopause.the-empowered-patient.org/`
+- `twitter:url` hardcoded to UK domain
+- **Problem:** When sharing US (.com) or AU (.com.au) domains, social platforms would still show UK URL
+
+**Solution Options:**
+- **Option 1:** Remove URL tags (platforms use actual shared URL) ← **USER SELECTED**
+- **Option 2:** Dynamic URL generation with JavaScript (complex)
+
+**Final Implementation (Commit a9e74e2):**
+
+**Removed Hardcoded URLs:**
+```html
+<!-- REMOVED: -->
+<meta property="og:url" content="https://menopause.the-empowered-patient.org/" />
+<meta name="twitter:url" content="https://menopause.the-empowered-patient.org/" />
+```
+
+**Why This Works:**
+- Open Graph Protocol: `og:url` is optional
+- When absent, platforms automatically use the actual shared URL
+- Result: UK shares show .org, US shows .com, AU shows .com.au
+- No JavaScript needed, works perfectly out of the box
+
+**Files Modified:**
+- `index.html` - Lines 6-31 (two separate edits)
+
+**Git Commits:**
+- Commit 1a6b2a4: "Update social media meta tags with professional branding"
+- Commit a9e74e2: "Remove hardcoded URL tags to support all three markets"
+
+**Deployment:**
+- ✅ Committed to Git (2 commits)
+- ✅ Pushed to GitHub (2 pushes)
+- ✅ Auto-deploy via Vercel (both commits)
+
+**Expected Results:**
+
+**When Sharing on Instagram/Facebook/LinkedIn/Twitter:**
+
+**UK Domain (menopause.the-empowered-patient.org):**
+- Title: "The Empowered Patient - Prepare for Your Menopause Consultation"
+- Description: Professional menopause assessment text
+- Image: The Empowered Patient logo
+- URL: https://menopause.the-empowered-patient.org/
+
+**US Domain (menopause.the-empowered-patient.com):**
+- Title: Same professional title
+- Description: Same professional description
+- Image: Same logo
+- URL: https://menopause.the-empowered-patient.com/
+
+**AU Domain (menopause.the-empowered-patient.com.au):**
+- Title: Same professional title
+- Description: Same professional description
+- Image: Same logo
+- URL: https://menopause.the-empowered-patient.com.au/
+
+**Social Media Cache Refresh:**
+
+**Important Note:** Social platforms cache Open Graph images aggressively. After deployment, use these tools to force refresh:
+- **Facebook/Instagram:** https://developers.facebook.com/tools/debug/
+- **Twitter:** https://cards-dev.twitter.com/validator
+- **LinkedIn:** https://www.linkedin.com/post-inspector/
+
+---
+
+#### Session 13 Summary
+
+**Problems Solved:**
+1. Session 12 US Letter optimization deployed to production
+2. Comprehensive Canada market analysis completed (47 items identified)
+3. Unprofessional Lovable branding replaced with The Empowered Patient branding
+4. Multi-market social media sharing fixed (UK/US/AU all work correctly)
+
+**Deliverables Created:**
+1. **CANADA_MARKET_ANALYSIS.md** - 1,050-line comprehensive roadmap
+   - 47 items requiring Canadian adaptation identified
+   - Canadian healthcare guidelines researched
+   - Implementation roadmap (6 phases, 13-18 hours)
+   - Canadian healthcare resources provided
+   - File-by-file change checklist
+   - Open questions documented
+
+**Impact:**
+- ✅ US market documents now professionally formatted for US Letter paper
+- ✅ Canada market implementation fully planned and documented
+- ✅ Professional branding on all social media shares
+- ✅ Multi-market social sharing working correctly (UK/US/AU)
+- ✅ No more Lovable branding visible anywhere
+- ✅ Ready for Canada market implementation when user approves
+
+**Files Modified (Session 13):**
+- `supabase/functions/generate-document/index.ts` - Deployed to Supabase
+- `CANADA_MARKET_ANALYSIS.md` - CREATED (1,050 lines)
+- `index.html` - Social media meta tags updated (2 commits)
+
+**Git Commits (Session 13):**
+- Commit 55b2ee8: "Create comprehensive Canada market analysis document"
+- Commit 1a6b2a4: "Update social media meta tags with professional branding"
+- Commit a9e74e2: "Remove hardcoded URL tags to support all three markets"
+
+**Deployment Status:**
+- ✅ Supabase: generate-document deployed (US Letter optimization live)
+- ✅ Git: All changes committed and pushed (3 commits)
+- ✅ Vercel: Auto-deployed (social media fixes live)
+- ✅ All three domains updated and working
+
+**Platform Health:** 🟢 **EXCELLENT**
+
+**Next Steps (User Choice):**
+1. **Canada Implementation:** User can proceed with Canada market when ready (roadmap complete)
+2. **Social Sharing Image:** User can create dedicated 1200×630 image later (optional upgrade)
+3. **Continue Production Use:** All systems operational and optimized
+
+**Status:** ✅ All Session 13 work completed and deployed
+
+---
+
 ## Integration Configuration Reference
 
 ### GitHub
